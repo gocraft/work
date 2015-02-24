@@ -1,0 +1,34 @@
+
+
+// list: jobs
+<ns>:jobs:create_watch
+
+// list: in progress
+<ns>:jobs:create_watch:inprog
+
+// sorted set: dead   ;; can this just be a list? what are the tradeoffs?
+//  - zset has a nice zremrangebyscore that lets u delete all dead jobs older than X
+//  - zset won't have dups (shouldn't have dups anyway, tho)
+<ns>:dead
+ts,job
+
+// schedules and retries. These behave exactly the same, only separated to give separate lists in UI's.
+// zset: ts,job
+<ns>:scheduled
+<ns>:retries
+
+// set: workersets (NOT expired)
+<ns>:workersets
+{abcd, efgh, ...}
+
+// set: workers (EXPIRED!)
+// has the set of ids of workers in them
+// this might be better as a hash: {checkinAt: ts, workers: "123,456,etc"}
+<ns>:workerset:abcd
+{123, 456, ...}
+
+// hash: what is worker 123 workin' on? (EXPIRED! -- ???)
+<ns>:worker:123 
+job: {jid: 'abc', args: 'adf', etc}
+startedAt: ts
+checkin: 'started' | user defined message
