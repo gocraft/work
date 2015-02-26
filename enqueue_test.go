@@ -6,6 +6,8 @@ import (
 	"testing"
 	// "fmt"
 	"time"
+	// "os"
+	// "log"
 )
 
 func TestEnqueue(t *testing.T) {
@@ -36,7 +38,8 @@ func newTestPool(addr string) *redis.Pool {
 			if err != nil {
 				return nil, err
 			}
-			return c, err
+			return c, nil
+			//return redis.NewLoggingConn(c, log.New(os.Stdout, "", 0), "redis"), err
 		},
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
 			_, err := c.Do("PING")

@@ -1,7 +1,6 @@
 package work
 
 import (
-	"encoding/json"
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -24,7 +23,7 @@ func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
 		Args:       args,
 	}
 
-	jsonBytes, err := json.Marshal(job)
+	rawJSON, err := job.Serialize()
 	if err != nil {
 		return err
 	}
@@ -32,7 +31,7 @@ func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
 	conn := e.Pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("LPUSH", e.queuePrefix+jobName, jsonBytes)
+	_, err = conn.Do("LPUSH", e.queuePrefix+jobName, rawJSON)
 	if err != nil {
 		return err
 	}

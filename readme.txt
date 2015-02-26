@@ -1,3 +1,16 @@
+TODO
+----
+ - generic handler
+ - lrem
+ - do the whole reflection-based job calling thing.
+ - handle errors -> put on retry queue
+ - write a daemon that polls the retry queue and requeues things
+ - how do we know when to do retry queue?
+ - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
+   - thing we're guarding against: 100 goroutines all polling redis
+   - alt: some clever mechanism to only check redis if we are busy?
+
+
 worker := work.NewWorker(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
     Middleware((*Context).SetDatabase).
     Middleware((*Context).Log)

@@ -14,18 +14,6 @@ type WorkerSet struct {
 	jobTypes    []*jobType
 }
 
-type jobType struct {
-	Name    string
-	Handler reflect.Value
-	JobOptions
-}
-
-type JobOptions struct {
-	Priority uint
-	// retry count
-	//
-}
-
 func NewWorkerSet(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerSet {
 	// todo: validate ctx
 	// todo: validate concurrency
@@ -44,14 +32,16 @@ func (ws *WorkerSet) Middleware() *WorkerSet {
 }
 
 func (ws *WorkerSet) Job(name string, fn interface{}) *WorkerSet {
-	return ws.JobWithOptions(name, JobOptions{Priority: 1}, fn)
+	return ws.JobWithOptions(name, JobOptions{Priority: 1, MaxFails: 3}, fn)
 }
 
+// TODO: depending on how many JobOptions there are it might be good to explode the options
+// because it's super awkward for Priority and MaxRetries to be zero-valued
 func (ws *WorkerSet) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerSet {
 	jt := &jobType{
-		Name:        name,
-		Handler:     reflect.ValueOf(fn),
-		JobOptions:  jobOpts,
+		Name:           name,
+		DynamicHandler: reflect.ValueOf(fn),
+		JobOptions:     jobOpts,
 	}
 	ws.jobTypes = append(ws.jobTypes, jt)
 	return ws

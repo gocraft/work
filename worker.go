@@ -1,39 +1,36 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"math/rand"
 )
 
 type worker struct {
-	ws *WorkerSet
-
 	namespace string // eg, "myapp-work"
 	pool      *redis.Pool
-	jobTypes  []*jobType
+	jobTypes  map[string]*jobType
 
 	redisFetchScript *redis.Script
-	sampler prioritySampler
+	sampler          prioritySampler
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
 
-func newWorker(ws *WorkerSet) *worker {
+func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
 	sampler := prioritySampler{}
-	for _, jt := range ws.jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(ws.namespace, jt.Name), redisKeyJobsInProgress(ws.namespace, jt.Name))
+	for _, jt := range jobTypes {
+		sampler.add(jt.Priority, redisKeyJobs(namespace, jt.Name), redisKeyJobsInProgress(namespace, jt.Name))
 	}
 
 	return &worker{
-		ws: ws,
+		namespace: namespace,
+		pool:      pool,
+		jobTypes:  jobTypes,
 
-		namespace: ws.namespace,
-		pool:      ws.pool,
-		jobTypes:  ws.jobTypes,
-		
-		redisFetchScript: redis.NewScript(len(ws.jobTypes), redisLuaRpoplpushMultiCmd),
-		sampler: sampler,
+		redisFetchScript: redis.NewScript(len(jobTypes), redisLuaRpoplpushMultiCmd),
+		sampler:          sampler,
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
@@ -60,25 +57,25 @@ func (w *worker) loop() {
 			if err != nil {
 				// TODO: log this i think?
 			} else if job != nil {
-				// DO IT
+				w.processJob(job)
 			} else {
-				// no job.
+				// no job. maybe sleep?
 			}
 		}
 	}
 }
 
 func (w *worker) fetchJob() (*Job, error) {
-	
+
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
-	
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples) * 2)
+
+	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*2)
 	for _, s := range w.sampler.samples {
 		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg)
 	}
-	
+
 	conn := w.pool.Get()
 	defer conn.Close()
 	values, err := redis.Values(w.redisFetchScript.Do(conn, scriptArgs...))
@@ -87,18 +84,27 @@ func (w *worker) fetchJob() (*Job, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	
-	jsonData, ok := values[0].([]byte)
+
+	if len(values) != 3 {
+		return nil, fmt.Errorf("need 3 elements back")
+	}
+
+	rawJSON, ok := values[0].([]byte)
 	if !ok {
 		return nil, fmt.Errorf("response msg not bytes")
 	}
-	
-	queue, ok := values[0].([]byte)
+
+	dequeuedFrom, ok := values[1].([]byte)
 	if !ok {
 		return nil, fmt.Errorf("response queue not bytes")
 	}
-	
-	job, err := newJob(jsonData, queue)
+
+	inProgQueue, ok := values[2].([]byte)
+	if !ok {
+		return nil, fmt.Errorf("response in prog not bytes")
+	}
+
+	job, err := newJob(rawJSON, dequeuedFrom, inProgQueue)
 	if err != nil {
 		return nil, err
 	}
@@ -106,3 +112,83 @@ func (w *worker) fetchJob() (*Job, error) {
 	return job, nil
 }
 
+func (w *worker) processJob(job *Job) {
+	defer w.removeJobFromInProgress(job)
+	fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
+	if jt, ok := w.jobTypes[job.Name]; ok {
+		if runErr := runJob(job, jt); runErr != nil {
+			job.failed(runErr)
+			w.addToRetryOrDead(jt, job, runErr)
+		}
+	} else {
+		// NOTE: since we don't have a jobType, we don't know max retries
+		runErr := fmt.Errorf("stray job -- no handler")
+		job.failed(runErr)
+		w.addToDead(job, runErr)
+		// todo: stray job?
+	}
+}
+
+func (w *worker) removeJobFromInProgress(job *Job) {
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("LREM", 1, job.rawJSON)
+	if err != nil {
+		// todo: log error
+	}
+}
+
+func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
+	failsRemaining := int64(jt.MaxFails) - job.Fails
+	if failsRemaining > 0 {
+		w.addToRetry(job, runErr)
+	} else {
+		if !jt.SkipDead {
+			w.addToDead(job, runErr)
+		}
+	}
+}
+
+func (w *worker) addToRetry(job *Job, runErr error) {
+	rawJSON, err := job.Serialize()
+	if err != nil {
+		// todo: log
+		return
+	}
+
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	_, err = conn.Do("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	if err != nil {
+		// todo log
+	}
+
+}
+
+func (w *worker) addToDead(job *Job, runErr error) {
+	rawJSON, err := job.Serialize()
+
+	if err != nil {
+		// todo: log
+		return
+	}
+
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	_, err = conn.Do("ZADD", redisKeyDead(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
+	// The max # of jobs seems really horrible. Seems like
+	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
+	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
+	if err != nil {
+		// todo log
+	}
+}
+
+// backoff returns number of seconds t
+func backoff(fails int64) int64 {
+	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
+}
