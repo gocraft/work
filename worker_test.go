@@ -19,6 +19,7 @@ func TestWorker(t *testing.T) {
 	deleteQueue(pool, ns, job1)
 	deleteQueue(pool, ns, job2)
 	deleteQueue(pool, ns, job3)
+	deleteRetryAndDead(pool, ns)
 
 	var arg1 float64
 	var arg2 float64
@@ -63,14 +64,26 @@ func TestWorker(t *testing.T) {
 
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
-	w.forceIter() // make sure it process the job
-	w.forceIter() // make sure it process the job
-	w.forceIter() // make sure it process the job
+	w.forceIter() // make sure it processes the job
+	w.forceIter() // make sure it processes the job
+	w.forceIter() // make sure it processes the job
 	w.stop()
 
-	assert.Equal(t, arg1, 1.0)
-	assert.Equal(t, arg2, 2.0)
-	assert.Equal(t, arg3, 3.0)
+	assert.Equal(t, 1.0, arg1)
+	assert.Equal(t, 2.0, arg2)
+	assert.Equal(t, 3.0, arg3)
+
+	// assert: nothing in retries or dead
+	assert.Equal(t, 0, zsetSize(pool, redisKeyRetry(ns)))
+	assert.Equal(t, 0, zsetSize(pool, redisKeyDead(ns)))
+
+	// Nothing in the queues or in-progress queues
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job2)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job3)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
 }
 
 func deleteQueue(pool *redis.Pool, namespace, jobName string) {
@@ -81,4 +94,36 @@ func deleteQueue(pool *redis.Pool, namespace, jobName string) {
 	if err != nil {
 		panic("could not delete queue: " + err.Error())
 	}
+}
+
+func deleteRetryAndDead(pool *redis.Pool, namespace string) {
+	conn := pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("DEL", redisKeyRetry(namespace), redisKeyDead(namespace))
+	if err != nil {
+		panic("could not delete retry/dead queue: " + err.Error())
+	}
+}
+
+func zsetSize(pool *redis.Pool, key string) int64 {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := redis.Int64(conn.Do("ZCARD", key))
+	if err != nil {
+		panic("could not delete retry/dead queue: " + err.Error())
+	}
+	return v
+}
+
+func listSize(pool *redis.Pool, key string) int64 {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := redis.Int64(conn.Do("LLEN", key))
+	if err != nil {
+		panic("could not delete retry/dead queue: " + err.Error())
+	}
+	return v
 }

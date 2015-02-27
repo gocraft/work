@@ -155,9 +155,9 @@ func (w *worker) removeJobFromInProgress(job *Job) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("LREM", 1, job.rawJSON)
+	_, err := conn.Do("LREM", job.inProgQueue, 1, job.rawJSON)
 	if err != nil {
-		// todo: log error
+		logError("remove_job_from_in_progress", err)
 	}
 }
 
