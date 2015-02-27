@@ -1,8 +1,8 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
 )
 
 type Enqueuer struct {

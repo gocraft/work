@@ -16,8 +16,8 @@ type worker struct {
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
-	
-	forceIterChan chan struct{}
+
+	forceIterChan       chan struct{}
 	doneForcingIterChan chan struct{}
 }
 
@@ -37,8 +37,8 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
-		
-		forceIterChan:         make(chan struct{}),
+
+		forceIterChan:       make(chan struct{}),
 		doneForcingIterChan: make(chan struct{}),
 	}
 }
@@ -56,8 +56,6 @@ func (w *worker) forceIter() {
 	w.forceIterChan <- struct{}{}
 	<-w.doneForcingIterChan
 }
-
-
 
 func (w *worker) loop() {
 	for {

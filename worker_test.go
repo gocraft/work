@@ -2,8 +2,8 @@ package work
 
 import (
 	// "fmt"
-	"github.com/stretchr/testify/assert"
 	"github.com/garyburd/redigo/redis"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	// "time"
 )
@@ -19,7 +19,7 @@ func TestWorker(t *testing.T) {
 	deleteQueue(pool, ns, job1)
 	deleteQueue(pool, ns, job2)
 	deleteQueue(pool, ns, job3)
-	
+
 	var arg1 float64
 	var arg2 float64
 	var arg3 float64
@@ -28,7 +28,7 @@ func TestWorker(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric: true,
+		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
 			arg1 = job.Args[0].(float64)
 			return nil
@@ -37,17 +37,16 @@ func TestWorker(t *testing.T) {
 	jobTypes[job2] = &jobType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric: true,
+		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
 			arg2 = job.Args[0].(float64)
 			return nil
 		},
-		
 	}
 	jobTypes[job3] = &jobType{
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric: true,
+		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
 			arg3 = job.Args[0].(float64)
 			return nil
@@ -61,14 +60,14 @@ func TestWorker(t *testing.T) {
 	assert.Nil(t, err)
 	err = enqueuer.Enqueue(job3, 3)
 	assert.Nil(t, err)
-	
+
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
 	w.forceIter() // make sure it process the job
 	w.forceIter() // make sure it process the job
 	w.forceIter() // make sure it process the job
 	w.stop()
-	
+
 	assert.Equal(t, arg1, 1.0)
 	assert.Equal(t, arg2, 2.0)
 	assert.Equal(t, arg3, 3.0)
