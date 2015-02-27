@@ -14,9 +14,9 @@ type Job struct {
 	Args       []interface{} `json:"args"`
 
 	// Inputs when retrying
-	Fails    int64 `json:"fails,omitempty"` // number of times this job has failed
-	LastErr  error `json:"err,omitempty"`
-	FailedAt int64 `json:"failed_at,omitempty"`
+	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed
+	LastErr  string `json:"err,omitempty"`
+	FailedAt int64  `json:"failed_at,omitempty"`
 
 	rawJSON      []byte
 	dequeuedFrom []byte
@@ -67,6 +67,6 @@ func (j *Job) Serialize() ([]byte, error) {
 
 func (j *Job) failed(err error) {
 	j.Fails++ // todo: factor into job.failed(runErr)
-	j.LastErr = err
+	j.LastErr = err.Error()
 	j.FailedAt = nowEpochSeconds()
 }

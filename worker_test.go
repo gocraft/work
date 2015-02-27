@@ -1,14 +1,15 @@
 package work
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/stretchr/testify/assert"
+	"strconv"
 	"testing"
-	// "time"
+	"time"
 )
 
-func TestWorker(t *testing.T) {
+func TestWorkerBasics(t *testing.T) {
 	pool := newTestPool(":6379")
 
 	ns := "work"
@@ -54,7 +55,7 @@ func TestWorker(t *testing.T) {
 		},
 	}
 
-	enqueuer := NewEnqueuer("work", pool)
+	enqueuer := NewEnqueuer(ns, pool)
 	err := enqueuer.Enqueue(job1, 1)
 	assert.Nil(t, err)
 	err = enqueuer.Enqueue(job2, 2)
@@ -85,6 +86,92 @@ func TestWorker(t *testing.T) {
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
 }
+
+func TestWorkerInProgress(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+
+	jobTypes := make(map[string]*jobType)
+	jobTypes[job1] = &jobType{
+		Name:       job1,
+		JobOptions: JobOptions{Priority: 1},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			time.Sleep(30 * time.Millisecond)
+			return nil
+		},
+	}
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue(job1, 1)
+	assert.Nil(t, err)
+
+	w := newWorker(ns, pool, jobTypes)
+	w.start()
+
+	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
+	// The job will then sleep for 30ms. In that time, we should be able to see something in the in-progress queue.
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.Equal(t, 1, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+
+	w.stop()
+
+	// At this point, it should all be empty.
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+}
+
+func TestWorkerRetry(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+
+	jobTypes := make(map[string]*jobType)
+	jobTypes[job1] = &jobType{
+		Name:       job1,
+		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			return fmt.Errorf("sorry kid")
+		},
+	}
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue(job1, 1)
+	assert.Nil(t, err)
+	w := newWorker(ns, pool, jobTypes)
+	w.start()
+	w.forceIter() // make sure it processes the job
+	w.stop()
+
+	// Ensure the right stuff is in our queues:
+	assert.Equal(t, 1, zsetSize(pool, redisKeyRetry(ns)))
+	assert.Equal(t, 0, zsetSize(pool, redisKeyDead(ns)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+
+	// Get the job on the retry queue
+	ts, job := jobOnZset(pool, redisKeyRetry(ns))
+
+	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
+	assert.True(t, ts < (nowEpochSeconds()+60)) // but less than a minute from now (first failure)
+
+	assert.Equal(t, job1, job.Name) // basics are preserved
+	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
+	assert.Equal(t, 1, job.Fails)
+	assert.Equal(t, "sorry kid", job.LastErr)
+	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
+}
+
+//
+// func TestWorkerDead(t *testing.T) {
+// }
 
 func deleteQueue(pool *redis.Pool, namespace, jobName string) {
 	conn := pool.Get()
@@ -126,4 +213,29 @@ func listSize(pool *redis.Pool, key string) int64 {
 		panic("could not delete retry/dead queue: " + err.Error())
 	}
 	return v
+}
+
+func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := conn.Do("ZRANGE", key, 0, 0, "WITHSCORES")
+	if err != nil {
+		panic("could not delete retry/dead queue: " + err.Error())
+	}
+
+	vv := v.([]interface{})
+
+	job, err := newJob(vv[0].([]byte), nil, nil)
+	if err != nil {
+		panic("couldn't get job: " + err.Error())
+	}
+
+	score := vv[1].([]byte)
+	scoreInt, err := strconv.ParseInt(string(score), 10, 64)
+	if err != nil {
+		panic("couldn't parse int: " + err.Error())
+	}
+
+	return scoreInt, job
 }
