@@ -2,6 +2,7 @@ package work
 
 import (
 	"github.com/garyburd/redigo/redis"
+	"fmt"
 )
 
 type Enqueuer struct {
@@ -33,6 +34,7 @@ func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
 
 	_, err = conn.Do("LPUSH", e.queuePrefix+jobName, rawJSON)
 	if err != nil {
+		fmt.Println("got err in enqueue: ", err)
 		return err
 	}
 

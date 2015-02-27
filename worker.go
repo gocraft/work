@@ -16,6 +16,9 @@ type worker struct {
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
+	
+	forceIterChan chan struct{}
+	doneForcingIterChan chan struct{}
 }
 
 func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
@@ -29,11 +32,14 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 		pool:      pool,
 		jobTypes:  jobTypes,
 
-		redisFetchScript: redis.NewScript(len(jobTypes), redisLuaRpoplpushMultiCmd),
+		redisFetchScript: redis.NewScript(len(jobTypes)*2, redisLuaRpoplpushMultiCmd),
 		sampler:          sampler,
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
+		
+		forceIterChan:         make(chan struct{}),
+		doneForcingIterChan: make(chan struct{}),
 	}
 }
 
@@ -46,27 +52,45 @@ func (w *worker) stop() {
 	<-w.doneStoppingChan
 }
 
+func (w *worker) forceIter() {
+	w.forceIterChan <- struct{}{}
+	<-w.doneForcingIterChan
+}
+
+
+
 func (w *worker) loop() {
 	for {
 		select {
 		case <-w.stopChan:
 			close(w.doneStoppingChan)
 			return
+		case <-w.forceIterChan:
+			// forcing the worker to do some work is for testing purposes
+			w.loopIteration()
+			w.doneForcingIterChan <- struct{}{}
 		default:
-			job, err := w.fetchJob()
-			if err != nil {
-				// TODO: log this i think?
-			} else if job != nil {
-				w.processJob(job)
-			} else {
-				// no job. maybe sleep?
+			didJob := w.loopIteration()
+			if !didJob {
+				// maybe sleep
 			}
 		}
 	}
 }
 
-func (w *worker) fetchJob() (*Job, error) {
+func (w *worker) loopIteration() bool {
+	job, err := w.fetchJob()
+	if err != nil {
+		logError("fetch", err)
+	} else if job != nil {
+		w.processJob(job)
+	} else {
+		return false
+	}
+	return true
+}
 
+func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
@@ -114,7 +138,7 @@ func (w *worker) fetchJob() (*Job, error) {
 
 func (w *worker) processJob(job *Job) {
 	defer w.removeJobFromInProgress(job)
-	fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
+	//fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		if runErr := runJob(job, jt); runErr != nil {
 			job.failed(runErr)
