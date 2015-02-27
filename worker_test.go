@@ -169,9 +169,62 @@ func TestWorkerRetry(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
-//
-// func TestWorkerDead(t *testing.T) {
-// }
+func TestWorkerDead(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	job2 := "job2"
+	deleteQueue(pool, ns, job1)
+	deleteQueue(pool, ns, job2)
+	deleteRetryAndDead(pool, ns)
+
+	jobTypes := make(map[string]*jobType)
+	jobTypes[job1] = &jobType{
+		Name:       job1,
+		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			return fmt.Errorf("sorry kid1")
+		},
+	}
+	jobTypes[job2] = &jobType{
+		Name:       job2,
+		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			return fmt.Errorf("sorry kid2")
+		},
+	}
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue(job1, 1)
+	assert.Nil(t, err)
+	err = enqueuer.Enqueue(job2, 2)
+	assert.Nil(t, err)
+	w := newWorker(ns, pool, jobTypes)
+	w.start()
+	w.forceIter() // make sure it processes the job
+	w.forceIter() // make sure it processes the job
+	w.stop()
+
+	// Ensure the right stuff is in our queues:
+	assert.Equal(t, 0, zsetSize(pool, redisKeyRetry(ns)))
+	assert.Equal(t, 1, zsetSize(pool, redisKeyDead(ns)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+
+	// Get the job on the retry queue
+	ts, job := jobOnZset(pool, redisKeyDead(ns))
+
+	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
+	assert.True(t, ts < (nowEpochSeconds()+60)) // but less than a minute from now (first failure)
+
+	assert.Equal(t, job1, job.Name) // basics are preserved
+	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
+	assert.Equal(t, 1, job.Fails)
+	assert.Equal(t, "sorry kid1", job.LastErr)
+	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
+}
 
 func deleteQueue(pool *redis.Pool, namespace, jobName string) {
 	conn := pool.Get()
