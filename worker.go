@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"math/rand"
+	// "os"
 )
 
 type worker struct {
@@ -19,6 +20,9 @@ type worker struct {
 
 	forceIterChan       chan struct{}
 	doneForcingIterChan chan struct{}
+
+	joinChan        chan struct{}
+	doneJoiningChan chan struct{}
 }
 
 func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
@@ -40,6 +44,9 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 
 		forceIterChan:       make(chan struct{}),
 		doneForcingIterChan: make(chan struct{}),
+
+		joinChan:        make(chan struct{}),
+		doneJoiningChan: make(chan struct{}),
 	}
 }
 
@@ -52,12 +59,18 @@ func (w *worker) stop() {
 	<-w.doneStoppingChan
 }
 
+func (w *worker) join() {
+	w.joinChan <- struct{}{}
+	<-w.doneJoiningChan
+}
+
 func (w *worker) forceIter() {
 	w.forceIterChan <- struct{}{}
 	<-w.doneForcingIterChan
 }
 
 func (w *worker) loop() {
+	var joined bool
 	for {
 		select {
 		case <-w.stopChan:
@@ -67,10 +80,14 @@ func (w *worker) loop() {
 			// forcing the worker to do some work is for testing purposes
 			w.loopIteration()
 			w.doneForcingIterChan <- struct{}{}
+		case <-w.joinChan:
+			joined = true
 		default:
 			didJob := w.loopIteration()
 			if !didJob {
-				// maybe sleep
+				if joined {
+					w.doneJoiningChan <- struct{}{}
+				}
 			}
 		}
 	}
