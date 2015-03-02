@@ -1,5 +1,9 @@
 TODO
 ----
+ - FIRST GOAL:
+   - WorkerSetIDs() []string
+   - WorkerSetStatuses(workerID []string) []*WorkerSetStatus
+ - revisit the retry backoff
  - rename join to drain
  - make start, stop, start work (on the pool)
  - make start idempotent

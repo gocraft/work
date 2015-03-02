@@ -31,7 +31,7 @@ type worker struct {
 
 func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
-	ob := newObserver(namespace, workerID, pool)
+	ob := newObserver(namespace, pool, workerID)
 
 	w := &worker{
 		workerID:  workerID,

@@ -16,7 +16,7 @@ func TestObserverStarted(t *testing.T) {
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
 
-	observer := newObserver(ns, "abcd", pool)
+	observer := newObserver(ns, pool, "abcd")
 	observer.start()
 	observer.observeStarted("foo", "bar", []interface{}{1, "wat"})
 	//observer.observeDone("foo", "bar", nil)
@@ -38,7 +38,7 @@ func TestObserverStartedDone(t *testing.T) {
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
 
-	observer := newObserver(ns, "abcd", pool)
+	observer := newObserver(ns, pool, "abcd")
 	observer.start()
 	observer.observeStarted("foo", "bar", []interface{}{1, "wat"})
 	observer.observeDone("foo", "bar", nil)
@@ -53,7 +53,7 @@ func TestObserverCheckin(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 
-	observer := newObserver(ns, "abcd", pool)
+	observer := newObserver(ns, pool, "abcd")
 	observer.start()
 
 	tMock := int64(1425263401)

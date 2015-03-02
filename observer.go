@@ -61,7 +61,7 @@ type observation struct {
 
 const observerBufferSize = 1024
 
-func newObserver(namespace, workerID string, pool *redis.Pool) *observer {
+func newObserver(namespace string, pool *redis.Pool, workerID string) *observer {
 	return &observer{
 		namespace:        namespace,
 		workerID:         workerID,

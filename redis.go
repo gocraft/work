@@ -34,6 +34,14 @@ func redisKeyWorkerStatus(namespace, workerID string) string {
 	return redisNamespacePrefix(namespace) + "worker:" + workerID
 }
 
+func redisKeyWorkerPools(namespace string) string {
+	return redisNamespacePrefix(namespace) + "worker_pools"
+}
+
+func redisKeyHeartbeat(namespace, workerPoolID string) string {
+	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
+}
+
 var redisLuaRpoplpushMultiCmd = `
 local res
 local keylen = #KEYS

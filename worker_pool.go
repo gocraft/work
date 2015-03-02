@@ -7,9 +7,10 @@ import (
 )
 
 type WorkerPool struct {
-	concurrency uint
-	namespace   string // eg, "myapp-work"
-	pool        *redis.Pool
+	workerPoolID string
+	concurrency  uint
+	namespace    string // eg, "myapp-work"
+	pool         *redis.Pool
 
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
@@ -20,12 +21,14 @@ type WorkerPool struct {
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
 	// todo: validate ctx
 	// todo: validate concurrency
+	workerPoolID := makeIdentifier()
 	wp := &WorkerPool{
-		concurrency: concurrency,
-		namespace:   namespace,
-		pool:        pool,
-		contextType: reflect.TypeOf(ctx),
-		jobTypes:    make(map[string]*jobType),
+		workerPoolID: workerPoolID,
+		concurrency:  concurrency,
+		namespace:    namespace,
+		pool:         pool,
+		contextType:  reflect.TypeOf(ctx),
+		jobTypes:     make(map[string]*jobType),
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
@@ -45,7 +48,7 @@ func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 }
 
 // TODO: depending on how many JobOptions there are it might be good to explode the options
-// because it's super awkward for Priority and MaxRetries to be zero-valued
+// because it's super awkward for omitted Priority and MaxRetries to be zero-valued
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
 	jt := &jobType{
 		Name:           name,
