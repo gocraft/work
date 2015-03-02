@@ -30,6 +30,10 @@ func redisKeyDead(namespace string) string {
 	return redisNamespacePrefix(namespace) + "dead"
 }
 
+func redisKeyWorkerStatus(namespace, workerID string) string {
+	return redisNamespacePrefix(namespace) + "worker:" + workerID
+}
+
 var redisLuaRpoplpushMultiCmd = `
 local res
 local keylen = #KEYS

@@ -8,18 +8,17 @@ import (
 )
 
 type worker struct {
+	workerID  string
 	namespace string // eg, "myapp-work"
 	pool      *redis.Pool
 	jobTypes  map[string]*jobType
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
+	*observer
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
-
-	forceIterChan       chan struct{}
-	doneForcingIterChan chan struct{}
 
 	joinChan        chan struct{}
 	doneJoiningChan chan struct{}
@@ -31,19 +30,21 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 		sampler.add(jt.Priority, redisKeyJobs(namespace, jt.Name), redisKeyJobsInProgress(namespace, jt.Name))
 	}
 
+	workerID := makeIdentifier()
+	ob := newObserver(namespace, workerID, pool)
+
 	return &worker{
+		workerID:  workerID,
 		namespace: namespace,
 		pool:      pool,
 		jobTypes:  jobTypes,
 
 		redisFetchScript: redis.NewScript(len(jobTypes)*2, redisLuaRpoplpushMultiCmd),
 		sampler:          sampler,
+		observer:         ob,
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
-
-		forceIterChan:       make(chan struct{}),
-		doneForcingIterChan: make(chan struct{}),
 
 		joinChan:        make(chan struct{}),
 		doneJoiningChan: make(chan struct{}),
@@ -52,21 +53,19 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 
 func (w *worker) start() {
 	go w.loop()
+	go w.observer.start()
 }
 
 func (w *worker) stop() {
 	close(w.stopChan)
 	<-w.doneStoppingChan
+
 }
 
 func (w *worker) join() {
 	w.joinChan <- struct{}{}
 	<-w.doneJoiningChan
-}
-
-func (w *worker) forceIter() {
-	w.forceIterChan <- struct{}{}
-	<-w.doneForcingIterChan
+	w.observer.join()
 }
 
 func (w *worker) loop() {
@@ -76,33 +75,22 @@ func (w *worker) loop() {
 		case <-w.stopChan:
 			close(w.doneStoppingChan)
 			return
-		case <-w.forceIterChan:
-			// forcing the worker to do some work is for testing purposes
-			w.loopIteration()
-			w.doneForcingIterChan <- struct{}{}
 		case <-w.joinChan:
 			joined = true
 		default:
-			didJob := w.loopIteration()
-			if !didJob {
+			job, err := w.fetchJob()
+			if err != nil {
+				logError("fetch", err)
+			} else if job != nil {
+				w.processJob(job)
+			} else {
 				if joined {
 					w.doneJoiningChan <- struct{}{}
+					joined = false
 				}
 			}
 		}
 	}
-}
-
-func (w *worker) loopIteration() bool {
-	job, err := w.fetchJob()
-	if err != nil {
-		logError("fetch", err)
-	} else if job != nil {
-		w.processJob(job)
-	} else {
-		return false
-	}
-	return true
 }
 
 func (w *worker) fetchJob() (*Job, error) {
@@ -155,7 +143,10 @@ func (w *worker) processJob(job *Job) {
 	defer w.removeJobFromInProgress(job)
 	//fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
 	if jt, ok := w.jobTypes[job.Name]; ok {
-		if runErr := runJob(job, jt); runErr != nil {
+		w.observeStarted(job.Name, job.ID, job.Args)
+		runErr := runJob(job, jt)
+		w.observeDone(job.Name, job.ID, runErr)
+		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		}
@@ -164,7 +155,6 @@ func (w *worker) processJob(job *Job) {
 		runErr := fmt.Errorf("stray job -- no handler")
 		job.failed(runErr)
 		w.addToDead(job, runErr)
-		// todo: stray job?
 	}
 }
 
@@ -201,7 +191,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 
 	_, err = conn.Do("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
 	if err != nil {
-		// todo log
+		logError("add_to_retry.zadd", err)
 	}
 
 }
@@ -223,7 +213,7 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
 	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
 	if err != nil {
-		// todo log
+		logError("add_to_dead.zadd", err)
 	}
 }
 

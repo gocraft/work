@@ -11,7 +11,6 @@ import (
 
 func TestWorkerBasics(t *testing.T) {
 	pool := newTestPool(":6379")
-
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
@@ -65,9 +64,7 @@ func TestWorkerBasics(t *testing.T) {
 
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
-	w.forceIter() // make sure it processes the job
-	w.forceIter() // make sure it processes the job
-	w.forceIter() // make sure it processes the job
+	w.join()
 	w.stop()
 
 	assert.Equal(t, 1.0, arg1)
@@ -147,7 +144,7 @@ func TestWorkerRetry(t *testing.T) {
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
-	w.forceIter() // make sure it processes the job
+	w.join()
 	w.stop()
 
 	// Ensure the right stuff is in our queues:
@@ -160,7 +157,7 @@ func TestWorkerRetry(t *testing.T) {
 	ts, job := jobOnZset(pool, redisKeyRetry(ns))
 
 	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
-	assert.True(t, ts < (nowEpochSeconds()+60)) // but less than a minute from now (first failure)
+	assert.True(t, ts < (nowEpochSeconds()+80)) // but less than a minute from now (first failure)
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
 	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
@@ -203,8 +200,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
-	w.forceIter() // make sure it processes the job
-	w.forceIter() // make sure it processes the job
+	w.join()
 	w.stop()
 
 	// Ensure the right stuff is in our queues:

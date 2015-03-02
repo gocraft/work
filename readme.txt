@@ -57,8 +57,9 @@ func (r *Job) Checkin(msg string) bool {
 // design thoughts
  - goals
    1. optimize for understandability, debuggability, instrumentation
-   2. thruput
-   3. latency
+   2. redis cxns/load
+   3. thruput
+   4. latency
  - JOBS ARE QUEUES. Each job is in its own queue. Scheduling is round robin, but with job priorities.
    - One config that isn't possible: "always do these jobs last" or "always do jobs in this order"
  - should never have to list keys in redis
