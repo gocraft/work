@@ -73,7 +73,7 @@ func (w *worker) join() {
 	w.observer.join()
 }
 
-var sleepBackoffsInMilliseconds = []int64{10, 100, 1000, 5000}
+var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
 
 func (w *worker) loop() {
 	var joined bool
