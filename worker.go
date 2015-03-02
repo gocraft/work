@@ -30,23 +30,15 @@ type worker struct {
 }
 
 func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
-	sampler := prioritySampler{}
-	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(namespace, jt.Name), redisKeyJobsInProgress(namespace, jt.Name))
-	}
-
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, workerID, pool)
 
-	return &worker{
+	w := &worker{
 		workerID:  workerID,
 		namespace: namespace,
 		pool:      pool,
-		jobTypes:  jobTypes,
 
-		redisFetchScript: redis.NewScript(len(jobTypes)*2, redisLuaRpoplpushMultiCmd),
-		sampler:          sampler,
-		observer:         ob,
+		observer: ob,
 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
@@ -54,6 +46,21 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType)
 		joinChan:        make(chan struct{}),
 		doneJoiningChan: make(chan struct{}),
 	}
+
+	w.updateJobTypes(jobTypes)
+
+	return w
+}
+
+// note: can't be called while the thing is started
+func (w *worker) updateJobTypes(jobTypes map[string]*jobType) {
+	sampler := prioritySampler{}
+	for _, jt := range jobTypes {
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, jt.Name))
+	}
+	w.sampler = sampler
+	w.jobTypes = jobTypes
+	w.redisFetchScript = redis.NewScript(len(jobTypes)*2, redisLuaRpoplpushMultiCmd)
 }
 
 func (w *worker) start() {

@@ -1,7 +1,9 @@
 TODO
 ----
- - rename WorkerSet to WorkerPool
- - workerset ids
+ - rename join to drain
+ - make start, stop, start work (on the pool)
+ - make start idempotent
+ - workerpool ids
    - keep up to date in redis
  - API
    - queues
@@ -16,17 +18,17 @@ TODO
    - alt: some clever mechanism to only check redis if we are busy?
 
 
-worker := work.NewWorker(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
+workerPool := work.NewWorkerPool(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
     Middleware((*Context).SetDatabase).
     Middleware((*Context).Log)
 
-worker.Job("create_watch", (*Context).CreateWatch)
-worker.Job("send_notice", (*Context).SendNotice)
-worker.JobWithOptions("send_important_notice", &JobOptions{Priority: 4, Retries: 4}, (*Context).SendImportantNotice)
+workerPool.Job("create_watch", (*Context).CreateWatch)
+workerPool.Job("send_notice", (*Context).SendNotice)
+workerPool.JobWithOptions("send_important_notice", &JobOptions{Priority: 4, Retries: 4}, (*Context).SendImportantNotice)
 
 
-worker.Start()
-worker.Stop()
+workerPool.Start()
+workerPool.Stop()
 
 enqueuer := worker.Enqueuer()
 // or
@@ -104,7 +106,7 @@ lrem <ns>:queue:create_watch:inprogress 1 msg
 
 ------------
 
-workerset:
+workerpool:
 
 one fetcher per queue, each pulling with brpoplpush
 got one? ok.... we have a pool of processors

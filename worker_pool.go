@@ -6,7 +6,7 @@ import (
 	// "fmt"
 )
 
-type WorkerSet struct {
+type WorkerPool struct {
 	concurrency uint
 	namespace   string // eg, "myapp-work"
 	pool        *redis.Pool
@@ -17,10 +17,10 @@ type WorkerSet struct {
 	workers []*worker
 }
 
-func NewWorkerSet(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerSet {
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
 	// todo: validate ctx
 	// todo: validate concurrency
-	ws := &WorkerSet{
+	wp := &WorkerPool{
 		concurrency: concurrency,
 		namespace:   namespace,
 		pool:        pool,
@@ -28,20 +28,25 @@ func NewWorkerSet(ctx interface{}, concurrency uint, namespace string, pool *red
 		jobTypes:    make(map[string]*jobType),
 	}
 
-	return ws
+	for i := uint(0); i < wp.concurrency; i++ {
+		w := newWorker(wp.namespace, wp.pool, wp.jobTypes)
+		wp.workers = append(wp.workers, w)
+	}
+
+	return wp
 }
 
-func (ws *WorkerSet) Middleware() *WorkerSet {
-	return ws
+func (wp *WorkerPool) Middleware() *WorkerPool {
+	return wp
 }
 
-func (ws *WorkerSet) Job(name string, fn interface{}) *WorkerSet {
-	return ws.JobWithOptions(name, JobOptions{Priority: 1, MaxFails: 3}, fn)
+func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
+	return wp.JobWithOptions(name, JobOptions{Priority: 1, MaxFails: 3}, fn)
 }
 
 // TODO: depending on how many JobOptions there are it might be good to explode the options
 // because it's super awkward for Priority and MaxRetries to be zero-valued
-func (ws *WorkerSet) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerSet {
+func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
 	jt := &jobType{
 		Name:           name,
 		DynamicHandler: reflect.ValueOf(fn),
@@ -52,24 +57,27 @@ func (ws *WorkerSet) JobWithOptions(name string, jobOpts JobOptions, fn interfac
 		jt.GenericHandler = gh
 	}
 
-	ws.jobTypes[name] = jt
-	return ws
+	wp.jobTypes[name] = jt
+
+	for _, w := range wp.workers {
+		w.updateJobTypes(wp.jobTypes)
+	}
+
+	return wp
 }
 
-func (ws *WorkerSet) Start() {
+func (wp *WorkerPool) Start() {
 	// todo: what if already started?
-	for i := uint(0); i < ws.concurrency; i++ {
-		w := newWorker(ws.namespace, ws.pool, ws.jobTypes)
-		ws.workers = append(ws.workers, w)
+	for _, w := range wp.workers {
 		w.start()
 	}
 }
 
-func (ws *WorkerSet) Stop() {
+func (wp *WorkerPool) Stop() {
 }
 
-func (ws *WorkerSet) Join() {
-	for _, w := range ws.workers {
+func (wp *WorkerPool) Join() {
+	for _, w := range wp.workers {
 		w.join()
 	}
 }

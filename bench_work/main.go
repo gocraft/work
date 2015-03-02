@@ -41,15 +41,15 @@ func main() {
 	enqueueJobs(jobNames, 10000)
 	job.Complete(health.Success)
 	
-	workerSet := work.NewWorkerSet(Context{}, 20, namespace, pool)
+	workerPool := work.NewWorkerPool(Context{}, 20, namespace, pool)
 	for _, jobName := range jobNames {
-		workerSet.Job(jobName, epsilonHandler)
+		workerPool.Job(jobName, epsilonHandler)
 	}
 	go monitor()
 	
 	job = stream.NewJob("run_all")
-	workerSet.Start()
-	workerSet.Join()
+	workerPool.Start()
+	workerPool.Join()
 	job.Complete(health.Success)
 	select{}
 }
