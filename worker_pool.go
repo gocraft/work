@@ -15,7 +15,8 @@ type WorkerPool struct {
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
 
-	workers []*worker
+	workers   []*worker
+	heartbeat *workerPoolHeartbeat
 }
 
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
@@ -74,9 +75,15 @@ func (wp *WorkerPool) Start() {
 	for _, w := range wp.workers {
 		w.start()
 	}
+	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency)
+	wp.heartbeat.start()
 }
 
 func (wp *WorkerPool) Stop() {
+	for _, w := range wp.workers {
+		w.stop()
+	}
+	wp.heartbeat.stop()
 }
 
 func (wp *WorkerPool) Join() {
