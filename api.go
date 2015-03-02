@@ -14,7 +14,7 @@ package work
 // 	// opt2: we list keys on <ns>:jobs:* (using scan?)
 // 	// opt3: we don't actually build this command. You configure it.
 // 	// opt4: processing a job will add an entry to <ns>:jobs
-//	// opt5: we base it on known workers and their jobs
+//	// opt5: we base it on known workerpools and their jobs
 // 	return nil
 // }
 //
@@ -40,6 +40,7 @@ package work
 //
 // 	Concurrency uint
 // 	StartedAt int64
+//  HeartbeatAt int64
 // 	Jobs []string
 // }
 //

@@ -99,13 +99,13 @@ func (w *worker) loop() {
 				} else if !w.nosleep {
 					// This is the normal branch in production when we don't find work.
 					consequtiveNoJobs++
-					
+
 					sleepMS := sleepBackoffsInMilliseconds[len(sleepBackoffsInMilliseconds)-1]
 					if consequtiveNoJobs < int64(len(sleepBackoffsInMilliseconds)) {
 						sleepMS = sleepBackoffsInMilliseconds[consequtiveNoJobs]
 					}
 					sleepMS += rand.Int63n(sleepMS / 2) // jitter
-					time.Sleep(time.Duration(sleepMS)*time.Millisecond)
+					time.Sleep(time.Duration(sleepMS) * time.Millisecond)
 				}
 			}
 		}

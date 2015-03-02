@@ -1,6 +1,13 @@
 TODO
 ----
- - remove worker.force and stick with join
+ - rename WorkerSet to WorkerPool
+ - workerset ids
+   - keep up to date in redis
+ - API
+   - queues
+     - 
+   - worketpool, worker status
+ - middleware
  - do the whole reflection-based job calling thing.
  - write a daemon that polls the retry queue and requeues things
  - how do we know when to do retry queue?

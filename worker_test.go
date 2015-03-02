@@ -84,7 +84,7 @@ func TestWorkerBasics(t *testing.T) {
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
-	
+
 	// nothing in the worker status
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
 	assert.Equal(t, 0, len(h))
@@ -121,7 +121,7 @@ func TestWorkerInProgress(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.Equal(t, 1, listSize(pool, redisKeyJobsInProgress(ns, job1)))
-	
+
 	// nothing in the worker status
 	w.observer.join()
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
@@ -135,7 +135,7 @@ func TestWorkerInProgress(t *testing.T) {
 	// At this point, it should all be empty.
 	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
-	
+
 	// nothing in the worker status
 	h = readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
 	assert.Equal(t, 0, len(h))
