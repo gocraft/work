@@ -63,6 +63,7 @@ func TestWorkerBasics(t *testing.T) {
 	assert.Nil(t, err)
 
 	w := newWorker(ns, pool, jobTypes)
+	w.nosleep = true
 	w.start()
 	w.join()
 	w.stop()
@@ -112,6 +113,7 @@ func TestWorkerInProgress(t *testing.T) {
 	assert.Nil(t, err)
 
 	w := newWorker(ns, pool, jobTypes)
+	w.nosleep = true
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
@@ -160,6 +162,7 @@ func TestWorkerRetry(t *testing.T) {
 	err := enqueuer.Enqueue(job1, 1)
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
+	w.nosleep = true
 	w.start()
 	w.join()
 	w.stop()
@@ -216,6 +219,7 @@ func TestWorkerDead(t *testing.T) {
 	err = enqueuer.Enqueue(job2, 2)
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
+	w.nosleep = true
 	w.start()
 	w.join()
 	w.stop()

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"math/rand"
-	// "os"
+	"time"
 )
 
 type worker struct {
@@ -16,6 +16,11 @@ type worker struct {
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
 	*observer
+
+	// nosleep is used for testing. In production use, we want the worker to sleep if it doesn't have any work.
+	// In testing, we don't want to waste time sleeping. Ideally, there'd be a more elegant solution, possibly
+	// renaming join() to joinAndClose(). Note that in the observer, we don't want joinAndClose, just join.
+	nosleep bool
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
@@ -68,8 +73,11 @@ func (w *worker) join() {
 	w.observer.join()
 }
 
+var sleepBackoffsInMilliseconds = []int64{10, 100, 1000, 5000}
+
 func (w *worker) loop() {
 	var joined bool
+	var consequtiveNoJobs int64
 	for {
 		select {
 		case <-w.stopChan:
@@ -83,10 +91,21 @@ func (w *worker) loop() {
 				logError("fetch", err)
 			} else if job != nil {
 				w.processJob(job)
+				consequtiveNoJobs = 0
 			} else {
 				if joined {
 					w.doneJoiningChan <- struct{}{}
 					joined = false
+				} else if !w.nosleep {
+					// This is the normal branch in production when we don't find work.
+					consequtiveNoJobs++
+					
+					sleepMS := sleepBackoffsInMilliseconds[len(sleepBackoffsInMilliseconds)-1]
+					if consequtiveNoJobs < int64(len(sleepBackoffsInMilliseconds)) {
+						sleepMS = sleepBackoffsInMilliseconds[consequtiveNoJobs]
+					}
+					sleepMS += rand.Int63n(sleepMS / 2) // jitter
+					time.Sleep(time.Duration(sleepMS)*time.Millisecond)
 				}
 			}
 		}
