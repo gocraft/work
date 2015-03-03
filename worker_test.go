@@ -16,10 +16,7 @@ func TestWorkerBasics(t *testing.T) {
 	job2 := "job2"
 	job3 := "job3"
 
-	deleteQueue(pool, ns, job1)
-	deleteQueue(pool, ns, job2)
-	deleteQueue(pool, ns, job3)
-	deleteRetryAndDead(pool, ns)
+	cleanKeyspace(ns, pool)
 
 	var arg1 float64
 	var arg2 float64
@@ -308,4 +305,19 @@ func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
 	}
 
 	return scoreInt, job
+}
+
+func cleanKeyspace(namespace string, pool *redis.Pool) {
+	conn := pool.Get()
+	defer conn.Close()
+
+	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
+	if err != nil {
+		panic("could not get keys: " + err.Error())
+	}
+	for _, k := range keys {
+		if _, err := conn.Do("DEL", k); err != nil {
+			panic("could not del: " + err.Error())
+		}
+	}
 }

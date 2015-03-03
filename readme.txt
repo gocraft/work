@@ -7,8 +7,7 @@ TODO
  - rename join to drain
  - make start, stop, start work (on the pool)
  - make start idempotent
- - workerpool ids
-   - keep up to date in redis
+ - do we want to merge api and enqueuer?
  - API
    - queues
      - 

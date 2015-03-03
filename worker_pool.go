@@ -4,6 +4,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"reflect"
 	// "fmt"
+	"sync"
 )
 
 type WorkerPool struct {
@@ -73,16 +74,22 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 func (wp *WorkerPool) Start() {
 	// todo: what if already started?
 	for _, w := range wp.workers {
-		w.start()
+		go w.start()
 	}
 	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency)
 	wp.heartbeat.start()
 }
 
 func (wp *WorkerPool) Stop() {
+	wg := sync.WaitGroup{}
 	for _, w := range wp.workers {
-		w.stop()
+		wg.Add(1)
+		go func(w *worker) {
+			w.stop()
+			wg.Done()
+		}(w)
 	}
+	wg.Wait()
 	wp.heartbeat.stop()
 }
 

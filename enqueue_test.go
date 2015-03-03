@@ -41,6 +41,7 @@ func newTestPool(addr string) *redis.Pool {
 			return c, nil
 			//return redis.NewLoggingConn(c, log.New(os.Stdout, "", 0), "redis"), err
 		},
+		Wait: true,
 		//TestOnBorrow: func(c redis.Conn, t time.Time) error {
 		//	_, err := c.Do("PING")
 		//	return err

@@ -85,6 +85,8 @@ var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
 func (w *worker) loop() {
 	var joined bool
 	var consequtiveNoJobs int64
+	var nextTry time.Time
+	const sleepIncrement = 10 * time.Millisecond
 	for {
 		select {
 		case <-w.stopChan:
@@ -93,26 +95,29 @@ func (w *worker) loop() {
 		case <-w.joinChan:
 			joined = true
 		default:
-			job, err := w.fetchJob()
-			if err != nil {
-				logError("fetch", err)
-			} else if job != nil {
-				w.processJob(job)
-				consequtiveNoJobs = 0
-			} else {
-				if joined {
-					w.doneJoiningChan <- struct{}{}
-					joined = false
-				} else if !w.nosleep {
-					// This is the normal branch in production when we don't find work.
-					consequtiveNoJobs++
-
-					sleepMS := sleepBackoffsInMilliseconds[len(sleepBackoffsInMilliseconds)-1]
-					if consequtiveNoJobs < int64(len(sleepBackoffsInMilliseconds)) {
-						sleepMS = sleepBackoffsInMilliseconds[consequtiveNoJobs]
+			if nextTry.IsZero() {
+				job, err := w.fetchJob()
+				if err != nil {
+					logError("fetch", err)
+				} else if job != nil {
+					w.processJob(job)
+					consequtiveNoJobs = 0
+				} else {
+					if joined {
+						w.doneJoiningChan <- struct{}{}
+						joined = false
 					}
-					sleepMS += rand.Int63n(sleepMS / 2) // jitter
-					time.Sleep(time.Duration(sleepMS) * time.Millisecond)
+					consequtiveNoJobs++
+					idx := consequtiveNoJobs
+					if idx >= int64(len(sleepBackoffsInMilliseconds)) {
+						idx = int64(len(sleepBackoffsInMilliseconds)) - 1
+					}
+					nextTry = time.Now().Add(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
+					time.Sleep(sleepIncrement)
+				}
+			} else {
+				if time.Now().After(nextTry) {
+					nextTry = time.Time{}
 				}
 			}
 		}
