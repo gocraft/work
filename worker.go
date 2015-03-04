@@ -17,11 +17,6 @@ type worker struct {
 	sampler          prioritySampler
 	*observer
 
-	// nosleep is used for testing. In production use, we want the worker to sleep if it doesn't have any work.
-	// In testing, we don't want to waste time sleeping. Ideally, there'd be a more elegant solution, possibly
-	// renaming join() to joinAndClose(). Note that in the observer, we don't want joinAndClose, just join.
-	nosleep bool
-
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 

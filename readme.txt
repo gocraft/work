@@ -1,7 +1,6 @@
 TODO
 ----
- - kill nosleep
- - next api thing: worker status (observer)
+ - what happens when we call Stop() on a long-running worker
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
