@@ -1,8 +1,8 @@
 TODO
 ----
- - FIRST GOAL:
-   - WorkerSetIDs() []string
-   - WorkerSetStatuses(workerID []string) []*WorkerSetStatus
+ - kill nosleep
+ - next api thing: worker status (observer)
+ - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
  - make start, stop, start work (on the pool)

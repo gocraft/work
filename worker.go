@@ -71,7 +71,8 @@ func (w *worker) start() {
 func (w *worker) stop() {
 	close(w.stopChan)
 	<-w.doneStoppingChan
-
+	w.observer.join()
+	w.observer.stop()
 }
 
 func (w *worker) join() {

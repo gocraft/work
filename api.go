@@ -49,13 +49,6 @@ type WorkerPoolStatus struct {
 	WorkerIDs []string
 }
 
-// "heartbeat_at", nowEpochSeconds(),
-// "started_at", h.startedAt,
-// "job_names", h.jobNames,
-// "concurrency", h.concurrency,
-// "host", h.hostname,
-// "pid", h.pid,
-
 func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -105,6 +98,9 @@ func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus
 				var vv int64
 				vv, err = strconv.ParseInt(value, 10, 0)
 				heartbeat.Pid = int(vv)
+			} else if key == "worker_ids" {
+				heartbeat.WorkerIDs = strings.Split(value, ",")
+				sort.Strings(heartbeat.WorkerIDs)
 			}
 			if err != nil {
 				logError("worker_pool_statuses.parse", err)
@@ -116,6 +112,85 @@ func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus
 	}
 
 	return heartbeats, nil
+}
+
+type WorkerStatus struct {
+	WorkerID string
+	IsBusy   bool
+
+	// If IsBusy:
+	JobName   string
+	JobID     string
+	StartedAt int64
+	ArgsJSON  string
+	Checkin   string
+	CheckinAt int64
+}
+
+// "job_name", obv.jobName,
+// "job_id", obv.jobID,
+// "started_at", obv.startedAt,
+// "args", argsJSON,
+// "checkin", obv.checkin,
+// "checkin_at", obv.checkinAt,
+
+func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
+	conn := c.pool.Get()
+	defer conn.Close()
+
+	for _, wid := range workerIDs {
+		key := redisKeyWorkerStatus(c.namespace, wid)
+		conn.Send("HGETALL", key)
+	}
+
+	if err := conn.Flush(); err != nil {
+		logError("worker_statuses.flush", err)
+		return nil, err
+	}
+
+	statuses := make([]*WorkerStatus, 0, len(workerIDs))
+
+	for _, wid := range workerIDs {
+		vals, err := redis.Strings(conn.Receive())
+		if err != nil {
+			logError("worker_statuses.receive", err)
+			return nil, err
+		}
+
+		status := &WorkerStatus{
+			WorkerID: wid,
+		}
+
+		for i := 0; i < len(vals)-1; i += 2 {
+			key := vals[i]
+			value := vals[i+1]
+
+			status.IsBusy = true
+
+			var err error
+			if key == "job_name" {
+				status.JobName = value
+			} else if key == "job_id" {
+				status.JobID = value
+			} else if key == "started_at" {
+				status.StartedAt, err = strconv.ParseInt(value, 10, 64)
+			} else if key == "args" {
+				status.ArgsJSON = value
+			} else if key == "checkin" {
+				status.Checkin = value
+			} else if key == "checkin_at" {
+				status.CheckinAt, err = strconv.ParseInt(value, 10, 64)
+			}
+			if err != nil {
+				logError("worker_statuses.parse", err)
+				return nil, err
+			}
+		}
+
+		statuses = append(statuses, status)
+	}
+
+	return statuses, nil
 }
 
 // // List jobs

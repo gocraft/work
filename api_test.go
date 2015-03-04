@@ -56,10 +56,12 @@ func TestApiHeartbeat(t *testing.T) {
 			assert.Equal(t, wp.workerPoolID, hbwp.WorkerPoolID)
 			assert.Equal(t, 10, hbwp.Concurrency)
 			assert.Equal(t, []string{"bob", "wat"}, hbwp.JobNames)
+			assert.Equal(t, wp.workerIDs(), hbwp.WorkerIDs)
 
 			assert.Equal(t, wp2.workerPoolID, hbwp2.WorkerPoolID)
 			assert.Equal(t, 11, hbwp2.Concurrency)
 			assert.Equal(t, []string{"bar", "foo"}, hbwp2.JobNames)
+			assert.Equal(t, wp2.workerIDs(), hbwp2.WorkerIDs)
 		}
 	}
 
@@ -69,4 +71,69 @@ func TestApiHeartbeat(t *testing.T) {
 	ids, err = client.WorkerPoolIDs()
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(ids))
+}
+
+func TestApiWorkerStatuses(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", 1, 2)
+	assert.Nil(t, err)
+	err = enqueuer.Enqueue("foo", 3, 4)
+	assert.Nil(t, err)
+
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Job("wat", func(job *Job) error {
+		time.Sleep(50 * time.Millisecond)
+		return nil
+	})
+	wp.Job("foo", func(job *Job) error {
+		time.Sleep(50 * time.Millisecond)
+		return nil
+	})
+	wp.Start()
+
+	time.Sleep(10 * time.Millisecond)
+
+	client := NewClient(ns, pool)
+	statuses, err := client.WorkerStatuses(wp.workerIDs())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 10, len(statuses))
+
+	watCount := 0
+	fooCount := 0
+	for _, status := range statuses {
+		if status.JobName == "foo" {
+			fooCount++
+			assert.True(t, status.IsBusy)
+			assert.Equal(t, "[3,4]", status.ArgsJSON)
+			assert.True(t, (nowEpochSeconds()-status.StartedAt) <= 3)
+			assert.True(t, status.JobID != "")
+		} else if status.JobName == "wat" {
+			watCount++
+			assert.True(t, status.IsBusy)
+			assert.Equal(t, "[1,2]", status.ArgsJSON)
+			assert.True(t, (nowEpochSeconds()-status.StartedAt) <= 3)
+			assert.True(t, status.JobID != "")
+		} else {
+			assert.False(t, status.IsBusy)
+		}
+		assert.True(t, status.WorkerID != "")
+	}
+	assert.Equal(t, 1, watCount)
+	assert.Equal(t, 1, fooCount)
+
+	wp.Stop()
+
+	statuses, err = client.WorkerStatuses(wp.workerIDs())
+	assert.NoError(t, err)
+
+	assert.Equal(t, 10, len(statuses))
+	for _, status := range statuses {
+		assert.False(t, status.IsBusy)
+		assert.True(t, status.WorkerID != "")
+	}
 }

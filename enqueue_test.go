@@ -17,6 +17,8 @@ func TestEnqueue(t *testing.T) {
 
 	assert.Nil(t, err)
 
+	// TODO: test that this actually enqueues the right shit
+
 	//
 	// conn, err := redis.Dial("tcp", ":6379")
 	// defer conn.Close()

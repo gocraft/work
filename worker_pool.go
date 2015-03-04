@@ -4,6 +4,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"reflect"
 	// "fmt"
+	"sort"
 	"sync"
 )
 
@@ -76,7 +77,8 @@ func (wp *WorkerPool) Start() {
 	for _, w := range wp.workers {
 		go w.start()
 	}
-	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency)
+
+	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
 	wp.heartbeat.start()
 }
 
@@ -97,4 +99,13 @@ func (wp *WorkerPool) Join() {
 	for _, w := range wp.workers {
 		w.join()
 	}
+}
+
+func (wp *WorkerPool) workerIDs() []string {
+	wids := make([]string, 0, len(wp.workers))
+	for _, w := range wp.workers {
+		wids = append(wids, w.workerID)
+	}
+	sort.Strings(wids)
+	return wids
 }

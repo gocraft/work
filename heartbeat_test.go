@@ -21,7 +21,7 @@ func TestHeartbeat(t *testing.T) {
 		"bar": nil,
 	}
 
-	heart := newWorkerPoolHeartbeat(ns, pool, "abcd", jobTypes, 10)
+	heart := newWorkerPoolHeartbeat(ns, pool, "abcd", jobTypes, 10, []string{"ccc", "bbb"})
 	heart.start()
 
 	time.Sleep(20 * time.Millisecond)
@@ -32,6 +32,7 @@ func TestHeartbeat(t *testing.T) {
 	assert.Equal(t, "1425263409", h["heartbeat_at"])
 	assert.Equal(t, "1425263409", h["started_at"])
 	assert.Equal(t, "bar,foo", h["job_names"])
+	assert.Equal(t, "bbb,ccc", h["worker_ids"])
 	assert.Equal(t, "10", h["concurrency"])
 
 	assert.True(t, h["pid"] != "")

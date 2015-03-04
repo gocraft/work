@@ -20,12 +20,13 @@ type workerPoolHeartbeat struct {
 	startedAt   int64
 	pid         int
 	hostname    string
+	workerIDs   string
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
 
-func newWorkerPoolHeartbeat(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint) *workerPoolHeartbeat {
+func newWorkerPoolHeartbeat(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeat {
 	h := &workerPoolHeartbeat{
 		workerPoolID: workerPoolID,
 		namespace:    namespace,
@@ -43,6 +44,9 @@ func newWorkerPoolHeartbeat(namespace string, pool *redis.Pool, workerPoolID str
 	}
 	sort.Strings(jobNames)
 	h.jobNames = strings.Join(jobNames, ",")
+
+	sort.Strings(workerIDs)
+	h.workerIDs = strings.Join(workerIDs, ",")
 
 	h.pid = os.Getpid()
 	host, err := os.Hostname()
@@ -93,6 +97,7 @@ func (h *workerPoolHeartbeat) heartbeat() {
 		"started_at", h.startedAt,
 		"job_names", h.jobNames,
 		"concurrency", h.concurrency,
+		"worker_ids", h.workerIDs,
 		"host", h.hostname,
 		"pid", h.pid,
 	)
