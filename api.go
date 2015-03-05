@@ -193,6 +193,81 @@ func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
 	return statuses, nil
 }
 
+type JobStatus struct {
+	JobName string
+	Count   int64
+	Latency int64
+}
+
+func (c *Client) JobStatuses() ([]*JobStatus, error) {
+	conn := c.pool.Get()
+	defer conn.Close()
+
+	key := redisKeyKnownJobs(c.namespace)
+	jobNames, err := redis.Strings(conn.Do("SMEMBERS", key))
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(jobNames)
+
+	for _, jobName := range jobNames {
+		conn.Send("LLEN", redisKeyJobs(c.namespace, jobName))
+	}
+
+	if err := conn.Flush(); err != nil {
+		logError("job_statuses.flush", err)
+		return nil, err
+	}
+
+	statuses := make([]*JobStatus, 0, len(jobNames))
+
+	for _, jobName := range jobNames {
+		count, err := redis.Int64(conn.Receive())
+		if err != nil {
+			logError("job_statuses.receive", err)
+			return nil, err
+		}
+
+		status := &JobStatus{
+			JobName: jobName,
+			Count:   count,
+		}
+
+		statuses = append(statuses, status)
+	}
+
+	for _, s := range statuses {
+		if s.Count > 0 {
+			conn.Send("LINDEX", redisKeyJobs(c.namespace, s.JobName), -1)
+		}
+	}
+
+	if err := conn.Flush(); err != nil {
+		logError("job_statuses.flush2", err)
+		return nil, err
+	}
+
+	now := nowEpochSeconds()
+
+	for _, s := range statuses {
+		if s.Count > 0 {
+			b, err := redis.Bytes(conn.Receive())
+			if err != nil {
+				logError("job_statuses.receive2", err)
+				return nil, err
+			}
+
+			job, err := newJob(b, nil, nil)
+			if err != nil {
+				logError("job_statuses.new_job", err)
+			}
+			s.Latency = now - job.EnqueuedAt
+		}
+	}
+
+	return statuses, nil
+}
+
 // // List jobs
 // func (c *Client) Jobs() []string {
 // 	// todo: how do we know this if we're not connected to a worker?
@@ -213,19 +288,4 @@ func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
 // }
 //
 // func (c *Client) DeleteJobs(jobName string) {
-// }
-//
-//
-// type WorkerStatus struct {
-// 	WorkerSetID string
-// 	WorkerID string
-//
-// 	IsWorking bool
-// 	JobName string
-// 	StartedAt int64
-// 	Checkin string
-// }
-//
-// func (c *Client) WorkerStatuses(workerID []string) []*WorkerStatus {
-//
 // }

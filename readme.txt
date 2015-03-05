@@ -1,16 +1,14 @@
 TODO
 ----
- - what happens when we call Stop() on a long-running worker
+ - API:
+   - queued up
+   - name, count, latency
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
  - make start, stop, start work (on the pool)
  - make start idempotent
  - do we want to merge api and enqueuer?
- - API
-   - queues
-     - 
-   - worketpool, worker status
  - middleware
  - do the whole reflection-based job calling thing.
  - write a daemon that polls the retry queue and requeues things
@@ -77,11 +75,6 @@ func (r *Job) Checkin(msg string) bool {
  - If shit is going blazing fast, do we need to see what's in progress?
  - what if we just show how many threads are tackling a given job at a time?
  - each worker has a unique identifier
- - nomenclature:
-   - worker -- really a pool of shit that happens to process jobs.
-   - fetcher -- gets shit from redis
-   - processor -- runs jobs
-   - observer -- writes stats
 
 // enqueue:
 enqueuer.SourcedEnqueue("create_watch", subdomain.Id, user.Id, suggestion.Id)

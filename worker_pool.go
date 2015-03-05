@@ -73,6 +73,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 }
 
 func (wp *WorkerPool) Start() {
+	go wp.writeKnownJobsToRedis()
 	// todo: what if already started?
 	for _, w := range wp.workers {
 		go w.start()
@@ -108,4 +109,22 @@ func (wp *WorkerPool) workerIDs() []string {
 	}
 	sort.Strings(wids)
 	return wids
+}
+
+func (wp *WorkerPool) writeKnownJobsToRedis() {
+	conn := wp.pool.Get()
+	defer conn.Close()
+
+	key := redisKeyKnownJobs(wp.namespace)
+
+	jobNames := make([]interface{}, 0, len(wp.jobTypes)+1)
+	jobNames = append(jobNames, key)
+	for k, _ := range wp.jobTypes {
+		jobNames = append(jobNames, k)
+	}
+
+	_, err := conn.Do("SADD", jobNames...)
+	if err != nil {
+		logError("write_known_jobs", err)
+	}
 }

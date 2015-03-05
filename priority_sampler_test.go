@@ -34,7 +34,7 @@ func TestPrioritySampler(t *testing.T) {
 	// make sure these numbers are roughly correct. note that probability is a thing.
 	assert.True(t, c5 > (2*c2))
 	assert.True(t, float64(c2) > (1.5*float64(c1)))
-	assert.True(t, c1 > (total/12), fmt.Sprintf("c1 = %d total = %d total/12=%d", c1, total, total/12))
+	assert.True(t, c1 >= (total/13), fmt.Sprintf("c1 = %d total = %d total/13=%d", c1, total, total/13))
 	assert.True(t, float64(c1end) > (float64(total)*0.50))
 }
 

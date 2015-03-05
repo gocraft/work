@@ -137,3 +137,54 @@ func TestApiWorkerStatuses(t *testing.T) {
 		assert.True(t, status.WorkerID != "")
 	}
 }
+
+func TestApiJobStatuses(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", 1, 2)
+	err = enqueuer.Enqueue("foo", 3, 4)
+	err = enqueuer.Enqueue("zaz", 3, 4)
+
+	// Start a pool to work on it. It's going to work on the queues
+	// side effect of that is knowing which jobs are avail
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Job("wat", func(job *Job) error {
+		return nil
+	})
+	wp.Job("foo", func(job *Job) error {
+		return nil
+	})
+	wp.Job("zaz", func(job *Job) error {
+		return nil
+	})
+	wp.Start()
+	time.Sleep(20 * time.Millisecond)
+	wp.Stop()
+
+	setNowEpochSecondsMock(1425263409)
+	defer resetNowEpochSecondsMock()
+	err = enqueuer.Enqueue("foo", 3, 4)
+	setNowEpochSecondsMock(1425263509)
+	err = enqueuer.Enqueue("foo", 3, 4)
+	setNowEpochSecondsMock(1425263609)
+	err = enqueuer.Enqueue("wat", 3, 4)
+
+	setNowEpochSecondsMock(1425263709)
+	client := NewClient(ns, pool)
+	statuses, err := client.JobStatuses()
+	assert.NoError(t, err)
+
+	assert.Equal(t, 3, len(statuses))
+	assert.Equal(t, "foo", statuses[0].JobName)
+	assert.Equal(t, 2, statuses[0].Count)
+	assert.Equal(t, 300, statuses[0].Latency)
+	assert.Equal(t, "wat", statuses[1].JobName)
+	assert.Equal(t, 1, statuses[1].Count)
+	assert.Equal(t, 100, statuses[1].Latency)
+	assert.Equal(t, "zaz", statuses[2].JobName)
+	assert.Equal(t, 0, statuses[2].Count)
+	assert.Equal(t, 0, statuses[2].Latency)
+}

@@ -8,6 +8,10 @@ func redisNamespacePrefix(namespace string) string {
 	return namespace
 }
 
+func redisKeyKnownJobs(namespace string) string {
+	return redisNamespacePrefix(namespace) + "known_jobs"
+}
+
 // returns "<namespace>:jobs:"
 // so that we can just append the job name and be good to go
 func redisKeyJobsPrefix(namespace string) string {
