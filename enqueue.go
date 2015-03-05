@@ -40,3 +40,28 @@ func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
 
 	return nil
 }
+
+func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args ...interface{}) error {
+	job := &Job{
+		Name:       jobName,
+		ID:         makeIdentifier(),
+		EnqueuedAt: nowEpochSeconds(),
+		Args:       args,
+	}
+
+	rawJSON, err := job.Serialize()
+	if err != nil {
+		return err
+	}
+
+	conn := e.Pool.Get()
+	defer conn.Close()
+
+	_, err = conn.Do("ZADD", redisKeyScheduled(e.Namespace), nowEpochSeconds()+secondsFromNow, rawJSON)
+	if err != nil {
+		fmt.Println("got err in enqueue: ", err)
+		return err
+	}
+
+	return nil
+}

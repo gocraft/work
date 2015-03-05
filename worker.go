@@ -234,7 +234,7 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("ZADD", redisKeyDead(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	_, err = conn.Do("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
 	// The max # of jobs seems really horrible. Seems like
 	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)

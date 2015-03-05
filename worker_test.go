@@ -226,8 +226,7 @@ func TestWorkerDead(t *testing.T) {
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyDead(ns))
 
-	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
-	assert.True(t, ts < (nowEpochSeconds()+80)) // but less than a minute from now (first failure)
+	assert.True(t, ts <= nowEpochSeconds())
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
 	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.

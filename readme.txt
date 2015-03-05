@@ -1,8 +1,7 @@
 TODO
 ----
- - API:
-   - queued up
-   - name, count, latency
+ - retry worker parameterized by queue name
+   - probably a lua script
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
