@@ -19,6 +19,8 @@ type WorkerPool struct {
 
 	workers   []*worker
 	heartbeat *workerPoolHeartbeat
+	retrier   *requeuer
+	scheduler *requeuer
 }
 
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
@@ -81,6 +83,7 @@ func (wp *WorkerPool) Start() {
 
 	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
 	wp.heartbeat.start()
+	wp.startRequeuers()
 }
 
 func (wp *WorkerPool) Stop() {
@@ -94,12 +97,25 @@ func (wp *WorkerPool) Stop() {
 	}
 	wg.Wait()
 	wp.heartbeat.stop()
+	wp.retrier.stop()
+	wp.scheduler.stop()
 }
 
 func (wp *WorkerPool) Join() {
 	for _, w := range wp.workers {
 		w.join()
 	}
+}
+
+func (wp *WorkerPool) startRequeuers() {
+	jobNames := make([]string, 0, len(wp.jobTypes))
+	for k, _ := range wp.jobTypes {
+		jobNames = append(jobNames, k)
+	}
+	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
+	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
+	wp.retrier.start()
+	wp.scheduler.start()
 }
 
 func (wp *WorkerPool) workerIDs() []string {

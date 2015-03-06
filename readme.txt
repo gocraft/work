@@ -1,17 +1,15 @@
 TODO
 ----
- - retry worker parameterized by queue name
-   - probably a lua script
+ - JSON api to get basic stuff
+ - middleware & reflection
+ 
+ - write better tests for Enqueue and EnqueueIn
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
  - make start, stop, start work (on the pool)
  - make start idempotent
  - do we want to merge api and enqueuer?
- - middleware
- - do the whole reflection-based job calling thing.
- - write a daemon that polls the retry queue and requeues things
- - how do we know when to do retry queue?
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
    - alt: some clever mechanism to only check redis if we are busy?
