@@ -302,6 +302,23 @@ func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
 	return scoreInt, job
 }
 
+func jobOnQueue(pool *redis.Pool, key string) *Job {
+	conn := pool.Get()
+	defer conn.Close()
+
+	rawJSON, err := redis.Bytes(conn.Do("RPOP", key))
+	if err != nil {
+		panic("could not delete retry/dead queue: " + err.Error())
+	}
+
+	job, err := newJob(rawJSON, nil, nil)
+	if err != nil {
+		panic("couldn't get job: " + err.Error())
+	}
+
+	return job
+}
+
 func cleanKeyspace(namespace string, pool *redis.Pool) {
 	conn := pool.Get()
 	defer conn.Close()

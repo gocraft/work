@@ -70,9 +70,9 @@ return nil`
 var redisLuaZremLpushCmd = `
 local res, j, queue
 res = redis.call('zrangebyscore', KEYS[1], '-inf', ARGV[2], 'LIMIT', 0, 1)
-if res then
+if #res > 0 then
+  j = cjson.decode(res[1]) -- TODO: if this can't be parsed, we're hosed.
   redis.call('zrem', KEYS[1], res[1])
-  j = cjson.decode(res[1])
   queue = ARGV[1] .. j['name']
   for _,v in pairs(KEYS) do
     if v == queue then

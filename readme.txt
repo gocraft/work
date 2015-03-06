@@ -15,7 +15,7 @@ TODO
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
    - alt: some clever mechanism to only check redis if we are busy?
-
+ - is there some way to detect redis contention
 
 workerPool := work.NewWorkerPool(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
     Middleware((*Context).SetDatabase).

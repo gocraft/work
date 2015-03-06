@@ -90,7 +90,9 @@ func (r *requeuer) process() bool {
 	r.redisRequeueArgs[len(r.redisRequeueArgs)-1] = nowEpochSeconds()
 
 	res, err := redis.String(r.redisRequeueScript.Do(conn, r.redisRequeueArgs...))
-	if err != nil {
+	if err == redis.ErrNil {
+		return false
+	} else if err != nil {
 		logError("requeuer.process", err)
 		return false
 	}
