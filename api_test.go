@@ -54,12 +54,12 @@ func TestApiHeartbeat(t *testing.T) {
 			}
 
 			assert.Equal(t, wp.workerPoolID, hbwp.WorkerPoolID)
-			assert.Equal(t, 10, hbwp.Concurrency)
+			assert.Equal(t, uint(10), hbwp.Concurrency)
 			assert.Equal(t, []string{"bob", "wat"}, hbwp.JobNames)
 			assert.Equal(t, wp.workerIDs(), hbwp.WorkerIDs)
 
 			assert.Equal(t, wp2.workerPoolID, hbwp2.WorkerPoolID)
-			assert.Equal(t, 11, hbwp2.Concurrency)
+			assert.Equal(t, uint(11), hbwp2.Concurrency)
 			assert.Equal(t, []string{"bar", "foo"}, hbwp2.JobNames)
 			assert.Equal(t, wp2.workerIDs(), hbwp2.WorkerIDs)
 		}

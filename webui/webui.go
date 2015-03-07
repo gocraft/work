@@ -57,6 +57,27 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rw.Write(jsonData)
+	} else if r.URL.Path == "/worker_pools" {
+		workerPoolIDs, err := s.client.WorkerPoolIDs()
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		response, err := s.client.WorkerPoolStatuses(workerPoolIDs)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		jsonData, err := json.MarshalIndent(response, "", "\t")
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+		rw.Write(jsonData)
+	} else if r.URL.Path == "/workers" {
+
 	} else {
 		renderNotFound(rw)
 	}
