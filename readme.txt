@@ -2,13 +2,14 @@ TODO
 ----
  - JSON api to get basic stuff
  - middleware & reflection
+ - checkin stuff
  
  - write better tests for Enqueue and EnqueueIn
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff
  - rename join to drain
- - make start, stop, start work (on the pool)
- - make start idempotent
+ - make start, stop, start work, & make start idempotent (on the pool)
+ - generally, look into process scalability. Eg, if we have 30 processes, each with concurrency=25, that's a lot of pinging redis
  - do we want to merge api and enqueuer?
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
@@ -38,6 +39,8 @@ enqueuer.SourcedEnqueue("create_watch", subdomain.Id, user.Id, suggestion.Id)
 enqueuer.SourcedEnqueueIn
 enqueuer.SourcedEnqueueAt
 
+ideas:
+enqueuer.EnqueueUnique("create_watch", user.id)
 
 func (c *Context) CreateWatch(r *work.Job, userId int64, suggestionId int64) error {
     
