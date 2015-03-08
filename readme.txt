@@ -4,6 +4,11 @@ TODO
  - middleware & reflection
  - checkin stuff
  
+ - change api.go:
+   - Is there a reason to separate out WorkerPoolIDs() vs WorkerPoolStatuses(workerPoolIDs []string)?
+     - seems annoying.
+ - If we have a lot of workers, we're facing a LOT of redis calls to get all of the status.
+   - possible sol'n: don't use redis hashes, just use json. Then it's just a single multiget
  - write better tests for Enqueue and EnqueueIn
  - revisit naming convention of heartbeat shit
  - revisit the retry backoff

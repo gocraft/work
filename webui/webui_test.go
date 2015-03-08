@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 )
@@ -116,6 +117,67 @@ func TestWebUIWorkerPools(t *testing.T) {
 	assert.True(t, ok)
 	assert.True(t, w1stat["WorkerPoolID"] != "")
 	// NOTE: WorkerPoolStatus is tested elsewhere.
+}
+
+func TestWebUIBusyWorkers(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	// Keep a job in the in-progress state without using sleeps
+	wgroup := sync.WaitGroup{}
+	wgroup2 := sync.WaitGroup{}
+	wgroup2.Add(1)
+
+	wp := work.NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Job("wat", func(job *work.Job) error {
+		wgroup2.Done()
+		wgroup.Wait()
+		return nil
+	})
+	wp.Start()
+	defer wp.Stop()
+
+	wp2 := work.NewWorkerPool(TestContext{}, 11, ns, pool)
+	wp2.Start()
+	defer wp2.Stop()
+
+	time.Sleep(10 * time.Millisecond)
+
+	s := NewWebUIServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/busy_workers", nil)
+	s.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	var res []interface{}
+	err := json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(res))
+
+	wgroup.Add(1)
+
+	// Ok, now let's make a busy worker
+	enqueuer := work.NewEnqueuer(ns, pool)
+	enqueuer.Enqueue("wat", 1, 2)
+	wgroup2.Wait()
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/busy_workers", nil)
+	s.ServeHTTP(recorder, request)
+	wgroup.Done()
+	assert.Equal(t, 200, recorder.Code)
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(res))
+
+	if len(res) == 1 {
+		hash, ok := res[0].(map[string]interface{})
+		assert.True(t, ok)
+		assert.Equal(t, "wat", hash["JobName"])
+		assert.Equal(t, true, hash["IsBusy"])
+	}
 }
 
 func newTestPool(addr string) *redis.Pool {

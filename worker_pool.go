@@ -128,6 +128,10 @@ func (wp *WorkerPool) workerIDs() []string {
 }
 
 func (wp *WorkerPool) writeKnownJobsToRedis() {
+	if len(wp.jobTypes) == 0 {
+		return
+	}
+	
 	conn := wp.pool.Get()
 	defer conn.Close()
 

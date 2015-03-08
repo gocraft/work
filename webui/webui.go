@@ -58,13 +58,7 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 		rw.Write(jsonData)
 	} else if r.URL.Path == "/worker_pools" {
-		workerPoolIDs, err := s.client.WorkerPoolIDs()
-		if err != nil {
-			renderError(rw, err)
-			return
-		}
-
-		response, err := s.client.WorkerPoolStatuses(workerPoolIDs)
+		response, err := s.workerPoolStatuses()
 		if err != nil {
 			renderError(rw, err)
 			return
@@ -76,8 +70,19 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rw.Write(jsonData)
-	} else if r.URL.Path == "/workers" {
+	} else if r.URL.Path == "/busy_workers" {
+		response, err := s.busyWorkerStatuses()
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
 
+		jsonData, err := json.MarshalIndent(response, "", "\t")
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+		rw.Write(jsonData)
 	} else {
 		renderNotFound(rw)
 	}
@@ -91,4 +96,39 @@ func renderNotFound(rw http.ResponseWriter) {
 func renderError(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(500)
 	fmt.Fprintf(rw, `{"error": "%s"}`, err.Error())
+}
+
+func (s *WebUIServer) workerPoolStatuses() ([]*work.WorkerPoolStatus, error) {
+	workerPoolIDs, err := s.client.WorkerPoolIDs()
+	if err != nil {
+		return nil, err
+	}
+
+	return s.client.WorkerPoolStatuses(workerPoolIDs)
+}
+
+func (s *WebUIServer) busyWorkerStatuses() ([]*work.WorkerStatus, error) {
+	poolStatuses, err := s.workerPoolStatuses()
+	if err != nil {
+		return nil, err
+	}
+
+	var workerIDs []string
+
+	for _, ps := range poolStatuses {
+		workerIDs = append(workerIDs, ps.WorkerIDs...)
+	}
+
+	statuses, err := s.client.WorkerStatuses(workerIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	var busyStatuses []*work.WorkerStatus
+	for _, status := range statuses {
+		if status.IsBusy {
+			busyStatuses = append(busyStatuses, status)
+		}
+	}
+	return busyStatuses, nil
 }
