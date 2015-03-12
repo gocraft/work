@@ -268,5 +268,10 @@ func (c *Client) JobStatuses() ([]*JobStatus, error) {
 	return statuses, nil
 }
 
+type DormantJob struct {
+	Score int64 
+	Job
+}
+
 // func (c *Client) DeleteJobs(jobName string) {
 // }

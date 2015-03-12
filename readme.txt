@@ -1,8 +1,34 @@
 TODO
 ----
  - JSON api to get basic stuff
+   - job queues <done>
+   - pools <done>
+   - busy workers <done>
+   - retry
+   - scheduled
+   - dead
+ - JSON API endpoint to delete a dead job
+ - JSON API endpoint to retry a dead job
  - middleware & reflection
  - checkin stuff
+ 
+ - In order to actually use this:
+   - web UI: 
+     - see retry,sched,dead
+     - retry/delete dead (can use get if required)
+     - main
+       - Args: namespace, redis, bind addr
+   - core:
+     - middleware
+     - 
+   - metroid_worker
+     - suck in all the settings, config
+     - mysql, redis connections
+     - health logging, middleware
+     - signals to start, stop
+     - deploy.
+   - Ruby
+     - Enqueue
  
  - change api.go:
    - Is there a reason to separate out WorkerPoolIDs() vs WorkerPoolStatuses(workerPoolIDs []string)?
@@ -19,7 +45,15 @@ TODO
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
    - alt: some clever mechanism to only check redis if we are busy?
- - is there some way to detect redis contention
+ - is there some way to detect redis contention, or overall, just measure the latency of redis
+   - both lock contention (not enuf redis pool)
+   - enuf pool, but redis itself is overloaded
+ - It could be cool to provide an API for that redis stuff.
+   - latencies
+   - lock contention
+   - number of redis connections used by work
+   - overall redis stuff: mem, avail, cxns
+ - it might be nice to have an overall counter like sidekiq
 
 workerPool := work.NewWorkerPool(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
     Middleware((*Context).SetDatabase).
