@@ -59,7 +59,7 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 		rw.Write(jsonData)
 	} else if r.URL.Path == "/worker_pools" {
-		response, err := s.workerPoolStatuses()
+		response, err := s.workerPools()
 		if err != nil {
 			renderError(rw, err)
 			return
@@ -102,7 +102,7 @@ func renderError(rw http.ResponseWriter, err error) {
 	fmt.Fprintf(rw, `{"error": "%s"}`, err.Error())
 }
 
-func (s *WebUIServer) workerPoolStatuses() ([]*work.WorkerPoolStatus, error) {
+func (s *WebUIServer) workerPools() ([]*work.WorkerPoolStatus, error) {
 	workerPoolIDs, err := s.client.WorkerPoolIDs()
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (s *WebUIServer) workerPoolStatuses() ([]*work.WorkerPoolStatus, error) {
 }
 
 func (s *WebUIServer) busyWorkerStatuses() ([]*work.WorkerStatus, error) {
-	poolStatuses, err := s.workerPoolStatuses()
+	poolStatuses, err := s.workerPools()
 	if err != nil {
 		return nil, err
 	}

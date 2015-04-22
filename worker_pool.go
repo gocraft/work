@@ -18,7 +18,7 @@ type WorkerPool struct {
 	jobTypes    map[string]*jobType
 
 	workers   []*worker
-	heartbeat *workerPoolHeartbeat
+	heartbeater *workerPoolHeartbeater
 	retrier   *requeuer
 	scheduler *requeuer
 }
@@ -82,8 +82,8 @@ func (wp *WorkerPool) Start() {
 		go w.start()
 	}
 
-	wp.heartbeat = newWorkerPoolHeartbeat(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
-	wp.heartbeat.start()
+	wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
+	wp.heartbeater.start()
 	wp.startRequeuers()
 }
 
@@ -97,7 +97,7 @@ func (wp *WorkerPool) Stop() {
 		}(w)
 	}
 	wg.Wait()
-	wp.heartbeat.stop()
+	wp.heartbeater.stop()
 	wp.retrier.stop()
 	wp.scheduler.stop()
 }

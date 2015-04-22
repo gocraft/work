@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type workerPoolHeartbeat struct {
+type workerPoolHeartbeater struct {
 	workerPoolID string
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
@@ -26,8 +26,8 @@ type workerPoolHeartbeat struct {
 	doneStoppingChan chan struct{}
 }
 
-func newWorkerPoolHeartbeat(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeat {
-	h := &workerPoolHeartbeat{
+func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeater {
+	h := &workerPoolHeartbeater{
 		workerPoolID: workerPoolID,
 		namespace:    namespace,
 		pool:         pool,
@@ -59,16 +59,16 @@ func newWorkerPoolHeartbeat(namespace string, pool *redis.Pool, workerPoolID str
 	return h
 }
 
-func (h *workerPoolHeartbeat) start() {
+func (h *workerPoolHeartbeater) start() {
 	go h.loop()
 }
 
-func (h *workerPoolHeartbeat) stop() {
+func (h *workerPoolHeartbeater) stop() {
 	close(h.stopChan)
 	<-h.doneStoppingChan
 }
 
-func (h *workerPoolHeartbeat) loop() {
+func (h *workerPoolHeartbeater) loop() {
 	h.startedAt = nowEpochSeconds()
 	h.heartbeat() // do it right away
 	ticker := time.Tick(5000 * time.Millisecond)
@@ -84,7 +84,7 @@ func (h *workerPoolHeartbeat) loop() {
 	}
 }
 
-func (h *workerPoolHeartbeat) heartbeat() {
+func (h *workerPoolHeartbeater) heartbeat() {
 	conn := h.pool.Get()
 	defer conn.Close()
 
@@ -108,7 +108,7 @@ func (h *workerPoolHeartbeat) heartbeat() {
 	}
 }
 
-func (h *workerPoolHeartbeat) removeHeartbeat() {
+func (h *workerPoolHeartbeater) removeHeartbeat() {
 	conn := h.pool.Get()
 	defer conn.Close()
 

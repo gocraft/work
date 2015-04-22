@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestHeartbeat(t *testing.T) {
+func TestHeartbeater(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 
@@ -21,7 +21,7 @@ func TestHeartbeat(t *testing.T) {
 		"bar": nil,
 	}
 
-	heart := newWorkerPoolHeartbeat(ns, pool, "abcd", jobTypes, 10, []string{"ccc", "bbb"})
+	heart := newWorkerPoolHeartbeater(ns, pool, "abcd", jobTypes, 10, []string{"ccc", "bbb"})
 	heart.start()
 
 	time.Sleep(20 * time.Millisecond)
