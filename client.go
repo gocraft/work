@@ -20,23 +20,7 @@ func NewClient(namespace string, pool *redis.Pool) *Client {
 	}
 }
 
-func (c *Client) WorkerPoolIDs() ([]string, error) {
-	conn := c.pool.Get()
-	defer conn.Close()
-
-	workerPoolsKey := redisKeyWorkerPools(c.namespace)
-
-	vals, err := redis.Strings(conn.Do("SMEMBERS", workerPoolsKey))
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(vals)
-
-	return vals, nil
-}
-
-// TODO: should we rename this heartbeat?
-type WorkerPoolStatus struct {
+type WorkerPoolHeartbeat struct {
 	WorkerPoolID string
 	StartedAt    int64
 	HeartbeatAt  int64
@@ -49,9 +33,17 @@ type WorkerPoolStatus struct {
 	WorkerIDs []string
 }
 
-func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus, error) {
+func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
+
+	workerPoolsKey := redisKeyWorkerPools(c.namespace)
+
+	workerPoolIDs, err := redis.Strings(conn.Do("SMEMBERS", workerPoolsKey))
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(workerPoolIDs)
 
 	for _, wpid := range workerPoolIDs {
 		key := redisKeyHeartbeat(c.namespace, wpid)
@@ -63,7 +55,7 @@ func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus
 		return nil, err
 	}
 
-	heartbeats := make([]*WorkerPoolStatus, 0, len(workerPoolIDs))
+	heartbeats := make([]*WorkerPoolHeartbeat, 0, len(workerPoolIDs))
 
 	for _, wpid := range workerPoolIDs {
 		vals, err := redis.Strings(conn.Receive())
@@ -72,7 +64,7 @@ func (c *Client) WorkerPoolStatuses(workerPoolIDs []string) ([]*WorkerPoolStatus
 			return nil, err
 		}
 
-		heartbeat := &WorkerPoolStatus{
+		heartbeat := &WorkerPoolHeartbeat{
 			WorkerPoolID: wpid,
 		}
 
@@ -269,7 +261,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 }
 
 type DormantJob struct {
-	Score int64 
+	Score int64
 	Job
 }
 

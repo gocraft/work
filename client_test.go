@@ -4,14 +4,14 @@ import (
 	// "fmt"
 	// "github.com/garyburd/redigo/redis"
 	"github.com/stretchr/testify/assert"
-	"sort"
+	// "sort"
 	"testing"
 	"time"
 )
 
 type TestContext struct{}
 
-func TestApiHeartbeat(t *testing.T) {
+func TestClientWorkerPoolHeartbeats(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -30,47 +30,37 @@ func TestApiHeartbeat(t *testing.T) {
 
 	client := NewClient(ns, pool)
 
-	ids, err := client.WorkerPoolIDs()
+	hbs, err := client.WorkerPoolHeartbeats()
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(ids))
-	if len(ids) == 2 {
-		expected := []string{wp.workerPoolID, wp2.workerPoolID}
-		sort.Strings(expected)
-		assert.Equal(t, expected, ids)
+	assert.Equal(t, 2, len(hbs))
+	if len(hbs) == 2 {
+		var hbwp, hbwp2 *WorkerPoolHeartbeat
 
-		hbs, err := client.WorkerPoolStatuses(ids)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, len(hbs))
-
-		if len(hbs) == 2 {
-			var hbwp, hbwp2 *WorkerPoolStatus
-
-			if wp.workerPoolID == hbs[0].WorkerPoolID {
-				hbwp = hbs[0]
-				hbwp2 = hbs[1]
-			} else {
-				hbwp = hbs[1]
-				hbwp2 = hbs[0]
-			}
-
-			assert.Equal(t, wp.workerPoolID, hbwp.WorkerPoolID)
-			assert.Equal(t, uint(10), hbwp.Concurrency)
-			assert.Equal(t, []string{"bob", "wat"}, hbwp.JobNames)
-			assert.Equal(t, wp.workerIDs(), hbwp.WorkerIDs)
-
-			assert.Equal(t, wp2.workerPoolID, hbwp2.WorkerPoolID)
-			assert.Equal(t, uint(11), hbwp2.Concurrency)
-			assert.Equal(t, []string{"bar", "foo"}, hbwp2.JobNames)
-			assert.Equal(t, wp2.workerIDs(), hbwp2.WorkerIDs)
+		if wp.workerPoolID == hbs[0].WorkerPoolID {
+			hbwp = hbs[0]
+			hbwp2 = hbs[1]
+		} else {
+			hbwp = hbs[1]
+			hbwp2 = hbs[0]
 		}
+
+		assert.Equal(t, wp.workerPoolID, hbwp.WorkerPoolID)
+		assert.Equal(t, uint(10), hbwp.Concurrency)
+		assert.Equal(t, []string{"bob", "wat"}, hbwp.JobNames)
+		assert.Equal(t, wp.workerIDs(), hbwp.WorkerIDs)
+
+		assert.Equal(t, wp2.workerPoolID, hbwp2.WorkerPoolID)
+		assert.Equal(t, uint(11), hbwp2.Concurrency)
+		assert.Equal(t, []string{"bar", "foo"}, hbwp2.JobNames)
+		assert.Equal(t, wp2.workerIDs(), hbwp2.WorkerIDs)
 	}
 
 	wp.Stop()
 	wp2.Stop()
 
-	ids, err = client.WorkerPoolIDs()
+	hbs, err = client.WorkerPoolHeartbeats()
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(ids))
+	assert.Equal(t, 0, len(hbs))
 }
 
 func TestApiWorkerStatuses(t *testing.T) {

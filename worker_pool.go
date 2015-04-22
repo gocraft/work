@@ -17,10 +17,10 @@ type WorkerPool struct {
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
 
-	workers   []*worker
+	workers     []*worker
 	heartbeater *workerPoolHeartbeater
-	retrier   *requeuer
-	scheduler *requeuer
+	retrier     *requeuer
+	scheduler   *requeuer
 }
 
 // rename to NewPool?
@@ -132,7 +132,7 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	if len(wp.jobTypes) == 0 {
 		return
 	}
-	
+
 	conn := wp.pool.Get()
 	defer conn.Close()
 
