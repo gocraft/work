@@ -193,13 +193,13 @@ func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
 	return statuses, nil
 }
 
-type JobStatus struct {
+type Queue struct {
 	JobName string
 	Count   int64
 	Latency int64
 }
 
-func (c *Client) JobStatuses() ([]*JobStatus, error) {
+func (c *Client) Queues() ([]*Queue, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
 
@@ -219,7 +219,7 @@ func (c *Client) JobStatuses() ([]*JobStatus, error) {
 		return nil, err
 	}
 
-	statuses := make([]*JobStatus, 0, len(jobNames))
+	queues := make([]*Queue, 0, len(jobNames))
 
 	for _, jobName := range jobNames {
 		count, err := redis.Int64(conn.Receive())
@@ -228,15 +228,15 @@ func (c *Client) JobStatuses() ([]*JobStatus, error) {
 			return nil, err
 		}
 
-		status := &JobStatus{
+		queue := &Queue{
 			JobName: jobName,
 			Count:   count,
 		}
 
-		statuses = append(statuses, status)
+		queues = append(queues, queue)
 	}
 
-	for _, s := range statuses {
+	for _, s := range queues {
 		if s.Count > 0 {
 			conn.Send("LINDEX", redisKeyJobs(c.namespace, s.JobName), -1)
 		}
@@ -249,7 +249,7 @@ func (c *Client) JobStatuses() ([]*JobStatus, error) {
 
 	now := nowEpochSeconds()
 
-	for _, s := range statuses {
+	for _, s := range queues {
 		if s.Count > 0 {
 			b, err := redis.Bytes(conn.Receive())
 			if err != nil {
@@ -265,7 +265,7 @@ func (c *Client) JobStatuses() ([]*JobStatus, error) {
 		}
 	}
 
-	return statuses, nil
+	return queues, nil
 }
 
 type DormantJob struct {

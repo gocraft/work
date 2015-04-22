@@ -64,7 +64,7 @@ func TestWebUIJobs(t *testing.T) {
 	s := NewWebUIServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
-	request, _ := http.NewRequest("GET", "/jobs", nil)
+	request, _ := http.NewRequest("GET", "/queues", nil)
 	s.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 

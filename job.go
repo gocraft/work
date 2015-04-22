@@ -9,7 +9,6 @@ type Job struct {
 	// Inputs when makin a new job
 	Name       string        `json:"name,omitempty"`
 	ID         string        `json:"id"`
-	SourceID   int64         `json:"source,omitempty"`
 	EnqueuedAt int64         `json:"t"`
 	Args       []interface{} `json:"args"`
 

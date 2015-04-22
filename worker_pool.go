@@ -23,6 +23,7 @@ type WorkerPool struct {
 	scheduler *requeuer
 }
 
+// rename to NewPool?
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
 	// todo: validate ctx
 	// todo: validate concurrency

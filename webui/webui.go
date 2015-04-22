@@ -19,6 +19,7 @@ type WebUIServer struct {
 	wg        sync.WaitGroup
 }
 
+// TODO: rename to NewServer
 func NewWebUIServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer {
 	return &WebUIServer{
 		namespace: namespace,
@@ -44,8 +45,8 @@ func (w *WebUIServer) Stop() {
 
 func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if r.URL.Path == "/jobs" {
-		response, err := s.client.JobStatuses()
+	if r.URL.Path == "/queues" {
+		response, err := s.client.Queues()
 		if err != nil {
 			renderError(rw, err)
 			return
@@ -83,6 +84,9 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		rw.Write(jsonData)
+	} else if r.URL.Path == "/retry_jobs" {
+	} else if r.URL.Path == "/scheduled_jobs" {
+	} else if r.URL.Path == "/dead_jobs" {
 	} else {
 		renderNotFound(rw)
 	}

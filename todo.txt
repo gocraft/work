@@ -1,5 +1,39 @@
+START
+-----
+
+start a web UI:
+cd cmd/workwebui
+go run main.go
+open "http://localhost:5040/worker_pools"
+open "http://localhost:5040/busy_workers"
+open "http://localhost:5040/jobs"
+
+Enqueue some foobar jobs:
+cd cmd/workfakedata
+go run main.go
+
+NOMENCLATURE
+------------
+ - "worker pool" - a pool of workers
+ - "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
+ - "heartbeat" or "worker pool heartbeat" - goroutine owned by worker pool that runs concurrently with workers. Writes the worker pool's config/status every 5 seconds.
+ - "observer" - observes a worker. writes stats.
+ - "job" - the actual bundle of data that constitutes one job
+ - "job name" - each job has a name, like "create_watch"
+ - "job type" - backend/private nomenclature for the handler+options for processing a job
+ - "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
+ - "retry queue"
+ - "scheduled queue"
+ - "dead queue"
+ 
+
 TODO
 ----
+ - review naming.
+ - Do I have a thing that rescues :inprogress shit?
+ - Enqueue should cache job names. If it's a new job name, sadd it
+ - jobs API -- better json (not JobName, job_name)
+ - if a worker pool dies, we need a way to clean up its entry in the set
  - JSON api to get basic stuff
    - job queues <done>
    - pools <done>
@@ -74,9 +108,16 @@ enqueuer := work.NewEnqueuer(redisDSN)
 enqueuer.Enqueue("create_watch", user.Id, suggestion.Id)
 enqueuer.EnqueueIn
 enqueuer.EnqueueAt
-enqueuer.SourcedEnqueue("create_watch", subdomain.Id, user.Id, suggestion.Id)
-enqueuer.SourcedEnqueueIn
-enqueuer.SourcedEnqueueAt
+
+enqueuer.Enqueue("create_watch", work.Q{
+    "user_id": user.Id,
+    "email": user.Email,
+})
+
+func(j *work.Job) {
+    uid := j.GetInt64("user_id")
+    sid := j.GetString("email")
+}
 
 ideas:
 enqueuer.EnqueueUnique("create_watch", user.id)
@@ -88,8 +129,6 @@ func (c *Context) CreateWatch(r *work.Job, userId int64, suggestionId int64) err
 type Job struct {
     Name string
     ID   string
-    
-    SourceID int64
     
     payload []byte //???
 }
@@ -115,92 +154,4 @@ func (r *Job) Checkin(msg string) bool {
  - what if we just show how many threads are tackling a given job at a time?
  - each worker has a unique identifier
 
-// enqueue:
-enqueuer.SourcedEnqueue("create_watch", subdomain.Id, user.Id, suggestion.Id)
-lpush <namespace>:queue:create_watch {jid: "abc", t: 14494, source: 4, args: [1, 3]}
-
-// grab it:
-msg = rpoplpush <ns>:queue:create_watch <ns>:queue:create_watch:inprogress
-
-// success:
-lrem <ns>:queue:create_watch:inprogress 1 msg
-
-// error, retry:
-
-// error, morgue:
-
-// enqueue-in:
-
-// all inprogress jobs:
-
-// all workers (eg processes-ish)
-
-// all queues, how many jobs are enqueued:
-
-
-------------
-
-workerpool:
-
-one fetcher per queue, each pulling with brpoplpush
-got one? ok.... we have a pool of processors
- - by virtue of brpoplpush, it IS in in-progress
- - channel per queue. Put work on channel. channel has WORKER SIZE OR 1 slots in it. so this could block of it's full
- - now, workers. workers randomly pull from a channel by priority sampling.
-
-*** MINOR downside: we pop off more than we work on right away, so in shutdown situations we make needing to recover via the in-progress queue much bigger.
-*** HUGE DOWNSIDE: need 1 redis connection per queue. This becomes really bad if you have an app with >50 jobs. If queues != jobs, it's no big deal. you can have tons of jobs but a limited # of queues. if queues == jobs, you're screwed.
-
-for each key
-  r = redis.rpop key
-  if r
-    redis.lpush key+":inprogress", r
-    return r, key
-return nil
-
-Rails.redis.del("list1", "list2", "list3")
-Rails.redis.del("list1:inprog", "list2:inprog", "list3:inprog")
-Rails.redis.lpush("list1", "v1")
-Rails.redis.lpush("list3", "v2")
-
-s = "
-local res
-local keylen = #KEYS/2
-for i=1,keylen,1 do
-  res = redis.call('rpop', KEYS[i])
-  if res then
-    redis.call('lpush', KEYS[i+keylen], res)
-    return {res, KEYS[i]}
-  end
-end
-return nil
-"
-Rails.redis.del("list1", "list2", "list3")
-Rails.redis.del("list1:inprog", "list2:inprog", "list3:inprog")
-Rails.redis.lpush("list1", "v1")
-Rails.redis.lpush("list3", "v2")
-Rails.redis.eval(s, ["list1","list2","list3", "list1:inprog", "list2:inprog", "list3:inprog"])
-Rails.redis.lrange("list1", 0, -1)
-Rails.redis.lrange("list2", 0, -1)
-Rails.redis.lrange("list3", 0, -1)
-Rails.redis.lrange("list1:inprog", 0, -1)
-Rails.redis.lrange("list2:inprog", 0, -1)
-Rails.redis.lrange("list3:inprog", 0, -1)
-
-t="
-local res = redis.call('rpop', KEYS[1]);
-if not res then
-  return 'not'
-end
-if res == nil then
-  return 'isnil'
-end
-if res == '' then
-  return 'isblank'
-end
-if res == 0 then
-  return 'iszero'
-end
-return 'wat'
-"
 
