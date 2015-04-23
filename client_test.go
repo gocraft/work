@@ -267,3 +267,46 @@ func TestClientRetryJobs(t *testing.T) {
 		assert.Equal(t, "ohno", jobs[0].LastErr)
 	}
 }
+
+func TestClientDeadJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	setNowEpochSecondsMock(1425263409)
+	defer resetNowEpochSecondsMock()
+
+	enqueuer := NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", 1, 2)
+	assert.Nil(t, err)
+
+	setNowEpochSecondsMock(1425263429)
+
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 0}, func(job *Job) error {
+		return fmt.Errorf("ohno")
+	})
+	wp.Start()
+	wp.Join()
+	wp.Stop()
+
+	client := NewClient(ns, pool)
+	jobs, err := client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(jobs))
+
+	if len(jobs) == 1 {
+		assert.Equal(t, 1425263429, jobs[0].FailedAt)
+		assert.Equal(t, "wat", jobs[0].Name)
+		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
+		assert.Equal(t, interface{}(1), jobs[0].Args[0])
+		assert.Equal(t, 1, jobs[0].Fails)
+		assert.Equal(t, 1425263429, jobs[0].Job.FailedAt)
+		assert.Equal(t, "ohno", jobs[0].LastErr)
+	}
+
+	// Test pagination a bit
+	jobs, err = client.DeadJobs(2)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(jobs))
+}
