@@ -132,7 +132,7 @@ func TestClientWorkerObservations(t *testing.T) {
 	assert.Equal(t, 0, len(observations))
 }
 
-func TestApiJobStatuses(t *testing.T) {
+func TestClientQueues(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -181,4 +181,51 @@ func TestApiJobStatuses(t *testing.T) {
 	assert.Equal(t, "zaz", queues[2].JobName)
 	assert.Equal(t, 0, queues[2].Count)
 	assert.Equal(t, 0, queues[2].Latency)
+}
+
+func TestClientScheduledJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := NewEnqueuer(ns, pool)
+
+	setNowEpochSecondsMock(1425263409)
+	defer resetNowEpochSecondsMock()
+	err := enqueuer.EnqueueIn("wat", 0, 1, 2)
+	err = enqueuer.EnqueueIn("zaz", 4, 3, 4)
+	err = enqueuer.EnqueueIn("foo", 2, 3, 4)
+
+	client := NewClient(ns, pool)
+	jobs, err := client.ScheduledJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(jobs))
+	if len(jobs) == 3 {
+		assert.Equal(t, 1425263409, jobs[0].RunAt)
+		assert.Equal(t, 1425263411, jobs[1].RunAt)
+		assert.Equal(t, 1425263413, jobs[2].RunAt)
+
+		assert.Equal(t, "wat", jobs[0].Name)
+		assert.Equal(t, "foo", jobs[1].Name)
+		assert.Equal(t, "zaz", jobs[2].Name)
+
+		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
+		assert.Equal(t, 1425263409, jobs[1].EnqueuedAt)
+		assert.Equal(t, 1425263409, jobs[2].EnqueuedAt)
+
+		assert.Equal(t, interface{}(1), jobs[0].Args[0])
+		assert.Equal(t, interface{}(2), jobs[0].Args[1])
+
+		assert.Equal(t, 0, jobs[0].Fails)
+		assert.Equal(t, 0, jobs[1].Fails)
+		assert.Equal(t, 0, jobs[2].Fails)
+
+		assert.Equal(t, 0, jobs[0].FailedAt)
+		assert.Equal(t, 0, jobs[1].FailedAt)
+		assert.Equal(t, 0, jobs[2].FailedAt)
+
+		assert.Equal(t, "", jobs[0].LastErr)
+		assert.Equal(t, "", jobs[1].LastErr)
+		assert.Equal(t, "", jobs[2].LastErr)
+	}
 }

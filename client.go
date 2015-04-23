@@ -119,13 +119,6 @@ type WorkerObservation struct {
 	CheckinAt int64
 }
 
-// "job_name", obv.jobName,
-// "job_id", obv.jobID,
-// "started_at", obv.startedAt,
-// "args", argsJSON,
-// "checkin", obv.checkin,
-// "checkin_at", obv.checkinAt,
-
 func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -218,7 +211,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("job_statuses.flush", err)
+		logError("client.queues.flush", err)
 		return nil, err
 	}
 
@@ -227,7 +220,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	for _, jobName := range jobNames {
 		count, err := redis.Int64(conn.Receive())
 		if err != nil {
-			logError("job_statuses.receive", err)
+			logError("client.queues.receive", err)
 			return nil, err
 		}
 
@@ -246,7 +239,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("job_statuses.flush2", err)
+		logError("client.queues.flush2", err)
 		return nil, err
 	}
 
@@ -256,13 +249,13 @@ func (c *Client) Queues() ([]*Queue, error) {
 		if s.Count > 0 {
 			b, err := redis.Bytes(conn.Receive())
 			if err != nil {
-				logError("job_statuses.receive2", err)
+				logError("client.queues.receive2", err)
 				return nil, err
 			}
 
 			job, err := newJob(b, nil, nil)
 			if err != nil {
-				logError("job_statuses.new_job", err)
+				logError("client.queues.new_job", err)
 			}
 			s.Latency = now - job.EnqueuedAt
 		}
@@ -271,10 +264,52 @@ func (c *Client) Queues() ([]*Queue, error) {
 	return queues, nil
 }
 
-type DormantJob struct {
-	Score int64
+type FailedJob struct {
+	RetryAt int64
 	Job
 }
 
-// func (c *Client) DeleteJobs(jobName string) {
-// }
+type ScheduledJob struct {
+	RunAt int64
+	*Job
+}
+
+func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, error) {
+	conn := c.pool.Get()
+	defer conn.Close()
+
+	if page == 0 {
+		page = 1
+	}
+
+	key := redisKeyScheduled(c.namespace)
+	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, "-inf", "+inf", "WITHSCORES", "LIMIT", (page-1)*20, 20))
+	if err != nil {
+		logError("client.scheduled_jobs.values", err)
+		return nil, err
+	}
+
+	var jobsWithScores []struct {
+		JobBytes []byte
+		Score    int64
+	}
+
+	if err := redis.ScanSlice(values, &jobsWithScores); err != nil {
+		logError("client.scheduled_jobs.scan_slice", err)
+		return nil, err
+	}
+
+	jobs := make([]*ScheduledJob, 0, len(jobsWithScores))
+
+	for _, jws := range jobsWithScores {
+		job, err := newJob(jws.JobBytes, nil, nil)
+		if err != nil {
+			logError("client.scheduled_jobs.new_job", err)
+			return nil, err
+		}
+
+		jobs = append(jobs, &ScheduledJob{RunAt: jws.Score, Job: job})
+	}
+
+	return jobs, nil
+}
