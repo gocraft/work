@@ -32,8 +32,8 @@ func TestEnqueue(t *testing.T) {
 
 func newTestPool(addr string) *redis.Pool {
 	return &redis.Pool{
-		MaxActive:   3,
-		MaxIdle:     3,
+		MaxActive:   10,
+		MaxIdle:     10,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", addr)

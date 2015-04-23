@@ -103,9 +103,15 @@ func (wp *WorkerPool) Stop() {
 }
 
 func (wp *WorkerPool) Join() {
+	wg := sync.WaitGroup{}
 	for _, w := range wp.workers {
-		w.join()
+		wg.Add(1)
+		go func(w *worker) {
+			w.join()
+			wg.Done()
+		}(w)
 	}
+	wg.Wait()
 }
 
 func (wp *WorkerPool) startRequeuers() {
