@@ -264,9 +264,9 @@ func (c *Client) Queues() ([]*Queue, error) {
 	return queues, nil
 }
 
-type FailedJob struct {
+type RetryJob struct {
 	RetryAt int64
-	Job
+	*Job
 }
 
 type ScheduledJob struct {
@@ -274,7 +274,69 @@ type ScheduledJob struct {
 	*Job
 }
 
+type DeadJob struct {
+	DiedAt int64
+	*Job
+}
+
 func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, error) {
+	key := redisKeyScheduled(c.namespace)
+	jobsWithScores, err := c.getZsetPage(key, page)
+	if err != nil {
+		logError("client.scheduled_jobs.get_zset_page", err)
+		return nil, err
+	}
+
+	jobs := make([]*ScheduledJob, 0, len(jobsWithScores))
+
+	for _, jws := range jobsWithScores {
+		jobs = append(jobs, &ScheduledJob{RunAt: jws.Score, Job: jws.job})
+	}
+
+	return jobs, nil
+}
+
+func (c *Client) RetryJobs(page uint) ([]*RetryJob, error) {
+	key := redisKeyRetry(c.namespace)
+	jobsWithScores, err := c.getZsetPage(key, page)
+	if err != nil {
+		logError("client.retry_jobs.get_zset_page", err)
+		return nil, err
+	}
+
+	jobs := make([]*RetryJob, 0, len(jobsWithScores))
+
+	for _, jws := range jobsWithScores {
+		jobs = append(jobs, &RetryJob{RetryAt: jws.Score, Job: jws.job})
+	}
+
+	return jobs, nil
+}
+
+func (c *Client) DeadJobs(page uint) ([]*DeadJob, error) {
+	key := redisKeyDead(c.namespace)
+	jobsWithScores, err := c.getZsetPage(key, page)
+	if err != nil {
+		logError("client.dead_jobs.get_zset_page", err)
+		return nil, err
+	}
+
+	jobs := make([]*DeadJob, 0, len(jobsWithScores))
+
+	for _, jws := range jobsWithScores {
+		jobs = append(jobs, &DeadJob{DiedAt: jws.Score, Job: jws.job})
+	}
+
+	return jobs, nil
+}
+
+type jobScore struct {
+	JobBytes []byte
+	Score    int64
+	job      *Job
+}
+
+func (c *Client) getZsetPage(key string, page uint) ([]jobScore, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
 
@@ -282,34 +344,28 @@ func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, error) {
 		page = 1
 	}
 
-	key := redisKeyScheduled(c.namespace)
 	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, "-inf", "+inf", "WITHSCORES", "LIMIT", (page-1)*20, 20))
 	if err != nil {
-		logError("client.scheduled_jobs.values", err)
+		logError("client.get_zset_page.values", err)
 		return nil, err
 	}
 
-	var jobsWithScores []struct {
-		JobBytes []byte
-		Score    int64
-	}
+	var jobsWithScores []jobScore
 
 	if err := redis.ScanSlice(values, &jobsWithScores); err != nil {
-		logError("client.scheduled_jobs.scan_slice", err)
+		logError("client.get_zset_page.scan_slice", err)
 		return nil, err
 	}
 
-	jobs := make([]*ScheduledJob, 0, len(jobsWithScores))
-
-	for _, jws := range jobsWithScores {
+	for i, jws := range jobsWithScores {
 		job, err := newJob(jws.JobBytes, nil, nil)
 		if err != nil {
-			logError("client.scheduled_jobs.new_job", err)
+			logError("client.get_zset_page.new_job", err)
 			return nil, err
 		}
 
-		jobs = append(jobs, &ScheduledJob{RunAt: jws.Score, Job: job})
+		jobsWithScores[i].job = job
 	}
 
-	return jobs, nil
+	return jobsWithScores, nil
 }
