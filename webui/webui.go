@@ -72,7 +72,7 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 		rw.Write(jsonData)
 	} else if r.URL.Path == "/busy_workers" {
-		response, err := s.busyWorkerStatuses()
+		response, err := s.busyWorkerObservations()
 		if err != nil {
 			renderError(rw, err)
 			return
@@ -102,28 +102,17 @@ func renderError(rw http.ResponseWriter, err error) {
 	fmt.Fprintf(rw, `{"error": "%s"}`, err.Error())
 }
 
-func (s *WebUIServer) busyWorkerStatuses() ([]*work.WorkerStatus, error) {
-	poolHeartbeats, err := s.client.WorkerPoolHeartbeats()
+func (s *WebUIServer) busyWorkerObservations() ([]*work.WorkerObservation, error) {
+	observations, err := s.client.WorkerObservations()
 	if err != nil {
 		return nil, err
 	}
 
-	var workerIDs []string
-
-	for _, ps := range poolHeartbeats {
-		workerIDs = append(workerIDs, ps.WorkerIDs...)
-	}
-
-	statuses, err := s.client.WorkerStatuses(workerIDs)
-	if err != nil {
-		return nil, err
-	}
-
-	var busyStatuses []*work.WorkerStatus
-	for _, status := range statuses {
-		if status.IsBusy {
-			busyStatuses = append(busyStatuses, status)
+	var busyObservations []*work.WorkerObservation
+	for _, ob := range observations {
+		if ob.IsBusy {
+			busyObservations = append(busyObservations, ob)
 		}
 	}
-	return busyStatuses, nil
+	return busyObservations, nil
 }

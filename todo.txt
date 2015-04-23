@@ -18,14 +18,15 @@ NOMENCLATURE
  - "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
  - "heartbeater" or "worker pool heartbeater" - goroutine owned by worker pool that runs concurrently with workers. Writes the worker pool's config/status (aka "heartbeat") every 5 seconds.
  - "heartbeat" - the status written by the heartbeater.
- - "observer" - observes a worker. writes stats.
+ - "observer" or "worker observer" - observes a worker. writes stats. makes "observations".
+ - "worker observation" - A snapshot made by an observer of what a worker is working on.
  - "job" - the actual bundle of data that constitutes one job
  - "job name" - each job has a name, like "create_watch"
  - "job type" - backend/private nomenclature for the handler+options for processing a job
  - "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
- - "retry queue"
- - "scheduled queue"
- - "dead queue"
+ - "retry jobs"
+ - "scheduled jobs"
+ - "dead jobs"
  
 
 TODO
@@ -65,9 +66,6 @@ TODO
    - Ruby
      - Enqueue
  
- - change api.go:
-   - Is there a reason to separate out WorkerPoolIDs() vs WorkerPoolStatuses(workerPoolIDs []string)?
-     - seems annoying.
  - If we have a lot of workers, we're facing a LOT of redis calls to get all of the status.
    - possible sol'n: don't use redis hashes, just use json. Then it's just a single multiget
  - write better tests for Enqueue and EnqueueIn
@@ -76,7 +74,7 @@ TODO
  - rename join to drain
  - make start, stop, start work, & make start idempotent (on the pool)
  - generally, look into process scalability. Eg, if we have 30 processes, each with concurrency=25, that's a lot of pinging redis
- - do we want to merge api and enqueuer?
+ - do we want to merge client and enqueuer?
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
    - alt: some clever mechanism to only check redis if we are busy?

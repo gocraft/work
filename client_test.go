@@ -63,7 +63,7 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 	assert.Equal(t, 0, len(hbs))
 }
 
-func TestApiWorkerStatuses(t *testing.T) {
+func TestClientWorkerObservations(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -88,44 +88,48 @@ func TestApiWorkerStatuses(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	client := NewClient(ns, pool)
-	statuses, err := client.WorkerStatuses(wp.workerIDs())
+	observations, err := client.WorkerObservations()
 	assert.NoError(t, err)
-
-	assert.Equal(t, 10, len(statuses))
+	assert.Equal(t, 10, len(observations))
 
 	watCount := 0
 	fooCount := 0
-	for _, status := range statuses {
-		if status.JobName == "foo" {
+	for _, ob := range observations {
+		if ob.JobName == "foo" {
 			fooCount++
-			assert.True(t, status.IsBusy)
-			assert.Equal(t, "[3,4]", status.ArgsJSON)
-			assert.True(t, (nowEpochSeconds()-status.StartedAt) <= 3)
-			assert.True(t, status.JobID != "")
-		} else if status.JobName == "wat" {
+			assert.True(t, ob.IsBusy)
+			assert.Equal(t, "[3,4]", ob.ArgsJSON)
+			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
+			assert.True(t, ob.JobID != "")
+		} else if ob.JobName == "wat" {
 			watCount++
-			assert.True(t, status.IsBusy)
-			assert.Equal(t, "[1,2]", status.ArgsJSON)
-			assert.True(t, (nowEpochSeconds()-status.StartedAt) <= 3)
-			assert.True(t, status.JobID != "")
+			assert.True(t, ob.IsBusy)
+			assert.Equal(t, "[1,2]", ob.ArgsJSON)
+			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
+			assert.True(t, ob.JobID != "")
 		} else {
-			assert.False(t, status.IsBusy)
+			assert.False(t, ob.IsBusy)
 		}
-		assert.True(t, status.WorkerID != "")
+		assert.True(t, ob.WorkerID != "")
 	}
 	assert.Equal(t, 1, watCount)
 	assert.Equal(t, 1, fooCount)
 
+	// time.Sleep(2000 * time.Millisecond)
+	//
+	// observations, err = client.WorkerObservations()
+	// assert.NoError(t, err)
+	// assert.Equal(t, 10, len(observations))
+	// for _, ob := range observations {
+	// 	assert.False(t, ob.IsBusy)
+	// 	assert.True(t, ob.WorkerID != "")
+	// }
+
 	wp.Stop()
 
-	statuses, err = client.WorkerStatuses(wp.workerIDs())
+	observations, err = client.WorkerObservations()
 	assert.NoError(t, err)
-
-	assert.Equal(t, 10, len(statuses))
-	for _, status := range statuses {
-		assert.False(t, status.IsBusy)
-		assert.True(t, status.WorkerID != "")
-	}
+	assert.Equal(t, 0, len(observations))
 }
 
 func TestApiJobStatuses(t *testing.T) {

@@ -106,7 +106,7 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	return heartbeats, nil
 }
 
-type WorkerStatus struct {
+type WorkerObservation struct {
 	WorkerID string
 	IsBusy   bool
 
@@ -126,30 +126,41 @@ type WorkerStatus struct {
 // "checkin", obv.checkin,
 // "checkin_at", obv.checkinAt,
 
-func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
+func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
 
+	hbs, err := c.WorkerPoolHeartbeats()
+	if err != nil {
+		logError("worker_observations.worker_pool_heartbeats", err)
+		return nil, err
+	}
+
+	var workerIDs []string
+	for _, hb := range hbs {
+		workerIDs = append(workerIDs, hb.WorkerIDs...)
+	}
+
 	for _, wid := range workerIDs {
-		key := redisKeyWorkerStatus(c.namespace, wid)
+		key := redisKeyWorkerStatus(c.namespace, wid) // TODO: rename this func
 		conn.Send("HGETALL", key)
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("worker_statuses.flush", err)
+		logError("worker_observations.flush", err)
 		return nil, err
 	}
 
-	statuses := make([]*WorkerStatus, 0, len(workerIDs))
+	observations := make([]*WorkerObservation, 0, len(workerIDs))
 
 	for _, wid := range workerIDs {
 		vals, err := redis.Strings(conn.Receive())
 		if err != nil {
-			logError("worker_statuses.receive", err)
+			logError("worker_observations.receive", err)
 			return nil, err
 		}
 
-		status := &WorkerStatus{
+		ob := &WorkerObservation{
 			WorkerID: wid,
 		}
 
@@ -157,32 +168,32 @@ func (c *Client) WorkerStatuses(workerIDs []string) ([]*WorkerStatus, error) {
 			key := vals[i]
 			value := vals[i+1]
 
-			status.IsBusy = true
+			ob.IsBusy = true
 
 			var err error
 			if key == "job_name" {
-				status.JobName = value
+				ob.JobName = value
 			} else if key == "job_id" {
-				status.JobID = value
+				ob.JobID = value
 			} else if key == "started_at" {
-				status.StartedAt, err = strconv.ParseInt(value, 10, 64)
+				ob.StartedAt, err = strconv.ParseInt(value, 10, 64)
 			} else if key == "args" {
-				status.ArgsJSON = value
+				ob.ArgsJSON = value
 			} else if key == "checkin" {
-				status.Checkin = value
+				ob.Checkin = value
 			} else if key == "checkin_at" {
-				status.CheckinAt, err = strconv.ParseInt(value, 10, 64)
+				ob.CheckinAt, err = strconv.ParseInt(value, 10, 64)
 			}
 			if err != nil {
-				logError("worker_statuses.parse", err)
+				logError("worker_observations.parse", err)
 				return nil, err
 			}
 		}
 
-		statuses = append(statuses, status)
+		observations = append(observations, ob)
 	}
 
-	return statuses, nil
+	return observations, nil
 }
 
 type Queue struct {
