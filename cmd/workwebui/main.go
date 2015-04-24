@@ -22,7 +22,7 @@ func main() {
 	
 	pool := newPool(*redisHostPort)
 	
-	server := webui.NewWebUIServer(*redisNamespace, pool, *webHostPort)
+	server := webui.NewServer(*redisNamespace, pool, *webHostPort)
 	server.Start()
 	
 	select{}

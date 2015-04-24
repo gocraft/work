@@ -26,8 +26,7 @@ type context struct {
 	*WebUIServer
 }
 
-// TODO: rename to NewServer
-func NewWebUIServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer {
+func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer {
 	router := web.New(context{})
 	server := &WebUIServer{
 		namespace: namespace,

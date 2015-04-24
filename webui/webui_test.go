@@ -18,7 +18,7 @@ func TestWebUIStartStop(t *testing.T) {
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 	s.Start()
 	s.Stop()
 }
@@ -61,7 +61,7 @@ func TestWebUIJobs(t *testing.T) {
 	enqueuer.Enqueue("foo", 3, 4)
 	enqueuer.Enqueue("zaz", 3, 4)
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/queues", nil)
@@ -100,7 +100,7 @@ func TestWebUIWorkerPools(t *testing.T) {
 
 	time.Sleep(20 * time.Millisecond)
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/worker_pools", nil)
@@ -144,7 +144,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/busy_workers", nil)
@@ -198,7 +198,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 	wp.Join()
 	wp.Stop()
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/retry_jobs", nil)
@@ -233,7 +233,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 	err := enqueuer.EnqueueIn("watter", 1, 1, 2)
 	assert.Nil(t, err)
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/scheduled_jobs", nil)
@@ -274,7 +274,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 	wp.Join()
 	wp.Stop()
 
-	s := NewWebUIServer(ns, pool, ":6666")
+	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/dead_jobs", nil)
