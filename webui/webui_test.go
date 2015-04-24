@@ -65,7 +65,7 @@ func TestWebUIJobs(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/queues", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 
 	var res []interface{}
@@ -104,7 +104,7 @@ func TestWebUIWorkerPools(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/worker_pools", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 
 	var res []interface{}
@@ -148,7 +148,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/busy_workers", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 
 	var res []interface{}
@@ -166,7 +166,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequest("GET", "/busy_workers", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	wgroup.Done()
 	assert.Equal(t, 200, recorder.Code)
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
@@ -202,7 +202,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/retry_jobs", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
 		Count int64
@@ -237,7 +237,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/scheduled_jobs", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
 		Count int64
@@ -278,7 +278,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/dead_jobs", nil)
-	s.ServeHTTP(recorder, request)
+	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
 		Count int64
