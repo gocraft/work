@@ -36,18 +36,12 @@ TODO
  - Enqueue should cache job names. If it's a new job name, sadd it
  - jobs API -- better json (not JobName, job_name)
  - if a worker pool dies, we need a way to clean up its entry in the set
- - JSON api to get basic stuff
-   - job queues <done>
-   - pools <done>
-   - busy workers <done>
-   - retry
-   - scheduled
-   - dead
  - JSON API endpoint to delete a dead job
  - JSON API endpoint to retry a dead job
  - middleware & reflection
  - checkin stuff
  - enqueue should be map based, not arity based.
+ - signals for the webui
  
  - In order to actually use this:
    - web UI: 

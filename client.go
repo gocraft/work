@@ -1,7 +1,7 @@
 package work
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"sort"
 	"strconv"
@@ -312,6 +312,61 @@ func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 
 	return jobs, count, nil
 }
+
+func (c *Client) DeleteDeadJob(job *DeadJob) error {
+	conn := c.pool.Get()
+	defer conn.Close()
+	key := redisKeyDead(c.namespace)
+	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, job.DiedAt, job.DiedAt))
+	if err != nil {
+		logError("client.retry_dead_job.values", err)
+		return err
+	}
+
+	var jobsBytes [][]byte
+	if err := redis.ScanSlice(values, &jobsBytes); err != nil {
+		logError("client.retry_dead_job.scan_slice", err)
+		return err
+	}
+
+	var jobs []*Job
+
+	for _, jobBytes := range jobsBytes {
+		j, err := newJob(jobBytes, nil, nil)
+		if err != nil {
+			logError("client.retry_dead_job.new_job", err)
+			return err
+		}
+		if j.ID == job.ID {
+			jobs = append(jobs, j)
+		}
+
+	}
+
+	if len(jobs) == 0 {
+		err = fmt.Errorf("no job found")
+		logError("client.retry_dead_job.no_job", err)
+		return err
+	}
+
+	for _, j := range jobs {
+		conn.Send("ZREM", key, j.rawJSON)
+	}
+	if err := conn.Flush(); err != nil {
+		logError("client.retry_dead_job.new_job", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) RetryDeadJob(job DeadJob) error {
+
+	return nil
+}
+
+// TODO: func RetryAllDeadJobs() error {}
+// TODO: func DeleteAllDeadJobs() error {}
 
 func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 	key := redisKeyDead(c.namespace)

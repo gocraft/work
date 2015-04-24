@@ -94,7 +94,7 @@ func (w *worker) loop() {
 			if nextTry.IsZero() {
 				job, err := w.fetchJob()
 				if err != nil {
-					logError("fetch", err)
+					logError("worker.fetch", err)
 				} else if job != nil {
 					w.processJob(job)
 					consequtiveNoJobs = 0
@@ -175,13 +175,13 @@ func (w *worker) processJob(job *Job) {
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
 			job.failed(runErr)
-			w.addToRetryOrDead(jt, job, runErr)
+			w.addToRetryOrDead(jt, job, runErr) // TODO: if this fails we shouldn't remove from in-progress
 		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job -- no handler")
 		job.failed(runErr)
-		w.addToDead(job, runErr)
+		w.addToDead(job, runErr) // TODO: if this fails we shouldn't remove from in-progress
 	}
 }
 
@@ -191,7 +191,7 @@ func (w *worker) removeJobFromInProgress(job *Job) {
 
 	_, err := conn.Do("LREM", job.inProgQueue, 1, job.rawJSON)
 	if err != nil {
-		logError("remove_job_from_in_progress", err)
+		logError("worker.remove_job_from_in_progress.lrem", err)
 	}
 }
 
@@ -209,7 +209,7 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 func (w *worker) addToRetry(job *Job, runErr error) {
 	rawJSON, err := job.Serialize()
 	if err != nil {
-		// todo: log
+		logError("worker.add_to_retry", err)
 		return
 	}
 
@@ -218,7 +218,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 
 	_, err = conn.Do("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
 	if err != nil {
-		logError("add_to_retry.zadd", err)
+		logError("worker.add_to_retry.zadd", err)
 	}
 
 }
@@ -227,7 +227,7 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	rawJSON, err := job.Serialize()
 
 	if err != nil {
-		// todo: log
+		logError("worker.add_to_dead.serialize", err)
 		return
 	}
 
@@ -236,11 +236,11 @@ func (w *worker) addToDead(job *Job, runErr error) {
 
 	_, err = conn.Do("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
-	// The max # of jobs seems really horrible. Seems like
+	// The max # of jobs seems really horrible. Seems like operations should be on top of it.
 	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
 	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
 	if err != nil {
-		logError("add_to_dead.zadd", err)
+		logError("worker.add_to_dead.zadd", err)
 	}
 }
 

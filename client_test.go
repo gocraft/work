@@ -2,9 +2,8 @@ package work
 
 import (
 	"fmt"
-	// "github.com/garyburd/redigo/redis"
+	"github.com/garyburd/redigo/redis"
 	"github.com/stretchr/testify/assert"
-	// "sort"
 	"testing"
 	"time"
 )
@@ -272,7 +271,7 @@ func TestClientRetryJobs(t *testing.T) {
 
 func TestClientDeadJobs(t *testing.T) {
 	pool := newTestPool(":6379")
-	ns := "work"
+	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -298,6 +297,7 @@ func TestClientDeadJobs(t *testing.T) {
 	assert.Equal(t, 1, len(jobs))
 	assert.Equal(t, 1, count)
 
+	deadJob := jobs[0]
 	if len(jobs) == 1 {
 		assert.Equal(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
@@ -313,4 +313,64 @@ func TestClientDeadJobs(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(jobs))
 	assert.Equal(t, 1, count)
+
+	// Delete it!
+	err = client.DeleteDeadJob(deadJob)
+	assert.NoError(t, err)
+
+	jobs, count, err = client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(jobs))
+	assert.Equal(t, 0, count)
+}
+
+func TestClientDeleteDeadJob(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	// Insert a dead job:
+	insertDeadJob(ns, pool, "wat", 12345, 12347)
+	insertDeadJob(ns, pool, "wat", 12345, 12347)
+	insertDeadJob(ns, pool, "wat", 12345, 12349)
+	insertDeadJob(ns, pool, "wat", 12345, 12350)
+
+	client := NewClient(ns, pool)
+	jobs, count, err := client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(jobs))
+	assert.Equal(t, 4, count)
+
+	tot := count
+	for _, j := range jobs {
+		err = client.DeleteDeadJob(j)
+		assert.NoError(t, err)
+		_, count, err = client.DeadJobs(1)
+		assert.NoError(t, err)
+		assert.Equal(t, tot-1, count)
+		tot--
+	}
+
+}
+
+func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {
+	job := &Job{
+		Name:       name,
+		ID:         makeIdentifier(),
+		EnqueuedAt: encAt,
+		Args:       nil,
+		Fails:      3,
+		LastErr:    "sorry",
+		FailedAt:   failAt,
+	}
+
+	rawJSON, _ := job.Serialize()
+
+	conn := pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("ZADD", redisKeyDead(ns), failAt, rawJSON)
+	if err != nil {
+		panic(err.Error())
+	}
+	return job
 }
