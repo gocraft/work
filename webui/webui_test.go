@@ -2,7 +2,7 @@ package webui
 
 import (
 	"encoding/json"
-	// "fmt"
+	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gocraft/work"
 	"github.com/stretchr/testify/assert"
@@ -179,6 +179,50 @@ func TestWebUIBusyWorkers(t *testing.T) {
 		assert.Equal(t, "wat", hash["JobName"])
 		assert.Equal(t, true, hash["IsBusy"])
 	}
+}
+
+func TestWebUIRetryQueue(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := work.NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", 1, 2)
+	assert.Nil(t, err)
+
+	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
+	wp.Job("wat", func(job *work.Job) error {
+		return fmt.Errorf("ohno")
+	})
+	wp.Start()
+	wp.Join()
+	wp.Stop()
+
+	s := NewWebUIServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/retry_jobs", nil)
+	s.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var res struct {
+		Count int64
+		Jobs  []struct {
+			RetryAt int64
+			Name    string `json:"name"`
+			Fails   int64  `json:"fails"`
+		}
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, res.Count)
+	assert.Equal(t, 1, len(res.Jobs))
+	if len(res.Jobs) == 1 {
+		assert.True(t, res.Jobs[0].RetryAt > 0)
+		assert.Equal(t, "wat", res.Jobs[0].Name)
+		assert.Equal(t, 1, res.Jobs[0].Fails)
+	}
+
 }
 
 func newTestPool(addr string) *redis.Pool {
