@@ -6,6 +6,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"flag"
 	"time"
+	"math/rand"
 )
 
 var redisHostPort = flag.String("redis", ":6379", "redis hostport")
@@ -14,6 +15,10 @@ var redisNamespace = flag.String("ns", "work", "redis namespace")
 func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
 	time.Sleep(time.Second)
+	
+	if rand.Intn(2) == 0 {
+		return fmt.Errorf("random error")
+	}
 	return nil
 }
 

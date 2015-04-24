@@ -30,15 +30,11 @@ func main() {
  
 func newPool(addr string) *redis.Pool {
 	return &redis.Pool{
-		MaxActive:   20,
-		MaxIdle:     20,
+		MaxActive:   3,
+		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", addr)
-			if err != nil {
-				return nil, err
-			}
-			return c, nil
+			return redis.Dial("tcp", addr)
 		},
 		Wait: true,
 	}

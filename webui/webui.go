@@ -7,6 +7,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/gocraft/work"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
@@ -85,8 +86,77 @@ func (s *WebUIServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		}
 		rw.Write(jsonData)
 	} else if r.URL.Path == "/retry_jobs" {
+		page, err := parsePage(r)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		jobs, count, err := s.client.RetryJobs(page)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		response := struct {
+			Count int64
+			Jobs  []*work.RetryJob
+		}{Count: count, Jobs: jobs}
+
+		jsonData, err := json.MarshalIndent(response, "", "\t")
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+		rw.Write(jsonData)
 	} else if r.URL.Path == "/scheduled_jobs" {
+		page, err := parsePage(r)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		jobs, count, err := s.client.ScheduledJobs(page)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		response := struct {
+			Count int64
+			Jobs  []*work.ScheduledJob
+		}{Count: count, Jobs: jobs}
+
+		jsonData, err := json.MarshalIndent(response, "", "\t")
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+		rw.Write(jsonData)
 	} else if r.URL.Path == "/dead_jobs" {
+		page, err := parsePage(r)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		jobs, count, err := s.client.DeadJobs(page)
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+
+		response := struct {
+			Count int64
+			Jobs  []*work.DeadJob
+		}{Count: count, Jobs: jobs}
+
+		jsonData, err := json.MarshalIndent(response, "", "\t")
+		if err != nil {
+			renderError(rw, err)
+			return
+		}
+		rw.Write(jsonData)
 	} else {
 		renderNotFound(rw)
 	}
@@ -100,6 +170,21 @@ func renderNotFound(rw http.ResponseWriter) {
 func renderError(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(500)
 	fmt.Fprintf(rw, `{"error": "%s"}`, err.Error())
+}
+
+func parsePage(r *http.Request) (uint, error) {
+	err := r.ParseForm()
+	if err != nil {
+		return 0, err
+	}
+
+	pageStr := r.Form.Get("page")
+	if pageStr == "" {
+		pageStr = "1"
+	}
+
+	page, err := strconv.ParseUint(pageStr, 10, 0)
+	return uint(page), err
 }
 
 func (s *WebUIServer) busyWorkerObservations() ([]*work.WorkerObservation, error) {

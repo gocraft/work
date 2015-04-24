@@ -279,12 +279,12 @@ type DeadJob struct {
 	*Job
 }
 
-func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, error) {
+func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, int64, error) {
 	key := redisKeyScheduled(c.namespace)
-	jobsWithScores, err := c.getZsetPage(key, page)
+	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
 		logError("client.scheduled_jobs.get_zset_page", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	jobs := make([]*ScheduledJob, 0, len(jobsWithScores))
@@ -293,15 +293,15 @@ func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, error) {
 		jobs = append(jobs, &ScheduledJob{RunAt: jws.Score, Job: jws.job})
 	}
 
-	return jobs, nil
+	return jobs, count, nil
 }
 
-func (c *Client) RetryJobs(page uint) ([]*RetryJob, error) {
+func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 	key := redisKeyRetry(c.namespace)
-	jobsWithScores, err := c.getZsetPage(key, page)
+	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
 		logError("client.retry_jobs.get_zset_page", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	jobs := make([]*RetryJob, 0, len(jobsWithScores))
@@ -310,15 +310,15 @@ func (c *Client) RetryJobs(page uint) ([]*RetryJob, error) {
 		jobs = append(jobs, &RetryJob{RetryAt: jws.Score, Job: jws.job})
 	}
 
-	return jobs, nil
+	return jobs, count, nil
 }
 
-func (c *Client) DeadJobs(page uint) ([]*DeadJob, error) {
+func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 	key := redisKeyDead(c.namespace)
-	jobsWithScores, err := c.getZsetPage(key, page)
+	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
 		logError("client.dead_jobs.get_zset_page", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	jobs := make([]*DeadJob, 0, len(jobsWithScores))
@@ -327,7 +327,7 @@ func (c *Client) DeadJobs(page uint) ([]*DeadJob, error) {
 		jobs = append(jobs, &DeadJob{DiedAt: jws.Score, Job: jws.job})
 	}
 
-	return jobs, nil
+	return jobs, count, nil
 }
 
 type jobScore struct {
@@ -336,7 +336,7 @@ type jobScore struct {
 	job      *Job
 }
 
-func (c *Client) getZsetPage(key string, page uint) ([]jobScore, error) {
+func (c *Client) getZsetPage(key string, page uint) ([]jobScore, int64, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
 
@@ -347,25 +347,31 @@ func (c *Client) getZsetPage(key string, page uint) ([]jobScore, error) {
 	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, "-inf", "+inf", "WITHSCORES", "LIMIT", (page-1)*20, 20))
 	if err != nil {
 		logError("client.get_zset_page.values", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	var jobsWithScores []jobScore
 
 	if err := redis.ScanSlice(values, &jobsWithScores); err != nil {
 		logError("client.get_zset_page.scan_slice", err)
-		return nil, err
+		return nil, 0, err
 	}
 
 	for i, jws := range jobsWithScores {
 		job, err := newJob(jws.JobBytes, nil, nil)
 		if err != nil {
 			logError("client.get_zset_page.new_job", err)
-			return nil, err
+			return nil, 0, err
 		}
 
 		jobsWithScores[i].job = job
 	}
 
-	return jobsWithScores, nil
+	count, err := redis.Int64(conn.Do("ZCARD", key))
+	if err != nil {
+		logError("client.get_zset_page.int64", err)
+		return nil, 0, err
+	}
+
+	return jobsWithScores, count, nil
 }

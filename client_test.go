@@ -197,9 +197,10 @@ func TestClientScheduledJobs(t *testing.T) {
 	err = enqueuer.EnqueueIn("foo", 2, 3, 4)
 
 	client := NewClient(ns, pool)
-	jobs, err := client.ScheduledJobs(1)
+	jobs, count, err := client.ScheduledJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobs))
+	assert.Equal(t, 3, count)
 	if len(jobs) == 3 {
 		assert.Equal(t, 1425263409, jobs[0].RunAt)
 		assert.Equal(t, 1425263411, jobs[1].RunAt)
@@ -253,9 +254,10 @@ func TestClientRetryJobs(t *testing.T) {
 	wp.Stop()
 
 	client := NewClient(ns, pool)
-	jobs, err := client.RetryJobs(1)
+	jobs, count, err := client.RetryJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
+	assert.Equal(t, 1, count)
 
 	if len(jobs) == 1 {
 		assert.Equal(t, 1425263429, jobs[0].FailedAt)
@@ -291,9 +293,10 @@ func TestClientDeadJobs(t *testing.T) {
 	wp.Stop()
 
 	client := NewClient(ns, pool)
-	jobs, err := client.DeadJobs(1)
+	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
+	assert.Equal(t, 1, count)
 
 	if len(jobs) == 1 {
 		assert.Equal(t, 1425263429, jobs[0].FailedAt)
@@ -306,7 +309,8 @@ func TestClientDeadJobs(t *testing.T) {
 	}
 
 	// Test pagination a bit
-	jobs, err = client.DeadJobs(2)
+	jobs, count, err = client.DeadJobs(2)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(jobs))
+	assert.Equal(t, 1, count)
 }
