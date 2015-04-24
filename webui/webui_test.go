@@ -181,7 +181,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 	}
 }
 
-func TestWebUIRetryQueue(t *testing.T) {
+func TestWebUIRetryJobs(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -222,7 +222,82 @@ func TestWebUIRetryQueue(t *testing.T) {
 		assert.Equal(t, "wat", res.Jobs[0].Name)
 		assert.Equal(t, 1, res.Jobs[0].Fails)
 	}
+}
 
+func TestWebUIScheduledJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := work.NewEnqueuer(ns, pool)
+	err := enqueuer.EnqueueIn("watter", 1, 1, 2)
+	assert.Nil(t, err)
+
+	s := NewWebUIServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/scheduled_jobs", nil)
+	s.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var res struct {
+		Count int64
+		Jobs  []struct {
+			RunAt int64
+			Name  string `json:"name"`
+		}
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, res.Count)
+	assert.Equal(t, 1, len(res.Jobs))
+	if len(res.Jobs) == 1 {
+		assert.True(t, res.Jobs[0].RunAt > 0)
+		assert.Equal(t, "watter", res.Jobs[0].Name)
+	}
+}
+
+func TestWebUIDeadJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := work.NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", 1, 2)
+	assert.Nil(t, err)
+
+	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
+	wp.JobWithOptions("wat", work.JobOptions{Priority: 1, MaxFails: 0}, func(job *work.Job) error {
+		return fmt.Errorf("ohno")
+	})
+	wp.Start()
+	wp.Join()
+	wp.Stop()
+
+	s := NewWebUIServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/dead_jobs", nil)
+	s.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var res struct {
+		Count int64
+		Jobs  []struct {
+			DiedAt int64
+			Name   string `json:"name"`
+			Fails  int64  `json:"fails"`
+		}
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, res.Count)
+	assert.Equal(t, 1, len(res.Jobs))
+	if len(res.Jobs) == 1 {
+		assert.True(t, res.Jobs[0].DiedAt > 0)
+		assert.Equal(t, "wat", res.Jobs[0].Name)
+		assert.Equal(t, 1, res.Jobs[0].Fails)
+	}
 }
 
 func newTestPool(addr string) *redis.Pool {
