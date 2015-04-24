@@ -360,9 +360,28 @@ func (c *Client) DeleteDeadJob(job *DeadJob) error {
 	return nil
 }
 
-func (c *Client) RetryDeadJob(job DeadJob) error {
+func (c *Client) RetryDeadJob(job *DeadJob) error {
+	modifiedJob := *job
 
-	return nil
+	modifiedJob.Fails = 0
+	modifiedJob.FailedAt = 0
+	modifiedJob.LastErr = ""
+
+	rawJSON, err := modifiedJob.Serialize()
+	if err != nil {
+		logError("client.retry_dead_job.serialze", err)
+		return err
+	}
+
+	conn := c.pool.Get()
+	_, err = conn.Do("LPUSH", redisKeyJobsPrefix(c.namespace)+job.Name, rawJSON)
+	conn.Close()
+	if err != nil {
+		logError("client.retry_dead_job.lpush", err)
+		return err
+	}
+
+	return c.DeleteDeadJob(job)
 }
 
 // TODO: func RetryAllDeadJobs() error {}
