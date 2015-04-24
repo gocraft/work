@@ -51,6 +51,8 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 	router.Get("/retry_jobs", (*context).retryJobs)
 	router.Get("/scheduled_jobs", (*context).scheduledJobs)
 	router.Get("/dead_jobs", (*context).deadJobs)
+	router.Post("/delete_dead_job/:died_at:\\d.*/:job_id", (*context).deleteDeadJob)
+	router.Post("/retry_dead_job/:died_at:\\d.*/:job_id", (*context).retryDeadJob)
 
 	return server
 }
@@ -154,7 +156,42 @@ func (c *context) deadJobs(rw web.ResponseWriter, r *web.Request) {
 		Count int64
 		Jobs  []*work.DeadJob
 	}{Count: count, Jobs: jobs}
+	
 	render(rw, response, err)
+}
+
+func (c *context) deleteDeadJob(rw web.ResponseWriter, r *web.Request) {
+	diedAt, err := strconv.ParseInt(r.PathParams["died_at"], 10, 64)
+	if err != nil {
+		renderError(rw, err)
+		return
+	}
+	
+	job := &work.DeadJob{
+		DiedAt: diedAt,
+		Job: &work.Job{ID: r.PathParams["job_id"]},
+	}
+	
+	err = c.client.DeleteDeadJob(job)
+	
+	render(rw, map[string]string{"status": "ok"}, err)
+}
+
+func (c *context) retryDeadJob(rw web.ResponseWriter, r *web.Request) {
+	diedAt, err := strconv.ParseInt(r.PathParams["died_at"], 10, 64)
+	if err != nil {
+		renderError(rw, err)
+		return
+	}
+	
+	job := &work.DeadJob{
+		DiedAt: diedAt,
+		Job: &work.Job{ID: r.PathParams["job_id"]},
+	}
+	
+	err = c.client.RetryDeadJob(job)
+	
+	render(rw, map[string]string{"status": "ok"}, err)
 }
 
 func render(rw web.ResponseWriter, jsonable interface{}, err error) {
