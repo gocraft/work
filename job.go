@@ -2,7 +2,6 @@ package work
 
 import (
 	"encoding/json"
-	"reflect"
 )
 
 type Job struct {
@@ -24,23 +23,6 @@ type Job struct {
 
 type Q map[string]interface{}
 
-type jobType struct {
-	Name string
-	JobOptions
-
-	IsGeneric      bool
-	GenericHandler GenericHandler
-	DynamicHandler reflect.Value
-}
-
-type JobOptions struct {
-	Priority uint
-	MaxFails uint // 0: send straight to dead (unless SkipDead)
-	SkipDead bool //
-}
-
-type GenericHandler func(*Job) error
-
 func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	var job Job
 	err := json.Unmarshal(rawJSON, &job)
@@ -51,15 +33,6 @@ func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	job.dequeuedFrom = dequeuedFrom
 	job.inProgQueue = inProgQueue
 	return &job, nil
-}
-
-func newJobTypeGeneric(name string, opts JobOptions, handler GenericHandler) *jobType {
-	return &jobType{
-		Name:           name,
-		JobOptions:     opts,
-		IsGeneric:      true,
-		GenericHandler: handler,
-	}
 }
 
 func (j *Job) Serialize() ([]byte, error) {

@@ -23,17 +23,32 @@ type WorkerPool struct {
 	scheduler   *requeuer
 }
 
-// rename to NewPool?
+type jobType struct {
+	Name string
+	JobOptions
+
+	IsGeneric      bool
+	GenericHandler GenericHandler
+	DynamicHandler reflect.Value
+}
+
+type JobOptions struct {
+	Priority uint
+	MaxFails uint // 0: send straight to dead (unless SkipDead)
+	SkipDead bool //
+}
+
+type GenericHandler func(*Job) error
+
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
-	// todo: validate ctx
-	// todo: validate concurrency
-	workerPoolID := makeIdentifier()
+	ctxType := reflect.TypeOf(ctx)
+	validateContextType(ctxType)
 	wp := &WorkerPool{
-		workerPoolID: workerPoolID,
+		workerPoolID: makeIdentifier(),
 		concurrency:  concurrency,
 		namespace:    namespace,
 		pool:         pool,
-		contextType:  reflect.TypeOf(ctx),
+		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 	}
 
@@ -56,9 +71,11 @@ func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 // TODO: depending on how many JobOptions there are it might be good to explode the options
 // because it's super awkward for omitted Priority and MaxRetries to be zero-valued
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
+	vfn := reflect.ValueOf(fn)
+	validateHandlerType(wp.contextType, vfn)
 	jt := &jobType{
 		Name:           name,
-		DynamicHandler: reflect.ValueOf(fn),
+		DynamicHandler: vfn,
 		JobOptions:     jobOpts,
 	}
 	if gh, ok := fn.(func(*Job) error); ok {
@@ -154,4 +171,66 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	if err != nil {
 		logError("write_known_jobs", err)
 	}
+}
+
+func newJobTypeGeneric(name string, opts JobOptions, handler GenericHandler) *jobType {
+	return &jobType{
+		Name:           name,
+		JobOptions:     opts,
+		IsGeneric:      true,
+		GenericHandler: handler,
+	}
+}
+
+// validateContextType will panic if context is invalid
+func validateContextType(ctxType reflect.Type) {
+	if ctxType.Kind() != reflect.Struct {
+		panic("work: Context needs to be a struct type")
+	}
+}
+
+func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
+	if !isValidHandlerType(ctxType, vfn) {
+		panic("invalid handler passed") // TODO: write a nice message
+	}
+}
+
+func isValidHandlerType(ctxType reflect.Type, vfn reflect.Value) bool {
+	fnType := vfn.Type()
+
+	if fnType.Kind() != reflect.Func {
+		return false
+	}
+
+	numIn := fnType.NumIn()
+	numOut := fnType.NumOut()
+
+	if numOut != 1 {
+		return false
+	}
+
+	outType := fnType.Out(0)
+	var e *error
+
+	if outType != reflect.TypeOf(e).Elem() {
+		return false
+	}
+
+	var j *Job
+	if numIn == 1 {
+		if fnType.In(0) != reflect.TypeOf(j) {
+			return false
+		}
+	} else if numIn == 2 {
+		if fnType.In(0) != reflect.PtrTo(ctxType) {
+			return false
+		}
+		if fnType.In(1) != reflect.TypeOf(j) {
+			return false
+		}
+	} else {
+		return false
+	}
+
+	return true
 }

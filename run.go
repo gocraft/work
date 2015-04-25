@@ -1,6 +1,6 @@
 package work
 
-// runJob will
+// run Job will
 // returns an error if the job fails, or there's a panic, or we couldn't reflect correctly.
 // if we return an error, it signals we want the job to be retried.
 func runJob(job *Job, jt *jobType) error {
