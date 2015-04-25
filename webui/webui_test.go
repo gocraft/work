@@ -25,7 +25,7 @@ func TestWebUIStartStop(t *testing.T) {
 
 type TestContext struct{}
 
-func TestWebUIJobs(t *testing.T) {
+func TestWebUIQueues(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -264,6 +264,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 
 	enqueuer := work.NewEnqueuer(ns, pool)
 	err := enqueuer.Enqueue("wat", 1, 2)
+	err = enqueuer.Enqueue("wat", 2, 2)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
@@ -285,18 +286,62 @@ func TestWebUIDeadJobs(t *testing.T) {
 		Jobs  []struct {
 			DiedAt int64
 			Name   string `json:"name"`
+			ID     string `json:"id"`
 			Fails  int64  `json:"fails"`
 		}
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, res.Count)
-	assert.Equal(t, 1, len(res.Jobs))
-	if len(res.Jobs) == 1 {
+	assert.Equal(t, 2, res.Count)
+	assert.Equal(t, 2, len(res.Jobs))
+	var diedAt0, diedAt1 int64
+	var id0, id1 string
+	if len(res.Jobs) == 2 {
 		assert.True(t, res.Jobs[0].DiedAt > 0)
 		assert.Equal(t, "wat", res.Jobs[0].Name)
 		assert.Equal(t, 1, res.Jobs[0].Fails)
+
+		diedAt0, diedAt1 = res.Jobs[0].DiedAt, res.Jobs[1].DiedAt
+		id0, id1 = res.Jobs[0].ID, res.Jobs[1].ID
+	} else {
+		return
+	}
+
+	// Ok, now let's retry one and delete one.
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", fmt.Sprintf("/delete_dead_job/%d/%s", diedAt0, id0), nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", fmt.Sprintf("/retry_dead_job/%d/%s", diedAt1, id1), nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	// Make sure dead queue is empty
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, res.Count)
+
+	// Make sure the "wat" queue has 1 item in it
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/queues", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var queueRes []struct {
+		JobName string
+		Count   int64
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &queueRes)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(queueRes))
+	if len(queueRes) == 1 {
+		assert.Equal(t, "wat", queueRes[0].JobName)
 	}
 }
 
