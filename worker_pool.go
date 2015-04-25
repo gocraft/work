@@ -16,6 +16,7 @@ type WorkerPool struct {
 
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
+	middleware  []*middlewareHandler
 
 	workers     []*worker
 	heartbeater *workerPoolHeartbeater
@@ -39,6 +40,14 @@ type JobOptions struct {
 }
 
 type GenericHandler func(*Job) error
+type GenericMiddlewareHandler func(*Job, NextMiddlewareFunc) error
+type NextMiddlewareFunc func() error
+
+type middlewareHandler struct {
+	IsGeneric                bool
+	DynamicMiddleware        reflect.Value
+	GenericMiddlewareHandler GenericMiddlewareHandler
+}
 
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
 	ctxType := reflect.TypeOf(ctx)
@@ -60,7 +69,21 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 	return wp
 }
 
-func (wp *WorkerPool) Middleware() *WorkerPool {
+func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
+	vfn := reflect.ValueOf(fn)
+	validateMiddlewareType(wp.contextType, vfn)
+
+	mw := &middlewareHandler{
+		DynamicMiddleware: vfn,
+	}
+
+	if gmh, ok := fn.(func(*Job, NextMiddlewareFunc) error); ok {
+		mw.IsGeneric = true
+		mw.GenericMiddlewareHandler = gmh
+	}
+
+	wp.middleware = append(wp.middleware, mw)
+
 	return wp
 }
 
@@ -195,6 +218,12 @@ func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
 	}
 }
 
+func validateMiddlewareType(ctxType reflect.Type, vfn reflect.Value) {
+	if !isValidMiddlewareType(ctxType, vfn) {
+		panic("invalid middleware passed") // TODO: write a nice message
+	}
+}
+
 func isValidHandlerType(ctxType reflect.Type, vfn reflect.Value) bool {
 	fnType := vfn.Type()
 
@@ -226,6 +255,53 @@ func isValidHandlerType(ctxType reflect.Type, vfn reflect.Value) bool {
 			return false
 		}
 		if fnType.In(1) != reflect.TypeOf(j) {
+			return false
+		}
+	} else {
+		return false
+	}
+
+	return true
+}
+
+func isValidMiddlewareType(ctxType reflect.Type, vfn reflect.Value) bool {
+	fnType := vfn.Type()
+
+	if fnType.Kind() != reflect.Func {
+		return false
+	}
+
+	numIn := fnType.NumIn()
+	numOut := fnType.NumOut()
+
+	if numOut != 1 {
+		return false
+	}
+
+	outType := fnType.Out(0)
+	var e *error
+
+	if outType != reflect.TypeOf(e).Elem() {
+		return false
+	}
+
+	var j *Job
+	var nfn NextMiddlewareFunc
+	if numIn == 2 {
+		if fnType.In(0) != reflect.TypeOf(j) {
+			return false
+		}
+		if fnType.In(1) != reflect.TypeOf(nfn) {
+			return false
+		}
+	} else if numIn == 3 {
+		if fnType.In(0) != reflect.PtrTo(ctxType) {
+			return false
+		}
+		if fnType.In(1) != reflect.TypeOf(j) {
+			return false
+		}
+		if fnType.In(2) != reflect.TypeOf(nfn) {
 			return false
 		}
 	} else {
