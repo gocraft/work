@@ -16,7 +16,7 @@ func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 	return &Enqueuer{Namespace: namespace, Pool: pool, queuePrefix: redisKeyJobsPrefix(namespace)}
 }
 
-func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
+func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) error {
 	job := &Job{
 		Name:       jobName,
 		ID:         makeIdentifier(),
@@ -41,7 +41,7 @@ func (e *Enqueuer) Enqueue(jobName string, args ...interface{}) error {
 	return nil
 }
 
-func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args ...interface{}) error {
+func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[string]interface{}) error {
 	job := &Job{
 		Name:       jobName,
 		ID:         makeIdentifier(),

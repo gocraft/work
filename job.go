@@ -7,10 +7,10 @@ import (
 
 type Job struct {
 	// Inputs when makin a new job
-	Name       string        `json:"name,omitempty"`
-	ID         string        `json:"id"`
-	EnqueuedAt int64         `json:"t"`
-	Args       []interface{} `json:"args"`
+	Name       string                 `json:"name,omitempty"`
+	ID         string                 `json:"id"`
+	EnqueuedAt int64                  `json:"t"`
+	Args       map[string]interface{} `json:"args"`
 
 	// Inputs when retrying
 	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed
@@ -21,6 +21,8 @@ type Job struct {
 	dequeuedFrom []byte
 	inProgQueue  []byte
 }
+
+type Q map[string]interface{}
 
 type jobType struct {
 	Name string

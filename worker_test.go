@@ -28,7 +28,7 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
-			arg1 = job.Args[0].(float64)
+			arg1 = job.Args["a"].(float64)
 			return nil
 		},
 	}
@@ -37,7 +37,7 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
-			arg2 = job.Args[0].(float64)
+			arg2 = job.Args["a"].(float64)
 			return nil
 		},
 	}
@@ -46,17 +46,17 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
-			arg3 = job.Args[0].(float64)
+			arg3 = job.Args["a"].(float64)
 			return nil
 		},
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, 1)
+	err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job2, 2)
+	err = enqueuer.Enqueue(job2, Q{"a": 2})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job3, 3)
+	err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, pool, jobTypes)
@@ -105,7 +105,7 @@ func TestWorkerInProgress(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, 1)
+	err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, pool, jobTypes)
@@ -121,7 +121,7 @@ func TestWorkerInProgress(t *testing.T) {
 	w.observer.join()
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
-	assert.Equal(t, `[1]`, h["args"])
+	assert.Equal(t, `{"a":1}`, h["args"])
 	// NOTE: we could check for job_id and started_at, but it's a PITA and it's tested in observer_test.
 
 	w.join()
@@ -154,7 +154,7 @@ func TestWorkerRetry(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, 1)
+	err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
 	w.start()
@@ -208,9 +208,9 @@ func TestWorkerDead(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, 1)
+	err := enqueuer.Enqueue(job1, nil)
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job2, 2)
+	err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
 	w := newWorker(ns, pool, jobTypes)
 	w.start()

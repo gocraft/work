@@ -19,15 +19,15 @@ func TestRequeue(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.EnqueueIn("wat", -9, 1, "wart")
+	err := enqueuer.EnqueueIn("wat", -9, nil)
 	assert.NoError(t, err)
-	err = enqueuer.EnqueueIn("wat", -9, 2)
+	err = enqueuer.EnqueueIn("wat", -9, nil)
 	assert.NoError(t, err)
-	err = enqueuer.EnqueueIn("foo", 10, 2)
+	err = enqueuer.EnqueueIn("foo", 10, nil)
 	assert.NoError(t, err)
-	err = enqueuer.EnqueueIn("foo", 14, 2)
+	err = enqueuer.EnqueueIn("foo", 14, nil)
 	assert.NoError(t, err)
-	err = enqueuer.EnqueueIn("bar", 19, 2)
+	err = enqueuer.EnqueueIn("bar", 19, nil)
 	assert.NoError(t, err)
 
 	resetNowEpochSecondsMock()
@@ -62,7 +62,7 @@ func TestRequeueUnknown(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.EnqueueIn("wat", -9, 1, "wart")
+	err := enqueuer.EnqueueIn("wat", -9, nil)
 	assert.NoError(t, err)
 
 	nowish := nowEpochSeconds()

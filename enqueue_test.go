@@ -13,7 +13,7 @@ import (
 func TestEnqueue(t *testing.T) {
 	pool := newTestPool(":6379")
 	enqueuer := NewEnqueuer("work", pool)
-	err := enqueuer.Enqueue("wat", 1, "cool")
+	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
 
 	assert.Nil(t, err)
 

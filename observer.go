@@ -49,7 +49,7 @@ type observation struct {
 
 	// These need to be set when starting a job
 	startedAt int64
-	arguments []interface{}
+	arguments map[string]interface{}
 
 	// If we're done w/ the job, err will indicate the success/failure of it
 	err error // nil: success. not nil: the error we got when running the job
@@ -90,7 +90,7 @@ func (o *observer) join() {
 	<-o.doneJoiningChan
 }
 
-func (o *observer) observeStarted(jobName, jobID string, arguments []interface{}) {
+func (o *observer) observeStarted(jobName, jobID string, arguments map[string]interface{}) {
 	o.observationsChan <- &observation{
 		kind:      observationKindStarted,
 		jobName:   jobName,

@@ -32,10 +32,10 @@ func TestWebUIQueues(t *testing.T) {
 
 	// Get some stuff to to show up in the jobs:
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
+	err := enqueuer.Enqueue("wat", nil)
 	assert.NoError(t, err)
-	enqueuer.Enqueue("foo", 3, 4)
-	enqueuer.Enqueue("zaz", 3, 4)
+	enqueuer.Enqueue("foo", nil)
+	enqueuer.Enqueue("zaz", nil)
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
@@ -54,12 +54,12 @@ func TestWebUIQueues(t *testing.T) {
 	wp.Stop()
 
 	// Now that we have the jobs, populate some queues
-	enqueuer.Enqueue("wat", 1, 2)
-	enqueuer.Enqueue("wat", 1, 2)
-	enqueuer.Enqueue("wat", 1, 2)
-	enqueuer.Enqueue("foo", 3, 4)
-	enqueuer.Enqueue("foo", 3, 4)
-	enqueuer.Enqueue("zaz", 3, 4)
+	enqueuer.Enqueue("wat", nil)
+	enqueuer.Enqueue("wat", nil)
+	enqueuer.Enqueue("wat", nil)
+	enqueuer.Enqueue("foo", nil)
+	enqueuer.Enqueue("foo", nil)
+	enqueuer.Enqueue("zaz", nil)
 
 	s := NewServer(ns, pool, ":6666")
 
@@ -160,7 +160,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 
 	// Ok, now let's make a busy worker
 	enqueuer := work.NewEnqueuer(ns, pool)
-	enqueuer.Enqueue("wat", 1, 2)
+	enqueuer.Enqueue("wat", nil)
 	wgroup2.Wait()
 	time.Sleep(5 * time.Millisecond) // need to let obsever process
 
@@ -187,7 +187,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
+	err := enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
@@ -230,7 +230,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.EnqueueIn("watter", 1, 1, 2)
+	err := enqueuer.EnqueueIn("watter", 1, nil)
 	assert.Nil(t, err)
 
 	s := NewServer(ns, pool, ":6666")
@@ -263,8 +263,8 @@ func TestWebUIDeadJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
-	err = enqueuer.Enqueue("wat", 2, 2)
+	err := enqueuer.Enqueue("wat", nil)
+	err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)

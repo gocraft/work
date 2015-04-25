@@ -68,9 +68,9 @@ func TestClientWorkerObservations(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
+	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue("foo", 3, 4)
+	err = enqueuer.Enqueue("foo", Q{"a": 3, "b": 4})
 	assert.Nil(t, err)
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
@@ -97,13 +97,13 @@ func TestClientWorkerObservations(t *testing.T) {
 		if ob.JobName == "foo" {
 			fooCount++
 			assert.True(t, ob.IsBusy)
-			assert.Equal(t, "[3,4]", ob.ArgsJSON)
+			assert.Equal(t, `{"a":3,"b":4}`, ob.ArgsJSON)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
 			assert.True(t, ob.JobID != "")
 		} else if ob.JobName == "wat" {
 			watCount++
 			assert.True(t, ob.IsBusy)
-			assert.Equal(t, "[1,2]", ob.ArgsJSON)
+			assert.Equal(t, `{"a":1,"b":2}`, ob.ArgsJSON)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
 			assert.True(t, ob.JobID != "")
 		} else {
@@ -137,9 +137,9 @@ func TestClientQueues(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
-	err = enqueuer.Enqueue("foo", 3, 4)
-	err = enqueuer.Enqueue("zaz", 3, 4)
+	err := enqueuer.Enqueue("wat", nil)
+	err = enqueuer.Enqueue("foo", nil)
+	err = enqueuer.Enqueue("zaz", nil)
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
@@ -159,11 +159,11 @@ func TestClientQueues(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263409)
 	defer resetNowEpochSecondsMock()
-	err = enqueuer.Enqueue("foo", 3, 4)
+	err = enqueuer.Enqueue("foo", nil)
 	setNowEpochSecondsMock(1425263509)
-	err = enqueuer.Enqueue("foo", 3, 4)
+	err = enqueuer.Enqueue("foo", nil)
 	setNowEpochSecondsMock(1425263609)
-	err = enqueuer.Enqueue("wat", 3, 4)
+	err = enqueuer.Enqueue("wat", nil)
 
 	setNowEpochSecondsMock(1425263709)
 	client := NewClient(ns, pool)
@@ -191,9 +191,9 @@ func TestClientScheduledJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263409)
 	defer resetNowEpochSecondsMock()
-	err := enqueuer.EnqueueIn("wat", 0, 1, 2)
-	err = enqueuer.EnqueueIn("zaz", 4, 3, 4)
-	err = enqueuer.EnqueueIn("foo", 2, 3, 4)
+	err := enqueuer.EnqueueIn("wat", 0, Q{"a": 1, "b": 2})
+	err = enqueuer.EnqueueIn("zaz", 4, Q{"a": 3, "b": 4})
+	err = enqueuer.EnqueueIn("foo", 2, Q{"a": 3, "b": 4})
 
 	client := NewClient(ns, pool)
 	jobs, count, err := client.ScheduledJobs(1)
@@ -213,8 +213,8 @@ func TestClientScheduledJobs(t *testing.T) {
 		assert.Equal(t, 1425263409, jobs[1].EnqueuedAt)
 		assert.Equal(t, 1425263409, jobs[2].EnqueuedAt)
 
-		assert.Equal(t, interface{}(1), jobs[0].Args[0])
-		assert.Equal(t, interface{}(2), jobs[0].Args[1])
+		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
+		assert.Equal(t, interface{}(2), jobs[0].Args["b"])
 
 		assert.Equal(t, 0, jobs[0].Fails)
 		assert.Equal(t, 0, jobs[1].Fails)
@@ -239,7 +239,7 @@ func TestClientRetryJobs(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
+	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
 
 	setNowEpochSecondsMock(1425263429)
@@ -262,7 +262,7 @@ func TestClientRetryJobs(t *testing.T) {
 		assert.Equal(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.Equal(t, interface{}(1), jobs[0].Args[0])
+		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
 		assert.Equal(t, 1, jobs[0].Fails)
 		assert.Equal(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)
@@ -278,7 +278,7 @@ func TestClientDeadJobs(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", 1, 2)
+	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
 
 	setNowEpochSecondsMock(1425263429)
@@ -302,7 +302,7 @@ func TestClientDeadJobs(t *testing.T) {
 		assert.Equal(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.Equal(t, interface{}(1), jobs[0].Args[0])
+		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
 		assert.Equal(t, 1, jobs[0].Fails)
 		assert.Equal(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)

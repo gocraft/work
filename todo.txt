@@ -32,13 +32,14 @@ NOMENCLATURE
 TODO
 ----
  - Do I have a thing that rescues :inprogress shit?
+ - dont removing from :inprogress if queue onto dead/retry fails
  - Enqueue should cache job names. If it's a new job name, sadd it
  - jobs API -- better json (not JobName, job_name)
  - if a worker pool dies, we need a way to clean up its entry in the set
  - middleware
+ - context
  - checkin stuff
- - enqueue should be map based, not arity based.
- - signals for the webui
+ - rescue panics
  
  - In order to actually use this:
    - core:
