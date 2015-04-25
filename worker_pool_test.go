@@ -9,9 +9,9 @@ import (
 
 type tstCtx struct{}
 
-func TestWorkerPoolHandlerValidations(t *testing.T) {
-	ctxType := reflect.TypeOf(tstCtx{})
+var tstCtxType = reflect.TypeOf(tstCtx{})
 
+func TestWorkerPoolHandlerValidations(t *testing.T) {
 	var cases = []struct {
 		fn   interface{}
 		good bool
@@ -28,7 +28,7 @@ func TestWorkerPoolHandlerValidations(t *testing.T) {
 	}
 
 	for i, testCase := range cases {
-		r := isValidHandlerType(ctxType, reflect.ValueOf(testCase.fn))
+		r := isValidHandlerType(tstCtxType, reflect.ValueOf(testCase.fn))
 		if testCase.good != r {
 			t.Errorf("idx %d: should return %v but returned %v", i, testCase.good, r)
 		}

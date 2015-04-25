@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"math/rand"
+	"reflect"
 	"time"
 )
 
 type worker struct {
-	workerID  string
-	namespace string // eg, "myapp-work"
-	pool      *redis.Pool
-	jobTypes  map[string]*jobType
+	workerID    string
+	namespace   string // eg, "myapp-work"
+	pool        *redis.Pool
+	jobTypes    map[string]*jobType
+	contextType reflect.Type
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
@@ -24,14 +26,15 @@ type worker struct {
 	doneJoiningChan chan struct{}
 }
 
-func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType, contextType reflect.Type) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
 	w := &worker{
-		workerID:  workerID,
-		namespace: namespace,
-		pool:      pool,
+		workerID:    workerID,
+		namespace:   namespace,
+		pool:        pool,
+		contextType: contextType,
 
 		observer: ob,
 
