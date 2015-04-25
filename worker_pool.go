@@ -62,7 +62,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.pool, wp.jobTypes, wp.contextType)
+		w := newWorker(wp.namespace, wp.pool, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)
 	}
 
@@ -83,6 +83,10 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	}
 
 	wp.middleware = append(wp.middleware, mw)
+
+	for _, w := range wp.workers {
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
+	}
 
 	return wp
 }
@@ -109,7 +113,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	wp.jobTypes[name] = jt
 
 	for _, w := range wp.workers {
-		w.updateJobTypes(wp.jobTypes)
+		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
 	}
 
 	return wp

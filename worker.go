@@ -13,6 +13,7 @@ type worker struct {
 	namespace   string // eg, "myapp-work"
 	pool        *redis.Pool
 	jobTypes    map[string]*jobType
+	middleware  []*middlewareHandler
 	contextType reflect.Type
 
 	redisFetchScript *redis.Script
@@ -26,7 +27,7 @@ type worker struct {
 	doneJoiningChan chan struct{}
 }
 
-func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType, contextType reflect.Type) *worker {
+func newWorker(namespace string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
@@ -45,13 +46,14 @@ func newWorker(namespace string, pool *redis.Pool, jobTypes map[string]*jobType,
 		doneJoiningChan: make(chan struct{}),
 	}
 
-	w.updateJobTypes(jobTypes)
+	w.updateMiddlewareAndJobTypes(middleware, jobTypes)
 
 	return w
 }
 
 // note: can't be called while the thing is started
-func (w *worker) updateJobTypes(jobTypes map[string]*jobType) {
+func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType) {
+	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
 		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, jt.Name))
