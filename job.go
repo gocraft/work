@@ -39,6 +39,13 @@ func (j *Job) Serialize() ([]byte, error) {
 	return json.Marshal(j)
 }
 
+func (j *Job) SetArg(key string, val interface{}) {
+	if j.Args == nil {
+		j.Args = make(map[string]interface{})
+	}
+	j.Args[key] = val
+}
+
 func (j *Job) failed(err error) {
 	j.Fails++ // todo: factor into job.failed(runErr)
 	j.LastErr = err.Error()

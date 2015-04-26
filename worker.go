@@ -176,7 +176,7 @@ func (w *worker) processJob(job *Job) {
 	//fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		w.observeStarted(job.Name, job.ID, job.Args)
-		runErr := runJob(job, jt)
+		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
 			job.failed(runErr)

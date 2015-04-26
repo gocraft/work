@@ -3,11 +3,19 @@ package work
 import (
 	// "fmt"
 	// "github.com/stretchr/testify/assert"
+	"bytes"
 	"reflect"
 	"testing"
 )
 
-type tstCtx struct{}
+type tstCtx struct {
+	a int
+	bytes.Buffer
+}
+
+func (c *tstCtx) record(s string) {
+	_, _ = c.WriteString(s)
+}
 
 var tstCtxType = reflect.TypeOf(tstCtx{})
 
