@@ -31,20 +31,17 @@ NOMENCLATURE
 
 TODO
 ----
+ - add some more tests for runJob that test errors
+ - if a worker pool dies, we need a way to clean up its entry in the set
  - Do I have a thing that rescues :inprogress shit?
  - dont removing from :inprogress if queue onto dead/retry fails
  - Enqueue should cache job names. If it's a new job name, sadd it
  - jobs API -- better json (not JobName, job_name)
- - if a worker pool dies, we need a way to clean up its entry in the set
- - middleware
- - context
+
  - checkin stuff
  - rescue panics
  
  - In order to actually use this:
-   - core:
-     - middleware
-     - 
    - metroid_worker
      - suck in all the settings, config
      - mysql, redis connections
@@ -52,6 +49,8 @@ TODO
      - signals to start, stop
      - deploy.
  
+ - benchmarks for runJob
+ - investigate changing runJob to use a shared context, and zero'ing it's value each time
  - If we have a lot of workers, we're facing a LOT of redis calls to get all of the status.
    - possible sol'n: don't use redis hashes, just use json. Then it's just a single multiget
  - write better tests for Enqueue and EnqueueIn
