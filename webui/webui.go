@@ -33,7 +33,7 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 		pool:      pool,
 		client:    work.NewClient(namespace, pool),
 		hostPort:  hostPort,
-		server:    manners.NewServer(),
+		server:    manners.NewWithServer(&http.Server{Addr: hostPort, Handler: router}),
 		router:    router,
 	}
 
@@ -60,13 +60,13 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 func (w *WebUIServer) Start() {
 	w.wg.Add(1)
 	go func(w *WebUIServer) {
-		w.server.ListenAndServe(w.hostPort, w.router)
+		w.server.ListenAndServe()
 		w.wg.Done()
 	}(w)
 }
 
 func (w *WebUIServer) Stop() {
-	w.server.Shutdown <- true
+	w.server.Close()
 	w.wg.Wait()
 }
 
