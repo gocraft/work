@@ -2,19 +2,19 @@ package main
 
 import (
 	"fmt"
-	"runtime"
-	"time"
-	"github.com/gocraft/work"
-	"github.com/gocraft/health"
 	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/health"
+	"github.com/gocraft/work"
 	"os"
+	"runtime"
 	"sync/atomic"
+	"time"
 )
 
 var namespace = "bench_test"
 var pool = newPool(":6379")
 
-type Context struct {}
+type Context struct{}
 
 func epsilonHandler(job *work.Job) error {
 	//fmt.Println("hi")
@@ -26,35 +26,36 @@ func epsilonHandler(job *work.Job) error {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	
+
 	stream := health.NewStream().AddSink(&health.WriterSink{os.Stdout})
 	cleanKeyspace()
-	
+
 	numJobs := 10
 	jobNames := []string{}
-	
+
 	for i := 0; i < numJobs; i++ {
 		jobNames = append(jobNames, fmt.Sprintf("job%d", i))
 	}
-	
+
 	job := stream.NewJob("enqueue_all")
 	enqueueJobs(jobNames, 10000)
 	job.Complete(health.Success)
-	
+
 	workerPool := work.NewWorkerPool(Context{}, 20, namespace, pool)
 	for _, jobName := range jobNames {
 		workerPool.Job(jobName, epsilonHandler)
 	}
 	go monitor()
-	
+
 	job = stream.NewJob("run_all")
 	workerPool.Start()
 	workerPool.Join()
 	job.Complete(health.Success)
-	select{}
+	select {}
 }
 
 var totcount int64
+
 func monitor() {
 	t := time.Tick(1 * time.Second)
 
@@ -89,7 +90,7 @@ func enqueueJobs(jobs []string, count int) {
 	enq := work.NewEnqueuer(namespace, pool)
 	for _, jobName := range jobs {
 		for i := 0; i < count; i++ {
-			enq.Enqueue(jobName, i)
+			enq.Enqueue(jobName, work.Q{"i": i})
 		}
 	}
 }
@@ -97,7 +98,7 @@ func enqueueJobs(jobs []string, count int) {
 func cleanKeyspace() {
 	conn := pool.Get()
 	defer conn.Close()
-	
+
 	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
 	if err != nil {
 		panic("could not get keys: " + err.Error())
