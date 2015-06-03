@@ -37,10 +37,10 @@ func TestRequeue(t *testing.T) {
 	re.drain()
 	re.stop()
 
-	assert.Equal(t, 2, listSize(pool, redisKeyJobs(ns, "wat")))
-	assert.Equal(t, 1, listSize(pool, redisKeyJobs(ns, "foo")))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, "bar")))
-	assert.Equal(t, 2, zsetSize(pool, redisKeyScheduled(ns)))
+	assert.EqualValues(t, 2, listSize(pool, redisKeyJobs(ns, "wat")))
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobs(ns, "foo")))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, "bar")))
+	assert.EqualValues(t, 2, zsetSize(pool, redisKeyScheduled(ns)))
 
 	j := jobOnQueue(pool, redisKeyJobs(ns, "foo"))
 	assert.Equal(t, j.Name, "foo")
@@ -73,8 +73,8 @@ func TestRequeueUnknown(t *testing.T) {
 	re.drain()
 	re.stop()
 
-	assert.Equal(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
-	assert.Equal(t, 1, zsetSize(pool, redisKeyDead(ns)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
+	assert.EqualValues(t, 1, zsetSize(pool, redisKeyDead(ns)))
 
 	rank, job := jobOnZset(pool, redisKeyDead(ns))
 

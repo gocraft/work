@@ -31,7 +31,7 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 
 	hbs, err := client.WorkerPoolHeartbeats()
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(hbs))
+	assert.EqualValues(t, 2, len(hbs))
 	if len(hbs) == 2 {
 		var hbwp, hbwp2 *WorkerPoolHeartbeat
 
@@ -44,12 +44,12 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 		}
 
 		assert.Equal(t, wp.workerPoolID, hbwp.WorkerPoolID)
-		assert.Equal(t, uint(10), hbwp.Concurrency)
+		assert.EqualValues(t, uint(10), hbwp.Concurrency)
 		assert.Equal(t, []string{"bob", "wat"}, hbwp.JobNames)
 		assert.Equal(t, wp.workerIDs(), hbwp.WorkerIDs)
 
 		assert.Equal(t, wp2.workerPoolID, hbwp2.WorkerPoolID)
-		assert.Equal(t, uint(11), hbwp2.Concurrency)
+		assert.EqualValues(t, uint(11), hbwp2.Concurrency)
 		assert.Equal(t, []string{"bar", "foo"}, hbwp2.JobNames)
 		assert.Equal(t, wp2.workerIDs(), hbwp2.WorkerIDs)
 	}
@@ -172,14 +172,14 @@ func TestClientQueues(t *testing.T) {
 
 	assert.Equal(t, 3, len(queues))
 	assert.Equal(t, "foo", queues[0].JobName)
-	assert.Equal(t, 2, queues[0].Count)
-	assert.Equal(t, 300, queues[0].Latency)
+	assert.EqualValues(t, 2, queues[0].Count)
+	assert.EqualValues(t, 300, queues[0].Latency)
 	assert.Equal(t, "wat", queues[1].JobName)
-	assert.Equal(t, 1, queues[1].Count)
-	assert.Equal(t, 100, queues[1].Latency)
+	assert.EqualValues(t, 1, queues[1].Count)
+	assert.EqualValues(t, 100, queues[1].Latency)
 	assert.Equal(t, "zaz", queues[2].JobName)
-	assert.Equal(t, 0, queues[2].Count)
-	assert.Equal(t, 0, queues[2].Latency)
+	assert.EqualValues(t, 0, queues[2].Count)
+	assert.EqualValues(t, 0, queues[2].Latency)
 }
 
 func TestClientScheduledJobs(t *testing.T) {
@@ -199,30 +199,30 @@ func TestClientScheduledJobs(t *testing.T) {
 	jobs, count, err := client.ScheduledJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobs))
-	assert.Equal(t, 3, count)
+	assert.EqualValues(t, 3, count)
 	if len(jobs) == 3 {
-		assert.Equal(t, 1425263409, jobs[0].RunAt)
-		assert.Equal(t, 1425263411, jobs[1].RunAt)
-		assert.Equal(t, 1425263413, jobs[2].RunAt)
+		assert.EqualValues(t, 1425263409, jobs[0].RunAt)
+		assert.EqualValues(t, 1425263411, jobs[1].RunAt)
+		assert.EqualValues(t, 1425263413, jobs[2].RunAt)
 
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.Equal(t, "foo", jobs[1].Name)
 		assert.Equal(t, "zaz", jobs[2].Name)
 
-		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.Equal(t, 1425263409, jobs[1].EnqueuedAt)
-		assert.Equal(t, 1425263409, jobs[2].EnqueuedAt)
+		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
+		assert.EqualValues(t, 1425263409, jobs[1].EnqueuedAt)
+		assert.EqualValues(t, 1425263409, jobs[2].EnqueuedAt)
 
-		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
-		assert.Equal(t, interface{}(2), jobs[0].Args["b"])
+		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
+		assert.EqualValues(t, interface{}(2), jobs[0].Args["b"])
 
-		assert.Equal(t, 0, jobs[0].Fails)
-		assert.Equal(t, 0, jobs[1].Fails)
-		assert.Equal(t, 0, jobs[2].Fails)
+		assert.EqualValues(t, 0, jobs[0].Fails)
+		assert.EqualValues(t, 0, jobs[1].Fails)
+		assert.EqualValues(t, 0, jobs[2].Fails)
 
-		assert.Equal(t, 0, jobs[0].FailedAt)
-		assert.Equal(t, 0, jobs[1].FailedAt)
-		assert.Equal(t, 0, jobs[2].FailedAt)
+		assert.EqualValues(t, 0, jobs[0].FailedAt)
+		assert.EqualValues(t, 0, jobs[1].FailedAt)
+		assert.EqualValues(t, 0, jobs[2].FailedAt)
 
 		assert.Equal(t, "", jobs[0].LastErr)
 		assert.Equal(t, "", jobs[1].LastErr)
@@ -256,15 +256,15 @@ func TestClientRetryJobs(t *testing.T) {
 	jobs, count, err := client.RetryJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
-	assert.Equal(t, 1, count)
+	assert.EqualValues(t, 1, count)
 
 	if len(jobs) == 1 {
-		assert.Equal(t, 1425263429, jobs[0].FailedAt)
+		assert.EqualValues(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
-		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
-		assert.Equal(t, 1, jobs[0].Fails)
-		assert.Equal(t, 1425263429, jobs[0].Job.FailedAt)
+		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
+		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
+		assert.EqualValues(t, 1, jobs[0].Fails)
+		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)
 	}
 }
@@ -295,16 +295,16 @@ func TestClientDeadJobs(t *testing.T) {
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
-	assert.Equal(t, 1, count)
+	assert.EqualValues(t, 1, count)
 
 	deadJob := jobs[0]
 	if len(jobs) == 1 {
-		assert.Equal(t, 1425263429, jobs[0].FailedAt)
+		assert.EqualValues(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
-		assert.Equal(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.Equal(t, interface{}(1), jobs[0].Args["a"])
-		assert.Equal(t, 1, jobs[0].Fails)
-		assert.Equal(t, 1425263429, jobs[0].Job.FailedAt)
+		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
+		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
+		assert.EqualValues(t, 1, jobs[0].Fails)
+		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)
 	}
 
@@ -312,7 +312,7 @@ func TestClientDeadJobs(t *testing.T) {
 	jobs, count, err = client.DeadJobs(2)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(jobs))
-	assert.Equal(t, 1, count)
+	assert.EqualValues(t, 1, count)
 
 	// Delete it!
 	err = client.DeleteDeadJob(deadJob)
@@ -321,7 +321,7 @@ func TestClientDeadJobs(t *testing.T) {
 	jobs, count, err = client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(jobs))
-	assert.Equal(t, 0, count)
+	assert.EqualValues(t, 0, count)
 }
 
 func TestClientDeleteDeadJob(t *testing.T) {
@@ -339,7 +339,7 @@ func TestClientDeleteDeadJob(t *testing.T) {
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(jobs))
-	assert.Equal(t, 4, count)
+	assert.EqualValues(t, 4, count)
 
 	tot := count
 	for _, j := range jobs {
@@ -367,8 +367,8 @@ func TestClientRetryDeadJob(t *testing.T) {
 	client := NewClient(ns, pool)
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(jobs))
-	assert.Equal(t, 4, count)
+	assert.EqualValues(t, 4, len(jobs))
+	assert.EqualValues(t, 4, count)
 
 	tot := count
 	for _, j := range jobs {
@@ -383,30 +383,30 @@ func TestClientRetryDeadJob(t *testing.T) {
 	job1 := getQueuedJob(ns, pool, "wat1")
 	assert.NotNil(t, job1)
 	assert.Equal(t, "wat1", job1.Name)
-	assert.Equal(t, 0, job1.Fails)
+	assert.EqualValues(t, 0, job1.Fails)
 	assert.Equal(t, "", job1.LastErr)
-	assert.Equal(t, 0, job1.FailedAt)
+	assert.EqualValues(t, 0, job1.FailedAt)
 
 	job1 = getQueuedJob(ns, pool, "wat2")
 	assert.NotNil(t, job1)
 	assert.Equal(t, "wat2", job1.Name)
-	assert.Equal(t, 0, job1.Fails)
+	assert.EqualValues(t, 0, job1.Fails)
 	assert.Equal(t, "", job1.LastErr)
-	assert.Equal(t, 0, job1.FailedAt)
+	assert.EqualValues(t, 0, job1.FailedAt)
 
 	job1 = getQueuedJob(ns, pool, "wat3")
 	assert.NotNil(t, job1)
 	assert.Equal(t, "wat3", job1.Name)
-	assert.Equal(t, 0, job1.Fails)
+	assert.EqualValues(t, 0, job1.Fails)
 	assert.Equal(t, "", job1.LastErr)
-	assert.Equal(t, 0, job1.FailedAt)
+	assert.EqualValues(t, 0, job1.FailedAt)
 
 	job1 = getQueuedJob(ns, pool, "wat4")
 	assert.NotNil(t, job1)
 	assert.Equal(t, "wat4", job1.Name)
-	assert.Equal(t, 0, job1.Fails)
+	assert.EqualValues(t, 0, job1.Fails)
 	assert.Equal(t, "", job1.LastErr)
-	assert.Equal(t, 0, job1.FailedAt)
+	assert.EqualValues(t, 0, job1.FailedAt)
 }
 
 func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {

@@ -77,8 +77,8 @@ func TestWebUIQueues(t *testing.T) {
 	foomap, ok := res[0].(map[string]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, "foo", foomap["JobName"])
-	assert.Equal(t, 2, foomap["Count"])
-	assert.Equal(t, 0, foomap["Latency"])
+	assert.EqualValues(t, 2, foomap["Count"])
+	assert.EqualValues(t, 0, foomap["Latency"])
 }
 
 func TestWebUIWorkerPools(t *testing.T) {
@@ -215,12 +215,12 @@ func TestWebUIRetryJobs(t *testing.T) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, res.Count)
+	assert.EqualValues(t, 1, res.Count)
 	assert.Equal(t, 1, len(res.Jobs))
 	if len(res.Jobs) == 1 {
 		assert.True(t, res.Jobs[0].RetryAt > 0)
 		assert.Equal(t, "wat", res.Jobs[0].Name)
-		assert.Equal(t, 1, res.Jobs[0].Fails)
+		assert.EqualValues(t, 1, res.Jobs[0].Fails)
 	}
 }
 
@@ -249,7 +249,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, res.Count)
+	assert.EqualValues(t, 1, res.Count)
 	assert.Equal(t, 1, len(res.Jobs))
 	if len(res.Jobs) == 1 {
 		assert.True(t, res.Jobs[0].RunAt > 0)
@@ -293,14 +293,14 @@ func TestWebUIDeadJobs(t *testing.T) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 2, res.Count)
+	assert.EqualValues(t, 2, res.Count)
 	assert.Equal(t, 2, len(res.Jobs))
 	var diedAt0, diedAt1 int64
 	var id0, id1 string
 	if len(res.Jobs) == 2 {
 		assert.True(t, res.Jobs[0].DiedAt > 0)
 		assert.Equal(t, "wat", res.Jobs[0].Name)
-		assert.Equal(t, 1, res.Jobs[0].Fails)
+		assert.EqualValues(t, 1, res.Jobs[0].Fails)
 
 		diedAt0, diedAt1 = res.Jobs[0].DiedAt, res.Jobs[1].DiedAt
 		id0, id1 = res.Jobs[0].ID, res.Jobs[1].ID
@@ -326,7 +326,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 	assert.Equal(t, 200, recorder.Code)
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, res.Count)
+	assert.EqualValues(t, 0, res.Count)
 
 	// Make sure the "wat" queue has 1 item in it
 	recorder = httptest.NewRecorder()

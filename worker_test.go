@@ -65,25 +65,25 @@ func TestWorkerBasics(t *testing.T) {
 	w.stop()
 
 	// make sure the jobs ran (side effect of setting these variables to the job arguments)
-	assert.Equal(t, 1.0, arg1)
-	assert.Equal(t, 2.0, arg2)
-	assert.Equal(t, 3.0, arg3)
+	assert.EqualValues(t, 1.0, arg1)
+	assert.EqualValues(t, 2.0, arg2)
+	assert.EqualValues(t, 3.0, arg3)
 
 	// nothing in retries or dead
-	assert.Equal(t, 0, zsetSize(pool, redisKeyRetry(ns)))
-	assert.Equal(t, 0, zsetSize(pool, redisKeyDead(ns)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)))
 
 	// Nothing in the queues or in-progress queues
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job2)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job3)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job2)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job3)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
 
 	// nothing in the worker status
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
-	assert.Equal(t, 0, len(h))
+	assert.EqualValues(t, 0, len(h))
 }
 
 func TestWorkerInProgress(t *testing.T) {
@@ -114,8 +114,8 @@ func TestWorkerInProgress(t *testing.T) {
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
 	// The job will then sleep for 30ms. In that time, we should be able to see something in the in-progress queue.
 	time.Sleep(10 * time.Millisecond)
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.Equal(t, 1, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, job1)))
 
 	// nothing in the worker status
 	w.observer.join()
@@ -128,12 +128,12 @@ func TestWorkerInProgress(t *testing.T) {
 	w.stop()
 
 	// At this point, it should all be empty.
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
 
 	// nothing in the worker status
 	h = readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
-	assert.Equal(t, 0, len(h))
+	assert.EqualValues(t, 0, len(h))
 }
 
 func TestWorkerRetry(t *testing.T) {
@@ -162,10 +162,10 @@ func TestWorkerRetry(t *testing.T) {
 	w.stop()
 
 	// Ensure the right stuff is in our queues:
-	assert.Equal(t, 1, zsetSize(pool, redisKeyRetry(ns)))
-	assert.Equal(t, 0, zsetSize(pool, redisKeyDead(ns)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 1, zsetSize(pool, redisKeyRetry(ns)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
 
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyRetry(ns))
@@ -175,7 +175,7 @@ func TestWorkerRetry(t *testing.T) {
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
 	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
-	assert.Equal(t, 1, job.Fails)
+	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
@@ -218,10 +218,10 @@ func TestWorkerDead(t *testing.T) {
 	w.stop()
 
 	// Ensure the right stuff is in our queues:
-	assert.Equal(t, 0, zsetSize(pool, redisKeyRetry(ns)))
-	assert.Equal(t, 1, zsetSize(pool, redisKeyDead(ns)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.Equal(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
+	assert.EqualValues(t, 1, zsetSize(pool, redisKeyDead(ns)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
 
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyDead(ns))
@@ -230,7 +230,7 @@ func TestWorkerDead(t *testing.T) {
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
 	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
-	assert.Equal(t, 1, job.Fails)
+	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid1", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
