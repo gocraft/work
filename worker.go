@@ -119,6 +119,8 @@ func (w *worker) loop() {
 			} else {
 				if time.Now().After(nextTry) {
 					nextTry = time.Time{}
+				} else {
+					time.Sleep(sleepIncrement)
 				}
 			}
 		}
