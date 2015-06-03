@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gocraft/work"
-	"github.com/garyburd/redigo/redis"
 	"flag"
-	"time"
+	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/work"
 	"math/rand"
+	"time"
 )
 
 var redisHostPort = flag.String("redis", ":6379", "redis hostport")
@@ -15,44 +15,45 @@ var redisNamespace = flag.String("ns", "work", "redis namespace")
 func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
 	time.Sleep(time.Second)
-	
+
 	if rand.Intn(2) == 0 {
 		return fmt.Errorf("random error")
 	}
 	return nil
 }
 
+type Context struct{}
 
 func main() {
 	flag.Parse()
 	fmt.Println("Installing some fake data")
-	
+
 	pool := newPool(*redisHostPort)
 	cleanKeyspace(pool, *redisNamespace)
-	
+
 	// Enqueue some jobs:
-	go func () {
+	go func() {
 		conn := pool.Get()
 		defer conn.Close()
-		conn.Do("SADD", *redisNamespace +":known_jobs", "foobar")
+		conn.Do("SADD", *redisNamespace+":known_jobs", "foobar")
 	}()
-	
+
 	go func() {
 		for {
 			en := work.NewEnqueuer(*redisNamespace, pool)
 			for i := 0; i < 20; i++ {
-				en.Enqueue("foobar", i)
+				en.Enqueue("foobar", work.Q{"i": i})
 			}
-			
-			time.Sleep(1*time.Second)
+
+			time.Sleep(1 * time.Second)
 		}
 	}()
-	
-	wp := work.NewWorkerPool("$context$", 5, *redisNamespace, pool)
+
+	wp := work.NewWorkerPool(Context{}, 5, *redisNamespace, pool)
 	wp.Job("foobar", epsilonHandler)
 	wp.Start()
-	
-	select{}
+
+	select {}
 }
 
 func newPool(addr string) *redis.Pool {
@@ -79,7 +80,7 @@ func newPool(addr string) *redis.Pool {
 func cleanKeyspace(pool *redis.Pool, namespace string) {
 	conn := pool.Get()
 	defer conn.Close()
-	
+
 	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
 	if err != nil {
 		panic("could not get keys: " + err.Error())
