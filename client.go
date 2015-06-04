@@ -264,6 +264,12 @@ func (c *Client) Queues() ([]*Queue, error) {
 	return queues, nil
 }
 
+func (c *Client) QueueCount(jobName string) (int64, error) {
+	conn := c.pool.Get()
+	defer conn.Close()
+	return redis.Int64(conn.Do("LLEN", redisKeyJobs(c.namespace, jobName)))
+}
+
 type RetryJob struct {
 	RetryAt int64
 	*Job
