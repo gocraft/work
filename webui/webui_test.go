@@ -3,14 +3,15 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/work"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWebUIStartStop(t *testing.T) {
@@ -444,6 +445,30 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, res.Count)
+}
+
+func TestWebUIAssets(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	s := NewServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/", nil)
+	s.router.ServeHTTP(recorder, request)
+	body := string(recorder.Body.Bytes())
+	assert.Regexp(t, "html", body)
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/work.css", nil)
+	s.router.ServeHTTP(recorder, request)
+	css := string(recorder.Body.Bytes())
+	assert.Regexp(t, "work.css", css)
+
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/work.js", nil)
+	s.router.ServeHTTP(recorder, request)
+	js := string(recorder.Body.Bytes())
+	assert.Regexp(t, "work.js", js)
 }
 
 func newTestPool(addr string) *redis.Pool {
