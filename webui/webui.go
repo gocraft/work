@@ -54,23 +54,6 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 	router.Post("/delete_dead_job/:died_at:\\d.*/:job_id", (*context).deleteDeadJob)
 	router.Post("/retry_dead_job/:died_at:\\d.*/:job_id", (*context).retryDeadJob)
 
-	//
-	// Build the HTML page:
-	//
-	assetRouter := router.Subrouter(context{}, "")
-	assetRouter.Get("/", func(c *context, rw web.ResponseWriter, req *web.Request) {
-		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
-		rw.Write(MustAsset("ui/index.html"))
-	})
-	assetRouter.Get("/work.js", func(c *context, rw web.ResponseWriter, req *web.Request) {
-		rw.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-		rw.Write(MustAsset("ui/work.js"))
-	})
-	assetRouter.Get("/work.css", func(c *context, rw web.ResponseWriter, req *web.Request) {
-		rw.Header().Set("Content-Type", "text/css; charset=utf-8")
-		rw.Write(MustAsset("ui/work.css"))
-	})
-
 	return server
 }
 
