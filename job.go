@@ -99,6 +99,24 @@ func (j *Job) ArgInt64(key string) int64 {
 	return 0
 }
 
+func (j *Job) ArgFloat64(key string) float64 {
+	v, ok := j.Args[key]
+	if ok {
+		rVal := reflect.ValueOf(v)
+		if isIntKind(rVal) {
+			return float64(rVal.Int())
+		} else if isUintKind(rVal) {
+			return float64(rVal.Uint())
+		} else if isFloatKind(rVal) {
+			return rVal.Float()
+		}
+		j.argError = typecastError("float64", key, v)
+	} else {
+		j.argError = missingKeyError("float64", key)
+	}
+	return 0.0
+}
+
 func (j *Job) ArgBool(key string) bool {
 	v, ok := j.Args[key]
 	if ok {

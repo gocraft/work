@@ -17,6 +17,8 @@ func TestJobArgumentExtraction(t *testing.T) {
 
 	j.SetArg("bool1", true)
 
+	j.SetArg("float1", 3.14)
+
 	//
 	// Success cases:
 	//
@@ -44,6 +46,10 @@ func TestJobArgumentExtraction(t *testing.T) {
 	assert.Equal(t, vBool, true)
 	assert.NoError(t, j.ArgError())
 
+	vFloat := j.ArgFloat64("float1")
+	assert.Equal(t, vFloat, 3.14)
+	assert.NoError(t, j.ArgError())
+
 	// Missing key results in error:
 	vString = j.ArgString("str_missing")
 	assert.Equal(t, vString, "")
@@ -63,6 +69,12 @@ func TestJobArgumentExtraction(t *testing.T) {
 	j.argError = nil
 	assert.NoError(t, j.ArgError())
 
+	vFloat = j.ArgFloat64("float_missing")
+	assert.Equal(t, vFloat, 0.0)
+	assert.Error(t, j.ArgError())
+	j.argError = nil
+	assert.NoError(t, j.ArgError())
+
 	// Missing string; Make sure we don't reset it with successes after
 	vString = j.ArgString("str_missing")
 	assert.Equal(t, vString, "")
@@ -70,6 +82,7 @@ func TestJobArgumentExtraction(t *testing.T) {
 	vString = j.ArgString("str1")
 	vInt64 = j.ArgInt64("int1")
 	vBool = j.ArgBool("bool1")
+	vFloat = j.ArgFloat64("float1")
 	assert.Error(t, j.ArgError())
 }
 
@@ -181,6 +194,49 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 
 	for _, tc := range testCases {
 		r := j.ArgInt64(tc.key)
+		err := j.ArgError()
+		if tc.good {
+			if err != nil {
+				t.Errorf("Failed test case: %v; err = %v\n", tc, err)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("Failed test case: %v; but err was nil\n", tc)
+			}
+			if r != 0 {
+				t.Errorf("Failed test case: %v; but r was %v\n", tc, r)
+			}
+		}
+		j.argError = nil
+	}
+}
+
+func TestJobArgumentExtractionBadFloat(t *testing.T) {
+	var testCases = []struct {
+		key  string
+		val  interface{}
+		good bool
+	}{
+		{"a", "boo", false},
+		{"b", true, false},
+
+		{"z", 0, true},
+		{"y", 9007199254740892, true},
+		{"x", 9007199254740892.0, true},
+		{"w", 573839921, true},
+		{"v", -573839921, true},
+		{"u", math.MaxFloat64, true},
+		{"t", math.SmallestNonzeroFloat64, true},
+	}
+
+	j := Job{}
+
+	for _, tc := range testCases {
+		j.SetArg(tc.key, tc.val)
+	}
+
+	for _, tc := range testCases {
+		r := j.ArgFloat64(tc.key)
 		err := j.ArgError()
 		if tc.good {
 			if err != nil {
