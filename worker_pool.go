@@ -1,8 +1,9 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
 	"reflect"
+
+	"github.com/garyburd/redigo/redis"
 	// "fmt"
 	"sort"
 	"sync"
@@ -18,10 +19,11 @@ type WorkerPool struct {
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler
 
-	workers     []*worker
-	heartbeater *workerPoolHeartbeater
-	retrier     *requeuer
-	scheduler   *requeuer
+	workers        []*worker
+	heartbeater    *workerPoolHeartbeater
+	retrier        *requeuer
+	scheduler      *requeuer
+	deadPoolReaper *deadPoolReaper
 }
 
 type jobType struct {
@@ -62,7 +64,7 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.pool, wp.contextType, nil, wp.jobTypes)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)
 	}
 
@@ -144,6 +146,7 @@ func (wp *WorkerPool) Stop() {
 	wp.heartbeater.stop()
 	wp.retrier.stop()
 	wp.scheduler.stop()
+	wp.deadPoolReaper.stop()
 }
 
 func (wp *WorkerPool) Join() {
@@ -165,8 +168,10 @@ func (wp *WorkerPool) startRequeuers() {
 	}
 	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
 	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool)
 	wp.retrier.start()
 	wp.scheduler.start()
+	wp.deadPoolReaper.start()
 }
 
 func (wp *WorkerPool) workerIDs() []string {
