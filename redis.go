@@ -1,5 +1,7 @@
 package work
 
+import "fmt"
+
 func redisNamespacePrefix(namespace string) string {
 	l := len(namespace)
 	if (l > 0) && (namespace[l-1] != ':') {
@@ -22,8 +24,8 @@ func redisKeyJobs(namespace, jobName string) string {
 	return redisKeyJobsPrefix(namespace) + jobName
 }
 
-func redisKeyJobsInProgress(namespace, jobName string) string {
-	return redisKeyJobs(namespace, jobName) + ":inprogress"
+func redisKeyJobsInProgress(namespace, poolID, jobName string) string {
+	return fmt.Sprintf("%s:%s:inprogress", redisKeyJobs(namespace, jobName), poolID)
 }
 
 func redisKeyRetry(namespace string) string {

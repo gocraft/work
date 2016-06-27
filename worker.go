@@ -2,14 +2,16 @@ package work
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"math/rand"
 	"reflect"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 type worker struct {
 	workerID    string
+	poolID      string
 	namespace   string // eg, "myapp-work"
 	pool        *redis.Pool
 	jobTypes    map[string]*jobType
@@ -27,12 +29,13 @@ type worker struct {
 	doneJoiningChan chan struct{}
 }
 
-func newWorker(namespace string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
 	w := &worker{
 		workerID:    workerID,
+		poolID:      poolID,
 		namespace:   namespace,
 		pool:        pool,
 		contextType: contextType,
@@ -56,7 +59,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, jt.Name))
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name))
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes

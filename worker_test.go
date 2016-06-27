@@ -2,11 +2,12 @@ package work
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
-	"github.com/stretchr/testify/assert"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWorkerBasics(t *testing.T) {
@@ -59,7 +60,7 @@ func TestWorkerBasics(t *testing.T) {
 	err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
 	w.join()
 	w.stop()
@@ -77,9 +78,9 @@ func TestWorkerBasics(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job2)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job3)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job2)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job3)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job2)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job3)))
 
 	// nothing in the worker status
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
@@ -108,14 +109,14 @@ func TestWorkerInProgress(t *testing.T) {
 	err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
 	// The job will then sleep for 30ms. In that time, we should be able to see something in the in-progress queue.
 	time.Sleep(10 * time.Millisecond)
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// nothing in the worker status
 	w.observer.join()
@@ -129,7 +130,7 @@ func TestWorkerInProgress(t *testing.T) {
 
 	// At this point, it should all be empty.
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// nothing in the worker status
 	h = readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
@@ -156,7 +157,7 @@ func TestWorkerRetry(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
 	w.join()
 	w.stop()
@@ -165,7 +166,7 @@ func TestWorkerRetry(t *testing.T) {
 	assert.EqualValues(t, 1, zsetSize(pool, redisKeyRetry(ns)))
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyRetry(ns))
@@ -212,7 +213,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
-	w := newWorker(ns, pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
 	w.join()
 	w.stop()
@@ -221,7 +222,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
 	assert.EqualValues(t, 1, zsetSize(pool, redisKeyDead(ns)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyDead(ns))
@@ -239,7 +240,7 @@ func deleteQueue(pool *redis.Pool, namespace, jobName string) {
 	conn := pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("DEL", redisKeyJobs(namespace, jobName), redisKeyJobsInProgress(namespace, jobName))
+	_, err := conn.Do("DEL", redisKeyJobs(namespace, jobName), redisKeyJobsInProgress(namespace, "1", jobName))
 	if err != nil {
 		panic("could not delete queue: " + err.Error())
 	}
