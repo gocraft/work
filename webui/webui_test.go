@@ -467,8 +467,6 @@ func TestWebUIAssets(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	request, _ = http.NewRequest("GET", "/work.js", nil)
 	s.router.ServeHTTP(recorder, request)
-	js := string(recorder.Body.Bytes())
-	assert.Regexp(t, "work.js", js)
 }
 
 func newTestPool(addr string) *redis.Pool {
