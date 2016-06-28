@@ -158,7 +158,10 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 		}
 
 		jobTypesList, err := redis.String(conn.Do("HGET", heartbeatKey, "job_names"))
-		if err != nil && err != redis.ErrNil {
+		if err == redis.ErrNil {
+			continue
+		}
+		if err != nil {
 			return nil, err
 		}
 
