@@ -1,0 +1,21 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "dev": "webpack -p --watch",
+    "build": "webpack -p"
+  },
+  "devDependencies": {
+    "babel-core": "latest",
+    "babel-loader": "latest",
+    "babel-preset-es2015": "latest",
+    "babel-preset-react": "latest",
+    "jest-cli": "latest",
+    "jquery": "latest",
+    "moment": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router": "latest",
+    "webpack": "latest"
+  }
+}
