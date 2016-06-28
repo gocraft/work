@@ -1,13 +1,15 @@
 {
   "private": true,
   "scripts": {
-    "test": "jest",
+    "test": "jest --no-cache",
     "dev": "webpack -p --watch",
     "build": "webpack -p"
   },
   "devDependencies": {
     "babel-core": "latest",
+    "babel-jest": "latest",
     "babel-loader": "latest",
+    "babel-polyfill": "latest",
     "babel-preset-es2015": "latest",
     "babel-preset-react": "latest",
     "jest-cli": "latest",
@@ -17,5 +19,13 @@
     "react-dom": "latest",
     "react-router": "latest",
     "webpack": "latest"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "unmockedModulePathPatterns": [
+      "<rootDir>/node_modules/react/",
+      "<rootDir>/node_modules/react-dom/",
+      "<rootDir>/node_modules/react-addons-test-utils/"
+    ]
   }
 }

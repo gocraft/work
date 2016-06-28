@@ -22,7 +22,6 @@ module.exports = {
   ],
   resolve: {
     root: APP_DIR,
-    extensions: ['', '.js', '.jsx']
   },
   module: {
     loaders: [{
