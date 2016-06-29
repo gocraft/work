@@ -5,7 +5,7 @@ var BUILD_DIR = path.resolve(__dirname, 'build');
 var APP_DIR = path.resolve(__dirname, 'src');
 
 module.exports = {
-  entry: APP_DIR + '/index.jsx',
+  entry: APP_DIR + '/index.js',
   output: { path: BUILD_DIR, filename: 'work.js' },
   plugins: [
     new webpack.DefinePlugin({
@@ -20,12 +20,9 @@ module.exports = {
       comments: false
     })
   ],
-  resolve: {
-    root: APP_DIR,
-  },
   module: {
     loaders: [{
-      test: /.jsx?$/,
+      test: /\.js$/,
       loader: 'babel',
       exclude: /node_modules/,
       query: {

@@ -1,31 +1,23 @@
 {
   "private": true,
   "scripts": {
-    "test": "jest --no-cache",
+    "test": "mocha 'src/**/*.test.js' --compilers js:babel-core/register",
     "dev": "webpack -p --watch",
     "build": "webpack -p"
   },
   "devDependencies": {
     "babel-core": "latest",
-    "babel-jest": "latest",
     "babel-loader": "latest",
-    "babel-polyfill": "latest",
     "babel-preset-es2015": "latest",
     "babel-preset-react": "latest",
-    "jest-cli": "latest",
+    "expect": "latest",
     "jquery": "latest",
+    "mocha": "latest",
     "moment": "latest",
     "react": "latest",
+    "react-addons-test-utils": "latest",
     "react-dom": "latest",
     "react-router": "latest",
     "webpack": "latest"
-  },
-  "jest": {
-    "collectCoverage": true,
-    "unmockedModulePathPatterns": [
-      "<rootDir>/node_modules/react/",
-      "<rootDir>/node_modules/react-dom/",
-      "<rootDir>/node_modules/react-addons-test-utils/"
-    ]
   }
 }

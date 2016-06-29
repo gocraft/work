@@ -1,10 +1,10 @@
 import React from 'react';
 import { render } from 'react-dom';
-import Process from 'Process';
-import DeadJob from 'DeadJob';
-import Queue from 'Queue';
-import RetryJob from 'RetryJob';
-import ScheduledJob from 'ScheduledJob';
+import Process from './Process';
+import DeadJob from './DeadJob';
+import Queue from './Queue';
+import RetryJob from './RetryJob';
+import ScheduledJob from './ScheduledJob';
 import { Router, Route, Link, IndexRoute, hashHistory } from 'react-router'
 
 class App extends React.Component {
@@ -14,7 +14,7 @@ class App extends React.Component {
         <header><h1>gocraft/work</h1></header>
         <nav>
           <ul>
-            <li><Link to="/processes">Process</Link></li>
+            <li><Link to="/processes">Processes</Link></li>
             <li><Link to="/dead_jobs">Dead Jobs</Link></li>
             <li><Link to="/queues">Queues</Link></li>
             <li><Link to="/retry_jobs">Retry Jobs</Link></li>

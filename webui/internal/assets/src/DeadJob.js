@@ -12,7 +12,7 @@ export default class DeadJob extends React.Component {
     };
   }
 
-  componentDidMount() {
+  componentWillMount() {
     $.get(this.props.route.source, (data) => {
       this.setState(data);
     });
