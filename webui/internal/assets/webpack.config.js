@@ -1,7 +1,7 @@
 var path = require('path');
 var webpack = require('webpack');
 
-var BUILD_DIR = path.resolve(__dirname, 'ui');
+var BUILD_DIR = path.resolve(__dirname, 'build');
 var APP_DIR = path.resolve(__dirname, 'src');
 
 module.exports = {
