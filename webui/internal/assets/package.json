@@ -3,7 +3,8 @@
   "scripts": {
     "test": "mocha 'src/**/*.test.js' --compilers js:babel-core/register",
     "dev": "webpack -p --watch",
-    "build": "webpack -p"
+    "build": "webpack -p",
+    "cover": "istanbul cover _mocha --root src/ --include-all-sources -x '**/*.test.js' -- 'src/**/*.test.js' --compilers js:babel-register"
   },
   "devDependencies": {
     "babel-core": "latest",
@@ -11,6 +12,7 @@
     "babel-preset-es2015": "latest",
     "babel-preset-react": "latest",
     "expect": "latest",
+    "istanbul": "^1.0.0-alpha.2",
     "jquery": "latest",
     "mocha": "latest",
     "moment": "latest",
