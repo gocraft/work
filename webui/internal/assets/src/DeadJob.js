@@ -13,15 +13,18 @@ export default class DeadJob extends React.Component {
   }
 
   componentWillMount() {
-    $.get(this.props.route.source, (data) => {
+    if (!this.props.url) {
+      return;
+    }
+    $.get(this.props.url, (data) => {
       this.setState(data);
     });
   }
 
   render() {
     return (
-      <div>
-        <h2>Dead Jobs</h2>
+      <section>
+        <header>Dead Jobs</header>
         <p>{this.state.Count} job(s) are dead.</p>
         <table>
           <tbody>
@@ -45,7 +48,7 @@ export default class DeadJob extends React.Component {
             }
           </tbody>
         </table>
-      </div>
+      </section>
     );
   }
 }

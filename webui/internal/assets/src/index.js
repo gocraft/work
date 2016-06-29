@@ -5,7 +5,7 @@ import DeadJob from './DeadJob';
 import Queue from './Queue';
 import RetryJob from './RetryJob';
 import ScheduledJob from './ScheduledJob';
-import { Router, Route, Link, IndexRoute, hashHistory } from 'react-router'
+import { Router, Route, Link, IndexRoute, hashHistory, Redirect } from 'react-router'
 
 class App extends React.Component {
   render() {
@@ -27,15 +27,17 @@ class App extends React.Component {
   }
 }
 
+// react-router's route cannot be used to specify props to children component.
+// See https://github.com/reactjs/react-router/issues/1857.
 render(
   <Router history={hashHistory}>
     <Route path="/" component={App}>
-      <IndexRoute component={Process}/>
-      <Route path="/processes" component={Process} source="/worker_pool"/>
-      <Route path="/dead_jobs" component={DeadJob} source="/dead_jobs"/>
-      <Route path="/queues" component={Queue} source="/queues"/>
-      <Route path="/retry_jobs" component={RetryJob} source="/retry_jobs"/>
-      <Route path="/scheduled_jobs" component={ScheduledJob} source="/scheduled_jobs"/>
+      <Route path="/processes" component={ () => <Process url="/worker_pool" /> } />
+      <Route path="/dead_jobs" component={ () => <DeadJob url="/dead_jobs" /> } />
+      <Route path="/queues" component={ () => <Queue url="/queues" /> } />
+      <Route path="/retry_jobs" component={ () => <RetryJob url="/retry_jobs" /> } />
+      <Route path="/scheduled_jobs" component={ () => <ScheduledJob url="/scheduled_jobs" /> } />
+      <Redirect from="*" to="/queues" />
     </Route>
   </Router>,
   document.getElementById('app')

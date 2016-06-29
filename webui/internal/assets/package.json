@@ -12,7 +12,7 @@
     "babel-preset-es2015": "latest",
     "babel-preset-react": "latest",
     "expect": "latest",
-    "istanbul": "^1.0.0-alpha.2",
+    "istanbul": "^1.1.0-alpha.1",
     "jquery": "latest",
     "mocha": "latest",
     "moment": "latest",
