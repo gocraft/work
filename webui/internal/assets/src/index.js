@@ -5,7 +5,7 @@ import DeadJob from './DeadJob';
 import Queue from './Queue';
 import RetryJob from './RetryJob';
 import ScheduledJob from './ScheduledJob';
-import { Router, Route, Link, IndexRoute, hashHistory, Redirect } from 'react-router'
+import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router'
 
 class App extends React.Component {
   render() {
@@ -37,7 +37,7 @@ render(
       <Route path="/queues" component={ () => <Queue url="/queues" /> } />
       <Route path="/retry_jobs" component={ () => <RetryJob url="/retry_jobs" /> } />
       <Route path="/scheduled_jobs" component={ () => <ScheduledJob url="/scheduled_jobs" /> } />
-      <Redirect from="*" to="/queues" />
+      <IndexRedirect from="" to="/queues" />
     </Route>
   </Router>,
   document.getElementById('app')
