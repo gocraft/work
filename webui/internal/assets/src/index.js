@@ -1,10 +1,10 @@
 import React from 'react';
 import { render } from 'react-dom';
-import Process from './Process';
-import DeadJob from './DeadJob';
-import Queue from './Queue';
-import RetryJob from './RetryJob';
-import ScheduledJob from './ScheduledJob';
+import Processes from './Processes';
+import DeadJobs from './DeadJobs';
+import Queues from './Queues';
+import RetryJobs from './RetryJobs';
+import ScheduledJobs from './ScheduledJobs';
 import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router'
 
 class App extends React.Component {
@@ -32,11 +32,11 @@ class App extends React.Component {
 render(
   <Router history={hashHistory}>
     <Route path="/" component={App}>
-      <Route path="/processes" component={ () => <Process url="/worker_pool" /> } />
-      <Route path="/dead_jobs" component={ () => <DeadJob fetchURL="/dead_jobs" retryURL="/retry_dead_job" deleteURL="/delete_dead_job" /> } />
-      <Route path="/queues" component={ () => <Queue url="/queues" /> } />
-      <Route path="/retry_jobs" component={ () => <RetryJob url="/retry_jobs" /> } />
-      <Route path="/scheduled_jobs" component={ () => <ScheduledJob url="/scheduled_jobs" /> } />
+      <Route path="/processes" component={ () => <Processes url="/worker_pool" /> } />
+      <Route path="/dead_jobs" component={ () => <DeadJobs fetchURL="/dead_jobs" retryURL="/retry_dead_job" deleteURL="/delete_dead_job" /> } />
+      <Route path="/queues" component={ () => <Queues url="/queues" /> } />
+      <Route path="/retry_jobs" component={ () => <RetryJobs url="/retry_jobs" /> } />
+      <Route path="/scheduled_jobs" component={ () => <ScheduledJobs url="/scheduled_jobs" /> } />
       <IndexRedirect from="" to="/queues" />
     </Route>
   </Router>,
