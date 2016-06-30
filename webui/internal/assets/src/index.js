@@ -32,12 +32,12 @@ class App extends React.Component {
 render(
   <Router history={hashHistory}>
     <Route path="/" component={App}>
-      <Route path="/processes" component={ () => <Processes url="/worker_pool" /> } />
+      <Route path="/processes" component={ () => <Processes busyWorkerURL="/busy_workers" workerPoolURL="/worker_pools" /> } />
       <Route path="/dead_jobs" component={ () => <DeadJobs fetchURL="/dead_jobs" retryURL="/retry_dead_job" deleteURL="/delete_dead_job" /> } />
       <Route path="/queues" component={ () => <Queues url="/queues" /> } />
       <Route path="/retry_jobs" component={ () => <RetryJobs url="/retry_jobs" /> } />
       <Route path="/scheduled_jobs" component={ () => <ScheduledJobs url="/scheduled_jobs" /> } />
-      <IndexRedirect from="" to="/queues" />
+      <IndexRedirect from="" to="/processes" />
     </Route>
   </Router>,
   document.getElementById('app')

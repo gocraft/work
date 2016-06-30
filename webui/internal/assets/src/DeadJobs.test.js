@@ -1,7 +1,7 @@
 import expect from 'expect';
-import DeadJob from './DeadJob';
+import DeadJobs from './DeadJobs';
 
-describe('DeadJob', () => {
+describe('DeadJobs', () => {
   it('should be true', () => {
     expect(true).toEqual(true);
   });

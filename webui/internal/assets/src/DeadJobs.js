@@ -2,7 +2,7 @@ import React from 'react';
 import PageList from './PageList';
 import UnixTime from './UnixTime';
 
-export default class DeadJob extends React.Component {
+export default class DeadJobs extends React.Component {
   constructor() {
     super();
 
@@ -68,30 +68,25 @@ export default class DeadJob extends React.Component {
   }
 
   deleteSelected() {
+    let p = [];
     this.state.selected.map((job) => {
       if (!this.props.deleteURL) {
         return;
       }
-      fetch(`${this.props.deleteURL}/${job.DiedAt}/${job.id}`, {method: 'post'}).
-        then((data) => {
-          console.log("delete", job);
-        });
+      p.push(fetch(`${this.props.deleteURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
     });
-    this.fetch();
+    Promise.all(p).then(() => {this.fetch()});
   }
 
   retrySelected() {
+    let p = [];
     this.state.selected.map((job) => {
       if (!this.props.retryURL) {
         return;
       }
-      fetch(`${this.props.retryURL}/${job.DiedAt}/${job.id}`, {method: 'post'}).
-        then((data) => {
-          console.log("delete", job);
-        });
-      console.log("retry", job);
+      p.push(fetch(`${this.props.retryURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
     });
-    this.fetch();
+    Promise.all(p).then(() => {this.fetch()});
   }
 
   render() {

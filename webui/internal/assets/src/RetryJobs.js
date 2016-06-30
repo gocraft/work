@@ -1,7 +1,7 @@
 import React from 'react';
 import PageList from './PageList';
 
-export default class RetryJob extends React.Component {
+export default class RetryJobs extends React.Component {
   constructor() {
     super();
 

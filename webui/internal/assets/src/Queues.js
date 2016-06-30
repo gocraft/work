@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default class Queue extends React.Component {
+export default class Queues extends React.Component {
   constructor() {
     super();
 
