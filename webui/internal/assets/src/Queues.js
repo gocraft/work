@@ -24,7 +24,7 @@ export default class Queues extends React.Component {
     let count = 0;
     this.state.Queues.map((queue) => {
       count += queue.Count;
-    })
+    });
     return count;
   }
 

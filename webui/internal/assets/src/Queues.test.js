@@ -12,8 +12,8 @@ describe('Queues', () => {
 
     queues.setState({
       Queues: [
-        {JobName: "test", Count: 1, Latency: 0},
-        {JobName: "test2", Count: 2, Latency: 0},
+        {JobName: 'test', Count: 1, Latency: 0},
+        {JobName: 'test2', Count: 2, Latency: 0}
       ]
     });
 

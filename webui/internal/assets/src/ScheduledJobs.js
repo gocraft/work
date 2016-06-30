@@ -1,5 +1,6 @@
 import React from 'react';
 import PageList from './PageList';
+import UnixTime from './UnixTime';
 
 export default class ScheduledJobs extends React.Component {
   constructor() {
@@ -21,7 +22,7 @@ export default class ScheduledJobs extends React.Component {
       then((data) => {
         this.setState({
           Count: data.Count,
-          Jobs: data.Jobs,
+          Jobs: data.Jobs
         });
       });
   }
@@ -31,7 +32,7 @@ export default class ScheduledJobs extends React.Component {
   }
 
   updatePage(page) {
-    this.state.page = page;
+    this.setState({page: page});
     this.fetch();
   }
 

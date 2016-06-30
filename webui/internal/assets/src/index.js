@@ -5,7 +5,7 @@ import DeadJobs from './DeadJobs';
 import Queues from './Queues';
 import RetryJobs from './RetryJobs';
 import ScheduledJobs from './ScheduledJobs';
-import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router'
+import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router';
 
 class App extends React.Component {
   render() {

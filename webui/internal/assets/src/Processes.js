@@ -10,7 +10,7 @@ class Abbrev extends React.Component {
             if (i < 3) {
               return (<li>{item}</li>);
             } else if (i == 3) {
-              return (<li>{this.props.item.length - 3} more</li>)
+              return (<li>{this.props.item.length - 3} more</li>);
             }
           })
         }
@@ -56,8 +56,8 @@ export default class Processes extends React.Component {
 
     this.state = {
       busyWorker: [],
-      workerPool: [],
-    }
+      workerPool: []
+    };
   }
 
   componentWillMount() {
@@ -67,8 +67,8 @@ export default class Processes extends React.Component {
         then((data) => {
           if (data) {
             this.setState({
-              busyWorker: busyWorker,
-            })
+              busyWorker: data
+            });
           }
         });
     }
@@ -83,8 +83,8 @@ export default class Processes extends React.Component {
             }
           });
           this.setState({
-            workerPool: workers,
-          })
+            workerPool: workers
+          });
         });
     }
   }
@@ -98,7 +98,7 @@ export default class Processes extends React.Component {
   }
 
   getBusyPoolWorker(pool) {
-    let workers = []
+    let workers = [];
     this.state.busyWorker.map((worker) => {
       if (pool.WorkerIDs.includes(worker.WorkerID)) {
         workers.push(worker);
@@ -125,13 +125,13 @@ export default class Processes extends React.Component {
                     <td>Concurrency {pool.Concurrency}</td>
                   </tr>
                   <tr>
-                    <td colspan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
+                    <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
                   </tr>
                   <tr>
-                    <td colspan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
+                    <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
                   </tr>
                   <tr>
-                    <td colspan="4"><BusyWorkers worker={busyWorker}/></td>
+                    <td colSpan="4"><BusyWorkers worker={busyWorker}/></td>
                   </tr>
                 </tbody>
               </table>

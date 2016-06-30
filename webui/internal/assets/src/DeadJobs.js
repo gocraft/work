@@ -24,7 +24,7 @@ export default class DeadJobs extends React.Component {
         this.setState({
           selected: [],
           Count: data.Count,
-          Jobs: data.Jobs,
+          Jobs: data.Jobs
         });
       });
   }
@@ -34,7 +34,7 @@ export default class DeadJobs extends React.Component {
   }
 
   updatePage(page) {
-    this.state.page = page;
+    this.setState({page: page});
     this.fetch();
   }
 
@@ -50,21 +50,21 @@ export default class DeadJobs extends React.Component {
       this.state.selected.push(job);
     }
     this.setState({
-      selected: this.state.selected,
-    })
+      selected: this.state.selected
+    });
   }
 
   checkAll() {
     if (this.state.selected.length > 0) {
-      this.state.selected = [];
+      this.setState({selected: []});
     } else {
       this.state.Jobs.map((job) => {
         this.state.selected.push(job);
       });
+      this.setState({
+        selected: this.state.selected
+      });
     }
-    this.setState({
-      selected: this.state.selected,
-    })
   }
 
   deleteSelected() {
@@ -75,7 +75,10 @@ export default class DeadJobs extends React.Component {
       }
       p.push(fetch(`${this.props.deleteURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
     });
-    Promise.all(p).then(() => {this.fetch()});
+
+    Promise.all(p).then(() => {
+      this.fetch();
+    });
   }
 
   retrySelected() {
@@ -86,7 +89,10 @@ export default class DeadJobs extends React.Component {
       }
       p.push(fetch(`${this.props.retryURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
     });
-    Promise.all(p).then(() => {this.fetch()});
+
+    Promise.all(p).then(() => {
+      this.fetch();
+    });
   }
 
   render() {
