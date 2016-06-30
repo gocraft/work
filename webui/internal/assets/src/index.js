@@ -33,7 +33,7 @@ render(
   <Router history={hashHistory}>
     <Route path="/" component={App}>
       <Route path="/processes" component={ () => <Process url="/worker_pool" /> } />
-      <Route path="/dead_jobs" component={ () => <DeadJob url="/dead_jobs" /> } />
+      <Route path="/dead_jobs" component={ () => <DeadJob fetchURL="/dead_jobs" retryURL="/retry_dead_job" deleteURL="/delete_dead_job" /> } />
       <Route path="/queues" component={ () => <Queue url="/queues" /> } />
       <Route path="/retry_jobs" component={ () => <RetryJob url="/retry_jobs" /> } />
       <Route path="/scheduled_jobs" component={ () => <ScheduledJob url="/scheduled_jobs" /> } />

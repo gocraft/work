@@ -1,9 +1,8 @@
 import React from 'react';
-import $ from 'jquery';
 
 export default class Queue extends React.Component {
-  constructor(props) {
-    super(props);
+  constructor() {
+    super();
 
     this.state = {
       Queues: []
@@ -14,9 +13,11 @@ export default class Queue extends React.Component {
     if (!this.props.url) {
       return;
     }
-    $.get(this.props.url, (data) => {
-      this.setState({Queues: data});
-    });
+    fetch(this.props.url).
+      then((resp) => resp.json()).
+      then((data) => {
+        this.setState({Queues: data});
+      });
   }
 
   get queuedCount() {
@@ -42,7 +43,7 @@ export default class Queue extends React.Component {
             {
               this.state.Queues.map((queue) => {
                 return (
-                  <tr>
+                  <tr key={queue.JobName}>
                     <td>{queue.JobName}</td>
                     <td>{queue.Count}</td>
                     <td>{queue.Latency}</td>
