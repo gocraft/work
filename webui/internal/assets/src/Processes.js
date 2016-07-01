@@ -2,6 +2,10 @@ import React from 'react';
 import UnixTime from './UnixTime';
 
 class Abbrev extends React.Component {
+  static propTypes = {
+    item: React.PropTypes.arrayOf(React.PropTypes.string).isRequired,
+  }
+
   render() {
     return (
       <ul>
@@ -20,6 +24,10 @@ class Abbrev extends React.Component {
 }
 
 class BusyWorkers extends React.Component {
+  static propTypes = {
+    worker: React.PropTypes.arrayOf(React.PropTypes.object).isRequired,
+  }
+
   render() {
     return (
       <table>
@@ -34,13 +42,13 @@ class BusyWorkers extends React.Component {
           {
             this.props.worker.map((worker) => {
               return (
-                    <tr key={worker.WorkerID}>
-                      <td>{worker.JobName}</td>
-                      <td>{JSON.stringify(worker.ArgsJSON)}</td>
-                      <td><UnixTime ts={worker.StartedAt}/></td>
-                      <td><UnixTime ts={worker.CheckinAt}/></td>
-                      <td>{worker.Checkin}</td>
-                    </tr>
+                <tr key={worker.WorkerID}>
+                  <td>{worker.JobName}</td>
+                  <td>{JSON.stringify(worker.ArgsJSON)}</td>
+                  <td><UnixTime ts={worker.StartedAt}/></td>
+                  <td><UnixTime ts={worker.CheckinAt}/></td>
+                  <td>{worker.Checkin}</td>
+                </tr>
                 );
             })
           }
@@ -51,13 +59,14 @@ class BusyWorkers extends React.Component {
 }
 
 export default class Processes extends React.Component {
-  constructor() {
-    super();
+  static propTypes = {
+    busyWorkerURL: React.PropTypes.string,
+    workerPoolURL: React.PropTypes.string,
+  }
 
-    this.state = {
-      busyWorker: [],
-      workerPool: []
-    };
+  state = {
+    busyWorker: [],
+    workerPool: []
   }
 
   componentWillMount() {

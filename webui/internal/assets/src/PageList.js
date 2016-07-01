@@ -1,6 +1,12 @@
 import React from 'react';
 
 export default class PageList extends React.Component {
+  static propTypes = {
+    page: React.PropTypes.number.isRequired,
+    perPage: React.PropTypes.number.isRequired,
+    totalCount: React.PropTypes.number.isRequired,
+    jumpTo: React.PropTypes.func.isRequired,
+  }
 
   get totalPage() {
     return Math.ceil(this.props.totalCount / this.props.perPage);

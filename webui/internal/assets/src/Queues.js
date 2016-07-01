@@ -1,12 +1,12 @@
 import React from 'react';
 
 export default class Queues extends React.Component {
-  constructor() {
-    super();
+  static propTypes = {
+    url: React.PropTypes.string,
+  }
 
-    this.state = {
-      Queues: []
-    };
+  state = {
+    Queues: []
   }
 
   componentWillMount() {

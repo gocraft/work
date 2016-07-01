@@ -8,6 +8,10 @@ import ScheduledJobs from './ScheduledJobs';
 import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router';
 
 class App extends React.Component {
+  static propTypes = {
+    children: React.PropTypes.element.isRequired,
+  }
+
   render() {
     return (
       <main>

@@ -3,15 +3,17 @@ import PageList from './PageList';
 import UnixTime from './UnixTime';
 
 export default class DeadJobs extends React.Component {
-  constructor() {
-    super();
+  static propTypes = {
+    fetchURL: React.PropTypes.string,
+    deleteURL: React.PropTypes.string,
+    retryURL: React.PropTypes.string,
+  }
 
-    this.state = {
-      selected: [],
-      page: 1,
-      Count: 0,
-      Jobs: []
-    };
+  state = {
+    selected: [],
+    page: 1,
+    Count: 0,
+    Jobs: []
   }
 
   fetch() {

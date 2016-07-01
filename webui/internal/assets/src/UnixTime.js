@@ -1,6 +1,10 @@
 import React from 'react';
 
 export default class UnixTime extends React.Component {
+  static propTypes = {
+    ts: React.PropTypes.number.isRequired,
+  }
+
   render() {
     let t = new Date(this.props.ts * 1e3);
     return (

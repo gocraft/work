@@ -3,14 +3,14 @@ import PageList from './PageList';
 import UnixTime from './UnixTime';
 
 export default class ScheduledJobs extends React.Component {
-  constructor() {
-    super();
+  static propTypes = {
+    url: React.PropTypes.string,
+  }
 
-    this.state = {
-      page: 1,
-      Count: 0,
-      Jobs: []
-    };
+  state = {
+    page: 1,
+    Count: 0,
+    Jobs: []
   }
 
   fetch() {
