@@ -1,4 +1,6 @@
 import React from 'react';
+import styles from './css/bootstrap.min.css';
+import cx from './cx';
 
 export default class Queues extends React.Component {
   static propTypes = {
@@ -30,10 +32,12 @@ export default class Queues extends React.Component {
 
   render() {
     return (
-      <section>
-        <header>Queues</header>
-        <p>{this.state.Queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
-        <table>
+      <div className={cx(styles.panel, styles.panelDefault)}>
+        <div className={styles.panelHeading}>Queues</div>
+        <div className={styles.panelBody}>
+          <p>{this.state.Queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
+        </div>
+        <table className={styles.table}>
           <tbody>
             <tr>
               <th>Name</th>
@@ -53,7 +57,7 @@ export default class Queues extends React.Component {
             }
           </tbody>
         </table>
-      </section>
+      </div>
     );
   }
 }

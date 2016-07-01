@@ -1,27 +1,9 @@
 import React from 'react';
 import UnixTime from './UnixTime';
-
-class Abbrev extends React.Component {
-  static propTypes = {
-    item: React.PropTypes.arrayOf(React.PropTypes.string).isRequired,
-  }
-
-  render() {
-    return (
-      <ul>
-        {
-          this.props.item.map((item, i) => {
-            if (i < 3) {
-              return (<li>{item}</li>);
-            } else if (i == 3) {
-              return (<li>{this.props.item.length - 3} more</li>);
-            }
-          })
-        }
-      </ul>
-    );
-  }
-}
+import Abbrev from './Abbrev';
+import styles from './css/bootstrap.min.css';
+import TruncatedText from './TruncatedText';
+import cx from './cx';
 
 class BusyWorkers extends React.Component {
   static propTypes = {
@@ -30,7 +12,7 @@ class BusyWorkers extends React.Component {
 
   render() {
     return (
-      <table>
+      <table className={styles.table}>
         <tbody>
           <tr>
             <th>Name</th>
@@ -44,7 +26,7 @@ class BusyWorkers extends React.Component {
               return (
                 <tr key={worker.WorkerID}>
                   <td>{worker.JobName}</td>
-                  <td>{JSON.stringify(worker.ArgsJSON)}</td>
+                  <td><TruncatedText text={JSON.stringify(worker.ArgsJSON)} max="40"/></td>
                   <td><UnixTime ts={worker.StartedAt}/></td>
                   <td><UnixTime ts={worker.CheckinAt}/></td>
                   <td>{worker.Checkin}</td>
@@ -125,25 +107,31 @@ export default class Processes extends React.Component {
           this.state.workerPool.map((pool) => {
             let busyWorker = this.getBusyPoolWorker(pool);
             return (
-              <table>
-                <tbody>
-                  <tr>
-                    <td>{pool.Host}: {pool.Pid}</td>
-                    <td>Started <UnixTime ts={pool.StartedAt}/></td>
-                    <td>Last Heartbeat <UnixTime ts={pool.HeartbeatAt}/></td>
-                    <td>Concurrency {pool.Concurrency}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
-                  </tr>
-                  <tr>
-                    <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
-                  </tr>
-                  <tr>
-                    <td colSpan="4"><BusyWorkers worker={busyWorker}/></td>
-                  </tr>
-                </tbody>
-              </table>
+              <div className={cx(styles.panel, styles.panelDefault)}>
+                <table className={styles.table}>
+                  <tbody>
+                    <tr>
+                      <td>{pool.Host}: {pool.Pid}</td>
+                      <td>Started <UnixTime ts={pool.StartedAt}/></td>
+                      <td>Last Heartbeat <UnixTime ts={pool.HeartbeatAt}/></td>
+                      <td>Concurrency {pool.Concurrency}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
+                    </tr>
+                    <tr>
+                      <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
+                    </tr>
+                    <tr>
+                      <td colSpan="4">
+                        <div className={cx(styles.panel, styles.panelDefault)}>
+                          <BusyWorkers worker={busyWorker}/>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
               );
           })
         }

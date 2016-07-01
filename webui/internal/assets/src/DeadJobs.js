@@ -1,6 +1,9 @@
 import React from 'react';
 import PageList from './PageList';
 import UnixTime from './UnixTime';
+import TruncatedText from './TruncatedText';
+import styles from './css/bootstrap.min.css';
+import cx from './cx';
 
 export default class DeadJobs extends React.Component {
   static propTypes = {
@@ -99,39 +102,43 @@ export default class DeadJobs extends React.Component {
 
   render() {
     return (
-      <section>
-        <header>Dead Jobs</header>
-        <p>{this.state.Count} job(s) are dead.</p>
-        <p><PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/></p>
-        <table>
-          <tbody>
-            <tr>
-              <th><input type="checkbox" checked={this.state.selected.length > 0} onChange={() => this.checkAll()}/></th>
-              <th>Name</th>
-              <th>Arguments</th>
-              <th>Error</th>
-              <th>Died At</th>
-            </tr>
-            {
-              this.state.Jobs.map((job) => {
-                return (
-                  <tr key={job.id}>
-                    <td><input type="checkbox" checked={this.checked(job)} onChange={() => this.check(job)}/></td>
-                    <td>{job.name}</td>
-                    <td>{JSON.stringify(job.args)}</td>
-                    <td>{job.err}</td>
-                    <td><UnixTime ts={job.t} /></td>
-                  </tr>
-                  );
-              })
-            }
-          </tbody>
-        </table>
-        <p>
-          <a onClick={() => this.deleteSelected()}>Delete Selected Jobs</a>
-          <a onClick={() => this.retrySelected()}>Retry Selected Jobs</a>
-        </p>
-      </section>
+      <div>
+        <div className={cx(styles.panel, styles.panelDefault)}>
+          <div className={styles.panelHeading}>Dead Jobs</div>
+          <div className={styles.panelBody}>
+            <p>{this.state.Count} job(s) are dead.</p>
+            <PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/>
+          </div>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <th><input type="checkbox" checked={this.state.selected.length > 0} onChange={() => this.checkAll()}/></th>
+                <th>Name</th>
+                <th>Arguments</th>
+                <th>Error</th>
+                <th>Died At</th>
+              </tr>
+              {
+                this.state.Jobs.map((job) => {
+                  return (
+                    <tr key={job.id}>
+                      <td><input type="checkbox" checked={this.checked(job)} onChange={() => this.check(job)}/></td>
+                      <td>{job.name}</td>
+                      <td><TruncatedText text={JSON.stringify(job.args)} max="40"/></td>
+                      <td><TruncatedText text={job.err} max="20"/></td>
+                      <td><UnixTime ts={job.t} /></td>
+                    </tr>
+                    );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
+        <div className={styles.btnGroup} role="group">
+          <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.deleteSelected()}>Delete Selected Jobs</button>
+          <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.retrySelected()}>Retry Selected Jobs</button>
+        </div>
+      </div>
     );
   }
 }

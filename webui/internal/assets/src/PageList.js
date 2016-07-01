@@ -1,4 +1,5 @@
 import React from 'react';
+import styles from './css/bootstrap.min.css';
 
 export default class PageList extends React.Component {
   static propTypes = {
@@ -20,16 +21,21 @@ export default class PageList extends React.Component {
   }
 
   render() {
+    if (this.totalPage == 0) {
+      return null;
+    }
     let pages = [];
     for (let i = 1; i <= this.totalPage; i++) {
-      if (this.shouldShow(i)) {
-        pages.push(<li onClick={this.props.jumpTo(i)}>{i}</li>);
+      if (i == this.props.page) {
+        pages.push(<li className={styles.active}><span>{i}</span></li>);
+      } else if (this.shouldShow(i)) {
+        pages.push(<li><a onClick={this.props.jumpTo(i)}>{i}</a></li>);
       } else if (this.shouldShow(i-1)) {
-        pages.push(<li>..</li>);
+        pages.push(<li className={styles.disabled}><span>..</span></li>);
       }
     }
     return (
-      <ul>{pages}</ul>
+      <ul className={styles.pagination}>{pages}</ul>
     );
   }
 }

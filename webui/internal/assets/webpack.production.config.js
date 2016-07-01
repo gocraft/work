@@ -21,11 +21,21 @@ module.exports = {
     })
   ],
   module: {
-    loaders: [{
-      test: /\.js$/,
-      loader: 'babel',
-      exclude: /node_modules/,
-    }]
+    loaders: [
+      {
+        test: /\.js$/,
+        loader: 'babel',
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        loader: 'style!css?modules&camelCase'
+      },
+      {
+        test: /\.(png|woff|woff2|eot|ttf|svg)(\?[#a-z_]+)?$/,
+        loader: 'url'
+      }
+    ]
   }
 };
 

@@ -1,6 +1,9 @@
 import React from 'react';
 import PageList from './PageList';
 import UnixTime from './UnixTime';
+import styles from './css/bootstrap.min.css';
+import TruncatedText from './TruncatedText';
+import cx from './cx';
 
 export default class RetryJobs extends React.Component {
   static propTypes = {
@@ -38,11 +41,13 @@ export default class RetryJobs extends React.Component {
 
   render() {
     return (
-      <section>
-        <header>Retry Jobs</header>
-        <p>{this.state.Count} job(s) scheduled to be retried.</p>
-        <p><PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/></p>
-        <table>
+      <div className={cx(styles.panel, styles.panelDefault)}>
+        <div className={styles.panelHeading}>Retry Jobs</div>
+        <div className={styles.panelBody}>
+          <p>{this.state.Count} job(s) scheduled to be retried.</p>
+          <PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/>
+        </div>
+        <table className={styles.table}>
           <tbody>
             <tr>
               <th>Name</th>
@@ -55,8 +60,8 @@ export default class RetryJobs extends React.Component {
                 return (
                   <tr key={job.id}>
                     <td>{job.name}</td>
-                    <td>{JSON.stringify(job.args)}</td>
-                    <td>{job.err}</td>
+                    <td><TruncatedText text={JSON.stringify(job.args)} max="40"/></td>
+                    <td><TruncatedText text={job.err} max="20"/></td>
                     <td><UnixTime ts={job.t} /></td>
                   </tr>
                   );
@@ -64,7 +69,7 @@ export default class RetryJobs extends React.Component {
             }
           </tbody>
         </table>
-      </section>
+      </div>
     );
   }
 }
