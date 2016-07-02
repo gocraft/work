@@ -2,7 +2,6 @@ import React from 'react';
 import UnixTime from './UnixTime';
 import Abbrev from './Abbrev';
 import styles from './css/bootstrap.min.css';
-import TruncatedText from './TruncatedText';
 import cx from './cx';
 
 class BusyWorkers extends React.Component {
@@ -12,30 +11,32 @@ class BusyWorkers extends React.Component {
 
   render() {
     return (
-      <table className={styles.table}>
-        <tbody>
-          <tr>
-            <th>Name</th>
-            <th>Arguments</th>
-            <th>Started At</th>
-            <th>Check-in At</th>
-            <th>Check-in</th>
-          </tr>
-          {
-            this.props.worker.map((worker) => {
-              return (
-                <tr key={worker.WorkerID}>
-                  <td>{worker.JobName}</td>
-                  <td><TruncatedText text={JSON.stringify(worker.ArgsJSON)} max="40"/></td>
-                  <td><UnixTime ts={worker.StartedAt}/></td>
-                  <td><UnixTime ts={worker.CheckinAt}/></td>
-                  <td>{worker.Checkin}</td>
-                </tr>
-                );
-            })
-          }
-        </tbody>
-      </table>
+      <div className={styles.tableResponsive}>
+        <table className={styles.table}>
+          <tbody>
+            <tr>
+              <th>Name</th>
+              <th>Arguments</th>
+              <th>Started At</th>
+              <th>Check-in At</th>
+              <th>Check-in</th>
+            </tr>
+            {
+              this.props.worker.map((worker) => {
+                return (
+                  <tr key={worker.WorkerID}>
+                    <td>{worker.JobName}</td>
+                    <td>{JSON.stringify(worker.ArgsJSON)}</td>
+                    <td><UnixTime ts={worker.StartedAt}/></td>
+                    <td><UnixTime ts={worker.CheckinAt}/></td>
+                    <td>{worker.Checkin}</td>
+                  </tr>
+                  );
+              })
+            }
+          </tbody>
+        </table>
+      </div>
     );
   }
 }
@@ -108,29 +109,31 @@ export default class Processes extends React.Component {
             let busyWorker = this.getBusyPoolWorker(pool);
             return (
               <div className={cx(styles.panel, styles.panelDefault)}>
-                <table className={styles.table}>
-                  <tbody>
-                    <tr>
-                      <td>{pool.Host}: {pool.Pid}</td>
-                      <td>Started <UnixTime ts={pool.StartedAt}/></td>
-                      <td>Last Heartbeat <UnixTime ts={pool.HeartbeatAt}/></td>
-                      <td>Concurrency {pool.Concurrency}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
-                    </tr>
-                    <tr>
-                      <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
-                    </tr>
-                    <tr>
-                      <td colSpan="4">
-                        <div className={cx(styles.panel, styles.panelDefault)}>
-                          <BusyWorkers worker={busyWorker}/>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div className={styles.tableResponsive}>
+                  <table className={styles.table}>
+                    <tbody>
+                      <tr>
+                        <td>{pool.Host}: {pool.Pid}</td>
+                        <td>Started <UnixTime ts={pool.StartedAt}/></td>
+                        <td>Last Heartbeat <UnixTime ts={pool.HeartbeatAt}/></td>
+                        <td>Concurrency {pool.Concurrency}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
+                      </tr>
+                      <tr>
+                        <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
+                      </tr>
+                      <tr>
+                        <td colSpan="4">
+                          <div className={cx(styles.panel, styles.panelDefault)}>
+                            <BusyWorkers worker={busyWorker}/>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
               );
           })

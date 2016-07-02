@@ -2,7 +2,6 @@ import React from 'react';
 import PageList from './PageList';
 import UnixTime from './UnixTime';
 import styles from './css/bootstrap.min.css';
-import TruncatedText from './TruncatedText';
 import cx from './cx';
 
 export default class RetryJobs extends React.Component {
@@ -35,8 +34,7 @@ export default class RetryJobs extends React.Component {
   }
 
   updatePage(page) {
-    this.setState({page: page});
-    this.fetch();
+    this.setState({page: page}, this.fetch);
   }
 
   render() {
@@ -47,28 +45,30 @@ export default class RetryJobs extends React.Component {
           <p>{this.state.Count} job(s) scheduled to be retried.</p>
           <PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/>
         </div>
-        <table className={styles.table}>
-          <tbody>
-            <tr>
-              <th>Name</th>
-              <th>Arguments</th>
-              <th>Error</th>
-              <th>Retry At</th>
-            </tr>
-            {
-              this.state.Jobs.map((job) => {
-                return (
-                  <tr key={job.id}>
-                    <td>{job.name}</td>
-                    <td><TruncatedText text={JSON.stringify(job.args)} max="40"/></td>
-                    <td><TruncatedText text={job.err} max="20"/></td>
-                    <td><UnixTime ts={job.t} /></td>
-                  </tr>
-                  );
-              })
-            }
-          </tbody>
-        </table>
+        <div className={styles.tableResponsive}>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <th>Name</th>
+                <th>Arguments</th>
+                <th>Error</th>
+                <th>Retry At</th>
+              </tr>
+              {
+                this.state.Jobs.map((job) => {
+                  return (
+                    <tr key={job.id}>
+                      <td>{job.name}</td>
+                      <td>{JSON.stringify(job.args)}</td>
+                      <td>{job.err}</td>
+                      <td><UnixTime ts={job.t} /></td>
+                    </tr>
+                    );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }

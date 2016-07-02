@@ -12,6 +12,10 @@
   content: ", ";
 }
 
+.li:last-child:before {
+  content: "and "
+}
+
 .li:last-child:after {
   content: "";
 }

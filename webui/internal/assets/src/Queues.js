@@ -37,26 +37,28 @@ export default class Queues extends React.Component {
         <div className={styles.panelBody}>
           <p>{this.state.Queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
         </div>
-        <table className={styles.table}>
-          <tbody>
-            <tr>
-              <th>Name</th>
-              <th>Count</th>
-              <th>Latency (seconds)</th>
-            </tr>
-            {
-              this.state.Queues.map((queue) => {
-                return (
-                  <tr key={queue.JobName}>
-                    <td>{queue.JobName}</td>
-                    <td>{queue.Count}</td>
-                    <td>{queue.Latency}</td>
-                  </tr>
-                  );
-              })
-            }
-          </tbody>
-        </table>
+        <div className={styles.tableResponsive}>
+          <table className={styles.table}>
+            <tbody>
+              <tr>
+                <th>Name</th>
+                <th>Count</th>
+                <th>Latency (seconds)</th>
+              </tr>
+              {
+                this.state.Queues.map((queue) => {
+                  return (
+                    <tr key={queue.JobName}>
+                      <td>{queue.JobName}</td>
+                      <td>{queue.Count}</td>
+                      <td>{queue.Latency}</td>
+                    </tr>
+                    );
+                })
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
