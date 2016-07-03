@@ -12,53 +12,32 @@ Enqueue some foobar jobs:
 cd cmd/workfakedata
 go run main.go
 
-NOMENCLATURE
-------------
- - "worker pool" - a pool of workers
- - "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
- - "heartbeater" or "worker pool heartbeater" - goroutine owned by worker pool that runs concurrently with workers. Writes the worker pool's config/status (aka "heartbeat") every 5 seconds.
- - "heartbeat" - the status written by the heartbeater.
- - "observer" or "worker observer" - observes a worker. writes stats. makes "observations".
- - "worker observation" - A snapshot made by an observer of what a worker is working on.
- - "job" - the actual bundle of data that constitutes one job
- - "job name" - each job has a name, like "create_watch"
- - "job type" - backend/private nomenclature for the handler+options for processing a job
- - "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
- - "retry jobs"
- - "scheduled jobs"
- - "dead jobs"
- 
-
 TODO
 ----
+ - rescue panics; test
+ - Fix the JobOptions thing so default value isn't insane
+ - Make sure comments are good and all godoc produces good results
+ - go vet
+ - go lint
  - add some more tests for runJob that test errors
- - if a worker pool dies, we need a way to clean up its entry in the set
- - Do I have a thing that rescues :inprogress shit?
  - dont removing from :inprogress if queue onto dead/retry fails
  - Enqueue should cache job names. If it's a new job name, sadd it
  - jobs API -- better json (not JobName, job_name)
-
- - checkin stuff
- - rescue panics
- 
- - In order to actually use this:
-   - metroid_worker
-     - suck in all the settings, config
-     - mysql, redis connections
-     - health logging, middleware
-     - signals to start, stop
-     - deploy.
+ - checkin stuff -- what's the status on that now?
+ - rename Join to Drain
+ - make start, stop, start work, & make start idempotent (on the pool)
+ - validation on job options
+ - Error message on the context stuff
+ - README stuff:
+   - checkin
+   - scheduled jobs
+ - Benchmark latest version of goworker and go-workers again
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time
- - If we have a lot of workers, we're facing a LOT of redis calls to get all of the status.
-   - possible sol'n: don't use redis hashes, just use json. Then it's just a single multiget
  - write better tests for Enqueue and EnqueueIn
  - revisit the retry backoff
- - rename join to drain
- - make start, stop, start work, & make start idempotent (on the pool)
  - generally, look into process scalability. Eg, if we have 30 processes, each with concurrency=25, that's a lot of pinging redis
- - do we want to merge client and enqueuer?
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?
    - thing we're guarding against: 100 goroutines all polling redis
    - alt: some clever mechanism to only check redis if we are busy?
@@ -71,70 +50,3 @@ TODO
    - number of redis connections used by work
    - overall redis stuff: mem, avail, cxns
  - it might be nice to have an overall counter like sidekiq
-
-workerPool := work.NewWorkerPool(Context{}, 15, &work.WorkerOptions{Redis: redisDSN}).
-    Middleware((*Context).SetDatabase).
-    Middleware((*Context).Log)
-
-workerPool.Job("create_watch", (*Context).CreateWatch)
-workerPool.Job("send_notice", (*Context).SendNotice)
-workerPool.JobWithOptions("send_important_notice", &JobOptions{Priority: 4, Retries: 4}, (*Context).SendImportantNotice)
-
-
-workerPool.Start()
-workerPool.Stop()
-
-enqueuer := worker.Enqueuer()
-// or
-enqueuer := work.NewEnqueuer(redisDSN)
-
-enqueuer.Enqueue("create_watch", user.Id, suggestion.Id)
-enqueuer.EnqueueIn
-enqueuer.EnqueueAt
-
-enqueuer.Enqueue("create_watch", work.Q{
-    "user_id": user.Id,
-    "email": user.Email,
-})
-
-func(j *work.Job) {
-    uid := j.GetInt64("user_id")
-    sid := j.GetString("email")
-}
-
-ideas:
-enqueuer.EnqueueUnique("create_watch", user.id)
-
-func (c *Context) CreateWatch(r *work.Job, userId int64, suggestionId int64) error {
-    
-}
-
-type Job struct {
-    Name string
-    ID   string
-    
-    payload []byte //???
-}
-
-// For long running jobs, checkin periodically. Returns whether the service needs to shut down.
-func (r *Job) Checkin(msg string) bool {
-    
-}
-
-* NewWorker() generates a random id for itself.
-
-
-// design thoughts
- - goals
-   1. optimize for understandability, debuggability, instrumentation
-   2. redis cxns/load
-   3. thruput
-   4. latency
- - JOBS ARE QUEUES. Each job is in its own queue. Scheduling is round robin, but with job priorities.
-   - One config that isn't possible: "always do these jobs last" or "always do jobs in this order"
- - should never have to list keys in redis
- - If shit is going blazing fast, do we need to see what's in progress?
- - what if we just show how many threads are tackling a given job at a time?
- - each worker has a unique identifier
-
-

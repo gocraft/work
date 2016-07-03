@@ -125,8 +125,6 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 			return fmt.Errorf("need 3 elements back")
 		}
 	}
-
-	return nil
 }
 
 func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {

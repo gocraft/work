@@ -44,12 +44,11 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 				}
 			}
 		}
-		return nil
 	}
 
 	err := next()
 
-	// catch panic
+	// TODO: catch panic
 
 	//
 	return v, err

@@ -12,7 +12,7 @@ import (
 type worker struct {
 	workerID    string
 	poolID      string
-	namespace   string // eg, "myapp-work"
+	namespace   string
 	pool        *redis.Pool
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler

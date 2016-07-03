@@ -100,6 +100,7 @@ func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 // TODO: depending on how many JobOptions there are it might be good to explode the options
 // because it's super awkward for omitted Priority and MaxRetries to be zero-valued
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
+	// TODO: validate the priority >= 1 and <= 1000
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
 	jt := &jobType{
@@ -149,7 +150,7 @@ func (wp *WorkerPool) Stop() {
 	wp.deadPoolReaper.stop()
 }
 
-func (wp *WorkerPool) Join() {
+func (wp *WorkerPool) Join() { // TODO: rename to drain
 	wg := sync.WaitGroup{}
 	for _, w := range wp.workers {
 		wg.Add(1)
