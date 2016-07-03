@@ -25,8 +25,8 @@ type worker struct {
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 
-	joinChan        chan struct{}
-	doneJoiningChan chan struct{}
+	drainChan        chan struct{}
+	doneDrainingChan chan struct{}
 }
 
 func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
@@ -45,8 +45,8 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 
-		joinChan:        make(chan struct{}),
-		doneJoiningChan: make(chan struct{}),
+		drainChan:        make(chan struct{}),
+		doneDrainingChan: make(chan struct{}),
 	}
 
 	w.updateMiddlewareAndJobTypes(middleware, jobTypes)
@@ -74,20 +74,20 @@ func (w *worker) start() {
 func (w *worker) stop() {
 	close(w.stopChan)
 	<-w.doneStoppingChan
-	w.observer.join()
+	w.observer.drain()
 	w.observer.stop()
 }
 
-func (w *worker) join() {
-	w.joinChan <- struct{}{}
-	<-w.doneJoiningChan
-	w.observer.join()
+func (w *worker) drain() {
+	w.drainChan <- struct{}{}
+	<-w.doneDrainingChan
+	w.observer.drain()
 }
 
 var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
 
 func (w *worker) loop() {
-	var joined bool
+	var drained bool
 	var consequtiveNoJobs int64
 	var nextTry time.Time
 	const sleepIncrement = 10 * time.Millisecond
@@ -96,8 +96,8 @@ func (w *worker) loop() {
 		case <-w.stopChan:
 			close(w.doneStoppingChan)
 			return
-		case <-w.joinChan:
-			joined = true
+		case <-w.drainChan:
+			drained = true
 		default:
 			if nextTry.IsZero() {
 				job, err := w.fetchJob()
@@ -107,9 +107,9 @@ func (w *worker) loop() {
 					w.processJob(job)
 					consequtiveNoJobs = 0
 				} else {
-					if joined {
-						w.doneJoiningChan <- struct{}{}
-						joined = false
+					if drained {
+						w.doneDrainingChan <- struct{}{}
+						drained = false
 					}
 					consequtiveNoJobs++
 					idx := consequtiveNoJobs

@@ -16,13 +16,11 @@ TODO
 ----
  - rescue panics; test
  - Make sure comments are good and all godoc produces good results
- - go lint
  - add some more tests for runJob that test errors
  - dont removing from :inprogress if queue onto dead/retry fails
  - Enqueue should cache job names. If it's a new job name, sadd it
  - jobs API -- better json (not JobName, job_name)
  - checkin stuff -- what's the status on that now?
- - rename Join to Drain
  - make start, stop, start work, & make start idempotent (on the pool)
  - validation on job options, set defaults if relevant.
  - Error message on the context stuff
@@ -32,6 +30,7 @@ TODO
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
  - implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
+ - unified signal handling
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

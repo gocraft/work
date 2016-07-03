@@ -195,7 +195,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
-	wp.Join()
+	wp.Drain()
 	wp.Stop()
 
 	s := NewServer(ns, pool, ":6666")
@@ -272,7 +272,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
-	wp.Join()
+	wp.Drain()
 	wp.Stop()
 
 	s := NewServer(ns, pool, ":6666")

@@ -28,8 +28,8 @@ type observer struct {
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 
-	joinChan        chan struct{}
-	doneJoiningChan chan struct{}
+	drainChan        chan struct{}
+	doneDrainingChan chan struct{}
 }
 
 type observationKind int
@@ -71,8 +71,8 @@ func newObserver(namespace string, pool *redis.Pool, workerID string) *observer 
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 
-		joinChan:        make(chan struct{}),
-		doneJoiningChan: make(chan struct{}),
+		drainChan:        make(chan struct{}),
+		doneDrainingChan: make(chan struct{}),
 	}
 }
 
@@ -85,9 +85,9 @@ func (o *observer) stop() {
 	<-o.doneStoppingChan
 }
 
-func (o *observer) join() {
-	o.joinChan <- struct{}{}
-	<-o.doneJoiningChan
+func (o *observer) drain() {
+	o.drainChan <- struct{}{}
+	<-o.doneDrainingChan
 }
 
 func (o *observer) observeStarted(jobName, jobID string, arguments map[string]interface{}) {
@@ -130,8 +130,8 @@ func (o *observer) loop() {
 		case <-o.stopChan:
 			close(o.doneStoppingChan)
 			return
-		case <-o.joinChan:
-		JOIN_LOOP:
+		case <-o.drainChan:
+		DRAIN_LOOP:
 			for {
 				select {
 				case obv := <-o.observationsChan:
@@ -140,8 +140,8 @@ func (o *observer) loop() {
 					if err := o.writeStatus(o.currentStartedObservation); err != nil {
 						logError("observer.write", err)
 					}
-					o.doneJoiningChan <- struct{}{}
-					break JOIN_LOOP
+					o.doneDrainingChan <- struct{}{}
+					break DRAIN_LOOP
 				}
 			}
 		case <-ticker:

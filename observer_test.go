@@ -20,7 +20,7 @@ func TestObserverStarted(t *testing.T) {
 	observer.start()
 	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
 	//observer.observeDone("foo", "bar", nil)
-	observer.join()
+	observer.drain()
 	observer.stop()
 
 	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
@@ -42,7 +42,7 @@ func TestObserverStartedDone(t *testing.T) {
 	observer.start()
 	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
 	observer.observeDone("foo", "bar", nil)
-	observer.join()
+	observer.drain()
 	observer.stop()
 
 	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
@@ -64,7 +64,7 @@ func TestObserverCheckin(t *testing.T) {
 	tMockCheckin := int64(1425263402)
 	setNowEpochSecondsMock(tMockCheckin)
 	observer.observeCheckin("foo", "bar", "doin it")
-	observer.join()
+	observer.drain()
 	observer.stop()
 
 	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))

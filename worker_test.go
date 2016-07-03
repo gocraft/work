@@ -62,7 +62,7 @@ func TestWorkerBasics(t *testing.T) {
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
-	w.join()
+	w.drain()
 	w.stop()
 
 	// make sure the jobs ran (side effect of setting these variables to the job arguments)
@@ -119,13 +119,13 @@ func TestWorkerInProgress(t *testing.T) {
 	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// nothing in the worker status
-	w.observer.join()
+	w.observer.drain()
 	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
 	assert.Equal(t, `{"a":1}`, h["args"])
 	// NOTE: we could check for job_id and started_at, but it's a PITA and it's tested in observer_test.
 
-	w.join()
+	w.drain()
 	w.stop()
 
 	// At this point, it should all be empty.
@@ -159,7 +159,7 @@ func TestWorkerRetry(t *testing.T) {
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
-	w.join()
+	w.drain()
 	w.stop()
 
 	// Ensure the right stuff is in our queues:
@@ -215,7 +215,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
-	w.join()
+	w.drain()
 	w.stop()
 
 	// Ensure the right stuff is in our queues:

@@ -249,7 +249,7 @@ func TestClientRetryJobs(t *testing.T) {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
-	wp.Join()
+	wp.Drain()
 	wp.Stop()
 
 	client := NewClient(ns, pool)
@@ -288,7 +288,7 @@ func TestClientDeadJobs(t *testing.T) {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
-	wp.Join()
+	wp.Drain()
 	wp.Stop()
 
 	client := NewClient(ns, pool)
