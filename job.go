@@ -7,6 +7,7 @@ import (
 	"reflect"
 )
 
+// Job represents a job.
 type Job struct {
 	// Inputs when makin a new job
 	Name       string                 `json:"name,omitempty"`
@@ -25,6 +26,8 @@ type Job struct {
 	argError     error
 }
 
+// Q is a shortcut to easily specify arguments for jobs when enqueueing them.
+// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
 
 func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
@@ -39,10 +42,11 @@ func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	return &job, nil
 }
 
-func (j *Job) Serialize() ([]byte, error) {
+func (j *Job) serialize() ([]byte, error) {
 	return json.Marshal(j)
 }
 
+// SetArg sets a single named argument on the job.
 func (j *Job) SetArg(key string, val interface{}) {
 	if j.Args == nil {
 		j.Args = make(map[string]interface{})
@@ -65,15 +69,17 @@ func (j *Job) ArgString(key string) string {
 		typedV, ok := v.(string)
 		if ok {
 			return typedV
-		} else {
-			j.argError = typecastError("string", key, v)
 		}
+		j.argError = typecastError("string", key, v)
 	} else {
 		j.argError = missingKeyError("string", key)
 	}
 	return ""
 }
 
+// ArgInt64 returns j.Args[key] typed to an int64. If the key is missing or of the wrong type, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
 func (j *Job) ArgInt64(key string) int64 {
 	v, ok := j.Args[key]
 	if ok {
@@ -99,6 +105,9 @@ func (j *Job) ArgInt64(key string) int64 {
 	return 0
 }
 
+// ArgFloat64 returns j.Args[key] typed to a float64. If the key is missing or of the wrong type, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
 func (j *Job) ArgFloat64(key string) float64 {
 	v, ok := j.Args[key]
 	if ok {
@@ -117,21 +126,24 @@ func (j *Job) ArgFloat64(key string) float64 {
 	return 0.0
 }
 
+// ArgBool returns j.Args[key] typed to a bool. If the key is missing or of the wrong type, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
 func (j *Job) ArgBool(key string) bool {
 	v, ok := j.Args[key]
 	if ok {
 		typedV, ok := v.(bool)
 		if ok {
 			return typedV
-		} else {
-			j.argError = typecastError("bool", key, v)
 		}
+		j.argError = typecastError("bool", key, v)
 	} else {
 		j.argError = missingKeyError("bool", key)
 	}
 	return false
 }
 
+// ArgError returns the last error generated when extracting typed params. Returns nil if extracting the args went fine.
 func (j *Job) ArgError() error {
 	return j.argError
 }

@@ -15,9 +15,7 @@ go run main.go
 TODO
 ----
  - rescue panics; test
- - Fix the JobOptions thing so default value isn't insane
  - Make sure comments are good and all godoc produces good results
- - go vet
  - go lint
  - add some more tests for runJob that test errors
  - dont removing from :inprogress if queue onto dead/retry fails
@@ -26,12 +24,14 @@ TODO
  - checkin stuff -- what's the status on that now?
  - rename Join to Drain
  - make start, stop, start work, & make start idempotent (on the pool)
- - validation on job options
+ - validation on job options, set defaults if relevant.
  - Error message on the context stuff
  - README stuff:
+   - context
    - checkin
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
+ - implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

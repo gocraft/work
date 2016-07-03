@@ -39,7 +39,7 @@ func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID s
 	}
 
 	jobNames := make([]string, 0, len(jobTypes))
-	for k, _ := range jobTypes {
+	for k := range jobTypes {
 		jobNames = append(jobNames, k)
 	}
 	sort.Strings(jobNames)

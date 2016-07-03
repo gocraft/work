@@ -9,9 +9,9 @@ import (
 	"github.com/garyburd/redigo/redis"
 )
 
-var (
-	DeadTime   = 5 * time.Minute
-	ReapPeriod = 10 * time.Minute
+const (
+	deadTime   = 5 * time.Minute
+	reapPeriod = 10 * time.Minute
 )
 
 type deadPoolReaper struct {
@@ -48,7 +48,7 @@ func (r *deadPoolReaper) loop() {
 	}
 
 	// Begin reaping periodically
-	timer := time.NewTimer(ReapPeriod)
+	timer := time.NewTimer(reapPeriod)
 	defer timer.Stop()
 
 	for {
@@ -58,7 +58,7 @@ func (r *deadPoolReaper) loop() {
 			return
 		case <-timer.C:
 			// Schedule next occurance with jitter
-			timer.Reset(ReapPeriod + time.Duration(rand.Intn(30))*time.Second)
+			timer.Reset(reapPeriod + time.Duration(rand.Intn(30))*time.Second)
 
 			// Reap
 			if err := r.reap(); err != nil {
@@ -151,7 +151,7 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 			return nil, err
 		}
 
-		if time.Unix(heartbeatAt, 0).Add(DeadTime).After(time.Now()) {
+		if time.Unix(heartbeatAt, 0).Add(deadTime).After(time.Now()) {
 			continue
 		}
 

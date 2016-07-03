@@ -8,11 +8,13 @@ import (
 	"strings"
 )
 
+// Client implements all of the functionality of the web UI. It can be used to inspect the status of a running cluster and retry dead jobs.
 type Client struct {
-	namespace string // eg, "myapp-work"
+	namespace string
 	pool      *redis.Pool
 }
 
+// NewClient creates a new Client with the specified redis namespace and connection pool.
 func NewClient(namespace string, pool *redis.Pool) *Client {
 	return &Client{
 		namespace: namespace,
@@ -20,6 +22,7 @@ func NewClient(namespace string, pool *redis.Pool) *Client {
 	}
 }
 
+// WorkerPoolHeartbeat represents the heartbeat from a worker pool. WorkerPool's write a heartbeat every 5 seconds so we know they're alive and includes config information.
 type WorkerPoolHeartbeat struct {
 	WorkerPoolID string
 	StartedAt    int64
@@ -33,6 +36,7 @@ type WorkerPoolHeartbeat struct {
 	WorkerIDs []string
 }
 
+// WorkerPoolHeartbeats queries Redis and returns all WorkerPoolHeartbeat's it finds (even for those worker pools which don't have a current heartbeat).
 func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -106,6 +110,7 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	return heartbeats, nil
 }
 
+// WorkerObservation represents the latest observation taken from a worker. The observation indicates whether the worker is busy processing a job, and if so, information about that job.
 type WorkerObservation struct {
 	WorkerID string
 	IsBusy   bool
@@ -119,6 +124,7 @@ type WorkerObservation struct {
 	CheckinAt int64
 }
 
+// WorkerObservations returns all of the WorkerObservation's it finds for all worker pools' workers.
 func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -189,12 +195,14 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	return observations, nil
 }
 
+// Queue represents a queue that holds jobs with the same name. It indicates their name, count, and latency (in seconds). Latency is a measurement of how long ago the next job to be processed was enqueued.
 type Queue struct {
 	JobName string
 	Count   int64
 	Latency int64
 }
 
+// Queues returns the Queue's it finds.
 func (c *Client) Queues() ([]*Queue, error) {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -264,27 +272,25 @@ func (c *Client) Queues() ([]*Queue, error) {
 	return queues, nil
 }
 
-func (c *Client) QueueCount(jobName string) (int64, error) {
-	conn := c.pool.Get()
-	defer conn.Close()
-	return redis.Int64(conn.Do("LLEN", redisKeyJobs(c.namespace, jobName)))
-}
-
+// RetryJob represents a job in the retry queue.
 type RetryJob struct {
 	RetryAt int64
 	*Job
 }
 
+// ScheduledJob represents a job in the scheduled queue.
 type ScheduledJob struct {
 	RunAt int64
 	*Job
 }
 
+// DeadJob represents a job in the dead queue.
 type DeadJob struct {
 	DiedAt int64
 	*Job
 }
 
+// ScheduledJobs returns a list of ScheduledJob's. The page param is 1-based; each page is 20 items. The total number of items (not pages) in the list of scheduled jobs is also returned.
 func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, int64, error) {
 	key := redisKeyScheduled(c.namespace)
 	jobsWithScores, count, err := c.getZsetPage(key, page)
@@ -302,6 +308,7 @@ func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, int64, error) {
 	return jobs, count, nil
 }
 
+// RetryJobs returns a list of RetryJob's. The page param is 1-based; each page is 20 items. The total number of items (not pages) in the list of retry jobs is also returned.
 func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 	key := redisKeyRetry(c.namespace)
 	jobsWithScores, count, err := c.getZsetPage(key, page)
@@ -319,6 +326,25 @@ func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 	return jobs, count, nil
 }
 
+// DeadJobs returns a list of DeadJob's. The page param is 1-based; each page is 20 items. The total number of items (not pages) in the list of dead jobs is also returned.
+func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
+	key := redisKeyDead(c.namespace)
+	jobsWithScores, count, err := c.getZsetPage(key, page)
+	if err != nil {
+		logError("client.dead_jobs.get_zset_page", err)
+		return nil, 0, err
+	}
+
+	jobs := make([]*DeadJob, 0, len(jobsWithScores))
+
+	for _, jws := range jobsWithScores {
+		jobs = append(jobs, &DeadJob{DiedAt: jws.Score, Job: jws.job})
+	}
+
+	return jobs, count, nil
+}
+
+// DeleteDeadJob deletes a dead job from Redis. The job.DiedAt and job.ID fields must be set.
 func (c *Client) DeleteDeadJob(job *DeadJob) error {
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -366,6 +392,7 @@ func (c *Client) DeleteDeadJob(job *DeadJob) error {
 	return nil
 }
 
+// RetryDeadJob retries a dead job. The job.DiedAt and job.ID fields must be set. The job will be re-queued on the normal work queue for eventual processing by a worker.
 func (c *Client) RetryDeadJob(job *DeadJob) error {
 	modifiedJob := *job
 
@@ -373,7 +400,7 @@ func (c *Client) RetryDeadJob(job *DeadJob) error {
 	modifiedJob.FailedAt = 0
 	modifiedJob.LastErr = ""
 
-	rawJSON, err := modifiedJob.Serialize()
+	rawJSON, err := modifiedJob.serialize()
 	if err != nil {
 		logError("client.retry_dead_job.serialze", err)
 		return err
@@ -392,23 +419,6 @@ func (c *Client) RetryDeadJob(job *DeadJob) error {
 
 // TODO: func RetryAllDeadJobs() error {}
 // TODO: func DeleteAllDeadJobs() error {}
-
-func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
-	key := redisKeyDead(c.namespace)
-	jobsWithScores, count, err := c.getZsetPage(key, page)
-	if err != nil {
-		logError("client.dead_jobs.get_zset_page", err)
-		return nil, 0, err
-	}
-
-	jobs := make([]*DeadJob, 0, len(jobsWithScores))
-
-	for _, jws := range jobsWithScores {
-		jobs = append(jobs, &DeadJob{DiedAt: jws.Score, Job: jws.job})
-	}
-
-	return jobs, count, nil
-}
 
 type jobScore struct {
 	JobBytes []byte

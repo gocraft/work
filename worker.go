@@ -217,7 +217,7 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 }
 
 func (w *worker) addToRetry(job *Job, runErr error) {
-	rawJSON, err := job.Serialize()
+	rawJSON, err := job.serialize()
 	if err != nil {
 		logError("worker.add_to_retry", err)
 		return
@@ -234,7 +234,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 }
 
 func (w *worker) addToDead(job *Job, runErr error) {
-	rawJSON, err := job.Serialize()
+	rawJSON, err := job.serialize()
 
 	if err != nil {
 		logError("worker.add_to_dead.serialize", err)

@@ -180,11 +180,6 @@ func TestClientQueues(t *testing.T) {
 	assert.Equal(t, "zaz", queues[2].JobName)
 	assert.EqualValues(t, 0, queues[2].Count)
 	assert.EqualValues(t, 0, queues[2].Latency)
-
-	// †est QueueCount
-	count, err := client.QueueCount("foo")
-	assert.NoError(t, err)
-	assert.EqualValues(t, 2, count)
 }
 
 func TestClientScheduledJobs(t *testing.T) {
@@ -425,7 +420,7 @@ func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64
 		FailedAt:   failAt,
 	}
 
-	rawJSON, _ := job.Serialize()
+	rawJSON, _ := job.serialize()
 
 	conn := pool.Get()
 	defer conn.Close()
