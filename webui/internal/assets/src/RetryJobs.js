@@ -1,7 +1,7 @@
 import React from 'react';
 import PageList from './PageList';
 import UnixTime from './UnixTime';
-import styles from './css/bootstrap.min.css';
+import styles from './bootstrap.min.css';
 import cx from './cx';
 
 export default class RetryJobs extends React.Component {

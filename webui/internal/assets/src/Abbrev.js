@@ -12,9 +12,9 @@ export default class Abbrev extends React.Component {
         {
           this.props.item.map((item, i) => {
             if (i < 3) {
-              return (<li className={styles.li}>{item}</li>);
+              return (<li key={i} className={styles.li}>{item}</li>);
             } else if (i == 3) {
-              return (<li className={styles.li}>{this.props.item.length - 3} more</li>);
+              return (<li key={i} className={styles.li}>{this.props.item.length - 3} more</li>);
             }
           })
         }

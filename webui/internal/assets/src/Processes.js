@@ -1,7 +1,7 @@
 import React from 'react';
 import UnixTime from './UnixTime';
 import Abbrev from './Abbrev';
-import styles from './css/bootstrap.min.css';
+import styles from './bootstrap.min.css';
 import cx from './cx';
 
 class BusyWorkers extends React.Component {

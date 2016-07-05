@@ -1,5 +1,5 @@
 import React from 'react';
-import styles from './css/bootstrap.min.css';
+import styles from './bootstrap.min.css';
 import cx from './cx';
 
 export default class Queues extends React.Component {

@@ -6,7 +6,7 @@ import Queues from './Queues';
 import RetryJobs from './RetryJobs';
 import ScheduledJobs from './ScheduledJobs';
 import { Router, Route, Link, IndexRedirect, hashHistory } from 'react-router';
-import styles from './css/bootstrap.min.css';
+import styles from './bootstrap.min.css';
 import cx from './cx';
 
 class App extends React.Component {

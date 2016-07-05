@@ -1,11 +1,11 @@
 {
   "private": true,
   "scripts": {
-    "test": "mocha 'src/**/*.test.js' --compilers js:babel-core/register",
+    "test": "mocha 'src/**/*.test.js' --require babel-register --require ignore-styles",
     "dev": "webpack --progress",
     "build": "webpack --progress --config webpack.production.config.js",
     "lint": "eslint src; exit 0",
-    "cover": "istanbul cover _mocha --root src/ --include-all-sources -x '**/*.test.js' -- 'src/**/*.test.js' --compilers js:babel-register"
+    "cover": "istanbul cover _mocha --root src/ --include-all-sources -x '**/*.test.js' -- 'src/**/*.test.js' --require babel-register --require ignore-styles"
   },
   "devDependencies": {
     "babel-core": "latest",
@@ -19,6 +19,7 @@
     "eslint-plugin-react": "latest",
     "expect": "latest",
     "file-loader": "latest",
+    "ignore-styles": "latest",
     "istanbul": "^1.1.0-alpha.1",
     "mocha": "latest",
     "react": "latest",
