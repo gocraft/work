@@ -16,7 +16,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        loader: 'style!css?modules&camelCase'
+        loader: 'style!css?modules&camelCase&-url&localIdentName=[hash:base64:5]-[local]'
       },
       {
         test: /\.(png|woff|woff2|eot|ttf|svg)(\?[#a-z_]+)?$/,
