@@ -43,7 +43,7 @@ export default class ScheduledJobs extends React.Component {
         <div className={styles.panelHeading}>Scheduled Jobs</div>
         <div className={styles.panelBody}>
           <p>{this.state.Count} job(s) scheduled.</p>
-          <PageList page={this.state.page} totalCount={this.state.Count} perPage="20" jumpTo={(page) => () => this.updatePage(page)}/>
+          <PageList page={this.state.page} totalCount={this.state.Count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.table}>
