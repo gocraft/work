@@ -76,9 +76,9 @@ func TestWebUIQueues(t *testing.T) {
 
 	foomap, ok := res[0].(map[string]interface{})
 	assert.True(t, ok)
-	assert.Equal(t, "foo", foomap["JobName"])
-	assert.EqualValues(t, 2, foomap["Count"])
-	assert.EqualValues(t, 0, foomap["Latency"])
+	assert.Equal(t, "foo", foomap["job_name"])
+	assert.EqualValues(t, 2, foomap["count"])
+	assert.EqualValues(t, 0, foomap["latency"])
 }
 
 func TestWebUIWorkerPools(t *testing.T) {
@@ -115,7 +115,7 @@ func TestWebUIWorkerPools(t *testing.T) {
 
 	w1stat, ok := res[0].(map[string]interface{})
 	assert.True(t, ok)
-	assert.True(t, w1stat["WorkerPoolID"] != "")
+	assert.True(t, w1stat["worker_pool_id"] != "")
 	// NOTE: WorkerPoolStatus is tested elsewhere.
 }
 
@@ -176,8 +176,8 @@ func TestWebUIBusyWorkers(t *testing.T) {
 	if len(res) == 1 {
 		hash, ok := res[0].(map[string]interface{})
 		assert.True(t, ok)
-		assert.Equal(t, "wat", hash["JobName"])
-		assert.Equal(t, true, hash["IsBusy"])
+		assert.Equal(t, "wat", hash["job_name"])
+		assert.Equal(t, true, hash["is_busy"])
 	}
 }
 
@@ -205,12 +205,12 @@ func TestWebUIRetryJobs(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
-		Count int64
+		Count int64 `json:"count"`
 		Jobs  []struct {
-			RetryAt int64
+			RetryAt int64  `json:"retry_at"`
 			Name    string `json:"name"`
 			Fails   int64  `json:"fails"`
-		}
+		} `json:"jobs"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
@@ -240,11 +240,11 @@ func TestWebUIScheduledJobs(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
-		Count int64
+		Count int64 `json:"count"`
 		Jobs  []struct {
-			RunAt int64
+			RunAt int64  `json:"run_at"`
 			Name  string `json:"name"`
-		}
+		} `json:"jobs"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
@@ -282,13 +282,13 @@ func TestWebUIDeadJobs(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var res struct {
-		Count int64
+		Count int64 `json:"count"`
 		Jobs  []struct {
-			DiedAt int64
+			DiedAt int64  `json:"died_at"`
 			Name   string `json:"name"`
 			ID     string `json:"id"`
 			Fails  int64  `json:"fails"`
-		}
+		} `json:"jobs"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &res)
 	assert.NoError(t, err)
@@ -334,8 +334,8 @@ func TestWebUIDeadJobs(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 	assert.Equal(t, 200, recorder.Code)
 	var queueRes []struct {
-		JobName string
-		Count   int64
+		JobName string `json:"job_name"`
+		Count   int64  `json:"count"`
 	}
 	err = json.Unmarshal(recorder.Body.Bytes(), &queueRes)
 	assert.NoError(t, err)

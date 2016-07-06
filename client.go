@@ -24,16 +24,14 @@ func NewClient(namespace string, pool *redis.Pool) *Client {
 
 // WorkerPoolHeartbeat represents the heartbeat from a worker pool. WorkerPool's write a heartbeat every 5 seconds so we know they're alive and includes config information.
 type WorkerPoolHeartbeat struct {
-	WorkerPoolID string
-	StartedAt    int64
-	HeartbeatAt  int64
-
-	JobNames    []string
-	Concurrency uint
-	Host        string
-	Pid         int
-
-	WorkerIDs []string
+	WorkerPoolID string   `json:"worker_pool_id"`
+	StartedAt    int64    `json:"started_at"`
+	HeartbeatAt  int64    `json:"heartbeat_at"`
+	JobNames     []string `json:"job_names"`
+	Concurrency  uint     `json:"concurrency"`
+	Host         string   `json:"host"`
+	Pid          int      `json:"pid"`
+	WorkerIDs    []string `json:"worker_ids"`
 }
 
 // WorkerPoolHeartbeats queries Redis and returns all WorkerPoolHeartbeat's it finds (even for those worker pools which don't have a current heartbeat).
@@ -112,16 +110,16 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 
 // WorkerObservation represents the latest observation taken from a worker. The observation indicates whether the worker is busy processing a job, and if so, information about that job.
 type WorkerObservation struct {
-	WorkerID string
-	IsBusy   bool
+	WorkerID string `json:"worker_id"`
+	IsBusy   bool   `json:"is_busy"`
 
 	// If IsBusy:
-	JobName   string
-	JobID     string
-	StartedAt int64
-	ArgsJSON  string
-	Checkin   string
-	CheckinAt int64
+	JobName   string `json:"job_name"`
+	JobID     string `json:"job_id"`
+	StartedAt int64  `json:"started_at"`
+	ArgsJSON  string `json:"args_json"`
+	Checkin   string `json:"checkin"`
+	CheckinAt int64  `json:"checkin_at"`
 }
 
 // WorkerObservations returns all of the WorkerObservation's it finds for all worker pools' workers.
@@ -197,9 +195,9 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 
 // Queue represents a queue that holds jobs with the same name. It indicates their name, count, and latency (in seconds). Latency is a measurement of how long ago the next job to be processed was enqueued.
 type Queue struct {
-	JobName string
-	Count   int64
-	Latency int64
+	JobName string `json:"job_name"`
+	Count   int64  `json:"count"`
+	Latency int64  `json:"latency"`
 }
 
 // Queues returns the Queue's it finds.
@@ -274,19 +272,19 @@ func (c *Client) Queues() ([]*Queue, error) {
 
 // RetryJob represents a job in the retry queue.
 type RetryJob struct {
-	RetryAt int64
+	RetryAt int64 `json:"retry_at"`
 	*Job
 }
 
 // ScheduledJob represents a job in the scheduled queue.
 type ScheduledJob struct {
-	RunAt int64
+	RunAt int64 `json:"run_at"`
 	*Job
 }
 
 // DeadJob represents a job in the dead queue.
 type DeadJob struct {
-	DiedAt int64
+	DiedAt int64 `json:"died_at"`
 	*Job
 }
 

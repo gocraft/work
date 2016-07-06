@@ -9,7 +9,7 @@ import (
 
 // Job represents a job.
 type Job struct {
-	// Inputs when makin a new job
+	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
 	ID         string                 `json:"id"`
 	EnqueuedAt int64                  `json:"t"`

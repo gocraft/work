@@ -14,12 +14,12 @@ go run main.go
 
 TODO
 ----
+ - Make sure all TODOs in code are addressed.
  - rescue panics; test
  - Make sure comments are good and all godoc produces good results
  - add some more tests for runJob that test errors
  - dont removing from :inprogress if queue onto dead/retry fails
  - Enqueue should cache job names. If it's a new job name, sadd it
- - jobs API -- better json (not JobName, job_name)
  - checkin stuff -- what's the status on that now?
  - make start, stop, start work, & make start idempotent (on the pool)
  - validation on job options, set defaults if relevant.

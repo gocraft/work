@@ -111,8 +111,8 @@ func (c *context) retryJobs(rw web.ResponseWriter, r *web.Request) {
 	}
 
 	response := struct {
-		Count int64
-		Jobs  []*work.RetryJob
+		Count int64            `json:"count"`
+		Jobs  []*work.RetryJob `json:"jobs"`
 	}{Count: count, Jobs: jobs}
 
 	render(rw, response, err)
@@ -132,8 +132,8 @@ func (c *context) scheduledJobs(rw web.ResponseWriter, r *web.Request) {
 	}
 
 	response := struct {
-		Count int64
-		Jobs  []*work.ScheduledJob
+		Count int64                `json:"count"`
+		Jobs  []*work.ScheduledJob `json:"jobs"`
 	}{Count: count, Jobs: jobs}
 
 	render(rw, response, err)
@@ -153,8 +153,8 @@ func (c *context) deadJobs(rw web.ResponseWriter, r *web.Request) {
 	}
 
 	response := struct {
-		Count int64
-		Jobs  []*work.DeadJob
+		Count int64           `json:"count"`
+		Jobs  []*work.DeadJob `json:"jobs"`
 	}{Count: count, Jobs: jobs}
 
 	render(rw, response, err)
