@@ -46,8 +46,8 @@ func (j *Job) serialize() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-// SetArg sets a single named argument on the job.
-func (j *Job) SetArg(key string, val interface{}) {
+// setArg sets a single named argument on the job.
+func (j *Job) setArg(key string, val interface{}) {
 	if j.Args == nil {
 		j.Args = make(map[string]interface{})
 	}

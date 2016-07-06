@@ -8,16 +8,16 @@ import (
 
 func TestJobArgumentExtraction(t *testing.T) {
 	j := Job{}
-	j.SetArg("str1", "bar")
+	j.setArg("str1", "bar")
 
-	j.SetArg("int1", int64(77))
-	j.SetArg("int2", 77)
-	j.SetArg("int3", uint64(77))
-	j.SetArg("int4", float64(77.0))
+	j.setArg("int1", int64(77))
+	j.setArg("int2", 77)
+	j.setArg("int3", uint64(77))
+	j.setArg("int4", float64(77.0))
 
-	j.SetArg("bool1", true)
+	j.setArg("bool1", true)
 
-	j.SetArg("float1", 3.14)
+	j.setArg("float1", 3.14)
 
 	//
 	// Success cases:
@@ -100,7 +100,7 @@ func TestJobArgumentExtractionBadString(t *testing.T) {
 	j := Job{}
 
 	for _, tc := range testCases {
-		j.SetArg(tc.key, tc.val)
+		j.setArg(tc.key, tc.val)
 	}
 
 	for _, tc := range testCases {
@@ -140,7 +140,7 @@ func TestJobArgumentExtractionBadBool(t *testing.T) {
 	j := Job{}
 
 	for _, tc := range testCases {
-		j.SetArg(tc.key, tc.val)
+		j.setArg(tc.key, tc.val)
 	}
 
 	for _, tc := range testCases {
@@ -189,7 +189,7 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 	j := Job{}
 
 	for _, tc := range testCases {
-		j.SetArg(tc.key, tc.val)
+		j.setArg(tc.key, tc.val)
 	}
 
 	for _, tc := range testCases {
@@ -232,7 +232,7 @@ func TestJobArgumentExtractionBadFloat(t *testing.T) {
 	j := Job{}
 
 	for _, tc := range testCases {
-		j.SetArg(tc.key, tc.val)
+		j.setArg(tc.key, tc.val)
 	}
 
 	for _, tc := range testCases {

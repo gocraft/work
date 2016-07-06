@@ -9,7 +9,7 @@ import (
 
 func TestRunBasicMiddleware(t *testing.T) {
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
-		j.SetArg("mw1", "mw1")
+		j.setArg("mw1", "mw1")
 		return next()
 	}
 
