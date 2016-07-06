@@ -89,8 +89,11 @@ var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
 func (w *worker) loop() {
 	var drained bool
 	var consequtiveNoJobs int64
-	var nextTry time.Time
-	const sleepIncrement = 10 * time.Millisecond
+
+	// Begin immediately. We'll change the duration on each tick with a timer.Reset()
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
 	for {
 		select {
 		case <-w.stopChan:
@@ -98,8 +101,10 @@ func (w *worker) loop() {
 			return
 		case <-w.drainChan:
 			drained = true
-		default:
-			if nextTry.IsZero() {
+			timer.Reset(0)
+		case <-timer.C:
+			gotJob := true
+			for gotJob {
 				job, err := w.fetchJob()
 				if err != nil {
 					logError("worker.fetch", err)
@@ -107,6 +112,7 @@ func (w *worker) loop() {
 					w.processJob(job)
 					consequtiveNoJobs = 0
 				} else {
+					gotJob = false
 					if drained {
 						w.doneDrainingChan <- struct{}{}
 						drained = false
@@ -116,14 +122,7 @@ func (w *worker) loop() {
 					if idx >= int64(len(sleepBackoffsInMilliseconds)) {
 						idx = int64(len(sleepBackoffsInMilliseconds)) - 1
 					}
-					nextTry = time.Now().Add(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
-					time.Sleep(sleepIncrement)
-				}
-			} else {
-				if time.Now().After(nextTry) {
-					nextTry = time.Time{}
-				} else {
-					time.Sleep(sleepIncrement)
+					timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
 				}
 			}
 		}

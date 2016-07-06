@@ -15,10 +15,8 @@ const (
 )
 
 type deadPoolReaper struct {
-	namespace string
-
-	pool *redis.Pool
-
+	namespace        string
+	pool             *redis.Pool
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
