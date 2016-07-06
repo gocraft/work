@@ -19,6 +19,7 @@ type WorkerPool struct {
 	contextType reflect.Type
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler
+	started     bool
 
 	workers        []*worker
 	heartbeater    *workerPoolHeartbeater
@@ -139,8 +140,12 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 
 // Start starts the workers and associated processes.
 func (wp *WorkerPool) Start() {
+	if wp.started {
+		return
+	}
+	wp.started = true
+
 	go wp.writeKnownJobsToRedis()
-	// todo: what if already started?
 	for _, w := range wp.workers {
 		go w.start()
 	}
@@ -152,6 +157,11 @@ func (wp *WorkerPool) Start() {
 
 // Stop stops the workers and associated processes.
 func (wp *WorkerPool) Stop() {
+	if !wp.started {
+		return
+	}
+	wp.started = false
+
 	wg := sync.WaitGroup{}
 	for _, w := range wp.workers {
 		wg.Add(1)

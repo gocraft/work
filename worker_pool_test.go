@@ -68,3 +68,13 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkerPoolStartStop(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Start()
+	wp.Start()
+	wp.Stop()
+	wp.Stop()
+}
