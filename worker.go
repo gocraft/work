@@ -177,9 +177,9 @@ func (w *worker) fetchJob() (*Job, error) {
 
 func (w *worker) processJob(job *Job) {
 	defer w.removeJobFromInProgress(job)
-	//fmt.Println("JOB: ", *job, string(job.dequeuedFrom))
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		w.observeStarted(job.Name, job.ID, job.Args)
+		job.observer = w.observer // for Checkin
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
@@ -188,7 +188,8 @@ func (w *worker) processJob(job *Job) {
 		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
-		runErr := fmt.Errorf("stray job -- no handler")
+		runErr := fmt.Errorf("stray job: no handler")
+		logError("process_job.stray", runErr)
 		job.failed(runErr)
 		w.addToDead(job, runErr) // TODO: if this fails we shouldn't remove from in-progress
 	}

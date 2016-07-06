@@ -17,7 +17,6 @@ TODO
  - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
  - dont removing from :inprogress if queue onto dead/retry fails
- - checkin stuff -- what's the status on that now?
  - make start, stop, start work, & make start idempotent (on the pool)
  - validation on job options, set defaults if relevant.
  - Error message on the context stuff

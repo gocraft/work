@@ -24,6 +24,7 @@ type Job struct {
 	dequeuedFrom []byte
 	inProgQueue  []byte
 	argError     error
+	observer     *observer
 }
 
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
@@ -58,6 +59,13 @@ func (j *Job) failed(err error) {
 	j.Fails++ // todo: factor into job.failed(runErr)
 	j.LastErr = err.Error()
 	j.FailedAt = nowEpochSeconds()
+}
+
+// Checkin will update the status of the executing job to the specified messages. This message is visible within the web UI. This is useful for indicating some sort of progress on very long running jobs. For instance, on a job that has to process a million records over the course of an hour, the job could call Checkin with the current job number every 10k jobs.
+func (j *Job) Checkin(msg string) {
+	if j.observer != nil {
+		j.observer.observeCheckin(j.Name, j.ID, msg)
+	}
 }
 
 // ArgString returns j.Args[key] typed to a string. If the key is missing or of the wrong type, it sets an argument error
