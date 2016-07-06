@@ -1,16 +1,14 @@
 package work
 
 import (
+	"fmt"
 	"reflect"
 )
 
 // returns an error if the job fails, or there's a panic, or we couldn't reflect correctly.
 // if we return an error, it signals we want the job to be retried.
-func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt *jobType) (reflect.Value, error) {
-
-	// run middleware
-	v := reflect.New(ctxType)
-
+func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt *jobType) (returnCtx reflect.Value, returnError error) {
+	returnCtx = reflect.New(ctxType)
 	currentMiddleware := 0
 	maxMiddleware := len(middleware)
 
@@ -22,7 +20,7 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 			if mw.IsGeneric {
 				return mw.GenericMiddlewareHandler(job, next)
 			}
-			res := mw.DynamicMiddleware.Call([]reflect.Value{v, reflect.ValueOf(job), reflect.ValueOf(next)})
+			res := mw.DynamicMiddleware.Call([]reflect.Value{returnCtx, reflect.ValueOf(job), reflect.ValueOf(next)})
 			x := res[0].Interface()
 			if x == nil {
 				return nil
@@ -33,7 +31,7 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 			err := jt.GenericHandler(job)
 			return err
 		}
-		res := jt.DynamicHandler.Call([]reflect.Value{v, reflect.ValueOf(job)})
+		res := jt.DynamicHandler.Call([]reflect.Value{returnCtx, reflect.ValueOf(job)})
 		x := res[0].Interface()
 		if x == nil {
 			return nil
@@ -41,10 +39,17 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 		return x.(error)
 	}
 
-	err := next()
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			// err turns out to be interface{}, of actual type "runtime.errorCString"
+			// Luckily, the err sprints nicely via fmt.
+			errorishError := fmt.Errorf("%v", panicErr)
+			logError("runJob.panic", errorishError)
+			returnError = errorishError
+		}
+	}()
 
-	// TODO: catch panic
+	returnError = next()
 
-	//
-	return v, err
+	return
 }

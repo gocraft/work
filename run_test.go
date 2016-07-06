@@ -1,7 +1,7 @@
 package work
 
 import (
-	// "fmt"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
@@ -26,7 +26,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 
 	h1 := func(c *tstCtx, j *Job) error {
 		c.record("h1")
-		c.record(j.Args["a"].(string)) //j TODO: change this to j.GetStringArg("a")
+		c.record(j.Args["a"].(string))
 		return nil
 	}
 
@@ -51,4 +51,123 @@ func TestRunBasicMiddleware(t *testing.T) {
 	assert.NoError(t, err)
 	c := v.Interface().(*tstCtx)
 	assert.Equal(t, "mw1mw2mw3h1foo", c.String())
+}
+
+func TestRunHandlerError(t *testing.T) {
+	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+		return next()
+	}
+	h1 := func(c *tstCtx, j *Job) error {
+		c.record("h1")
+		return fmt.Errorf("h1_err")
+	}
+
+	middleware := []*middlewareHandler{
+		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+	}
+
+	jt := &jobType{
+		Name:           "foo",
+		IsGeneric:      false,
+		DynamicHandler: reflect.ValueOf(h1),
+	}
+
+	job := &Job{
+		Name: "foo",
+	}
+
+	v, err := runJob(job, tstCtxType, middleware, jt)
+	assert.Error(t, err)
+	assert.Equal(t, "h1_err", err.Error())
+
+	c := v.Interface().(*tstCtx)
+	assert.Equal(t, "h1", c.String())
+}
+
+func TestRunMwError(t *testing.T) {
+	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+		return fmt.Errorf("mw1_err")
+	}
+	h1 := func(c *tstCtx, j *Job) error {
+		c.record("h1")
+		return fmt.Errorf("h1_err")
+	}
+
+	middleware := []*middlewareHandler{
+		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+	}
+
+	jt := &jobType{
+		Name:           "foo",
+		IsGeneric:      false,
+		DynamicHandler: reflect.ValueOf(h1),
+	}
+
+	job := &Job{
+		Name: "foo",
+	}
+
+	_, err := runJob(job, tstCtxType, middleware, jt)
+	assert.Error(t, err)
+	assert.Equal(t, "mw1_err", err.Error())
+}
+
+func TestRunHandlerPanic(t *testing.T) {
+	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+		return next()
+	}
+	h1 := func(c *tstCtx, j *Job) error {
+		c.record("h1")
+
+		panic("dayam")
+
+		return nil
+	}
+
+	middleware := []*middlewareHandler{
+		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+	}
+
+	jt := &jobType{
+		Name:           "foo",
+		IsGeneric:      false,
+		DynamicHandler: reflect.ValueOf(h1),
+	}
+
+	job := &Job{
+		Name: "foo",
+	}
+
+	_, err := runJob(job, tstCtxType, middleware, jt)
+	assert.Error(t, err)
+	assert.Equal(t, "dayam", err.Error())
+}
+
+func TestRunMiddlewarePanic(t *testing.T) {
+	mw1 := func(j *Job, next NextMiddlewareFunc) error {
+		panic("dayam")
+		return next()
+	}
+	h1 := func(c *tstCtx, j *Job) error {
+		c.record("h1")
+		return nil
+	}
+
+	middleware := []*middlewareHandler{
+		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+	}
+
+	jt := &jobType{
+		Name:           "foo",
+		IsGeneric:      false,
+		DynamicHandler: reflect.ValueOf(h1),
+	}
+
+	job := &Job{
+		Name: "foo",
+	}
+
+	_, err := runJob(job, tstCtxType, middleware, jt)
+	assert.Error(t, err)
+	assert.Equal(t, "dayam", err.Error())
 }
