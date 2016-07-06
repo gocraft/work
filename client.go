@@ -139,7 +139,7 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	}
 
 	for _, wid := range workerIDs {
-		key := redisKeyWorkerStatus(c.namespace, wid) // TODO: rename this func
+		key := redisKeyWorkerObservation(c.namespace, wid)
 		conn.Send("HGETALL", key)
 	}
 

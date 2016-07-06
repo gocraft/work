@@ -83,7 +83,7 @@ func TestWorkerBasics(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job3)))
 
 	// nothing in the worker status
-	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
+	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.EqualValues(t, 0, len(h))
 }
 
@@ -120,7 +120,7 @@ func TestWorkerInProgress(t *testing.T) {
 
 	// nothing in the worker status
 	w.observer.drain()
-	h := readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
+	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
 	assert.Equal(t, `{"a":1}`, h["args"])
 	// NOTE: we could check for job_id and started_at, but it's a PITA and it's tested in observer_test.
@@ -133,7 +133,7 @@ func TestWorkerInProgress(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
 	// nothing in the worker status
-	h = readHash(pool, redisKeyWorkerStatus(ns, w.workerID))
+	h = readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.EqualValues(t, 0, len(h))
 }
 

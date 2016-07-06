@@ -23,7 +23,7 @@ func TestObserverStarted(t *testing.T) {
 	observer.drain()
 	observer.stop()
 
-	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
+	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
 	assert.Equal(t, "bar", h["job_id"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
@@ -45,7 +45,7 @@ func TestObserverStartedDone(t *testing.T) {
 	observer.drain()
 	observer.stop()
 
-	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
+	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, 0, len(h))
 }
 
@@ -67,7 +67,7 @@ func TestObserverCheckin(t *testing.T) {
 	observer.drain()
 	observer.stop()
 
-	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
+	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
 	assert.Equal(t, "bar", h["job_id"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
@@ -97,7 +97,7 @@ func TestObserverCheckinFromJob(t *testing.T) {
 	observer.drain()
 	observer.stop()
 
-	h := readHash(pool, redisKeyWorkerStatus(ns, "abcd"))
+	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
 	assert.Equal(t, "barbar", h["job_id"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])

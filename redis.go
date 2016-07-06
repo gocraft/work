@@ -40,7 +40,7 @@ func redisKeyScheduled(namespace string) string {
 	return redisNamespacePrefix(namespace) + "scheduled"
 }
 
-func redisKeyWorkerStatus(namespace, workerID string) string {
+func redisKeyWorkerObservation(namespace, workerID string) string {
 	return redisNamespacePrefix(namespace) + "worker:" + workerID
 }
 

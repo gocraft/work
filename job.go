@@ -56,7 +56,7 @@ func (j *Job) setArg(key string, val interface{}) {
 }
 
 func (j *Job) failed(err error) {
-	j.Fails++ // todo: factor into job.failed(runErr)
+	j.Fails++
 	j.LastErr = err.Error()
 	j.FailedAt = nowEpochSeconds()
 }

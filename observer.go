@@ -185,7 +185,7 @@ func (o *observer) writeStatus(obv *observation) error {
 	conn := o.pool.Get()
 	defer conn.Close()
 
-	key := redisKeyWorkerStatus(o.namespace, o.workerID)
+	key := redisKeyWorkerObservation(o.namespace, o.workerID)
 
 	if obv == nil {
 		if _, err := conn.Do("DEL", key); err != nil {
