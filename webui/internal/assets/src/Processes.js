@@ -108,7 +108,7 @@ export default class Processes extends React.Component {
           this.state.workerPool.map((pool) => {
             let busyWorker = this.getBusyPoolWorker(pool);
             return (
-              <div className={cx(styles.panel, styles.panelDefault)}>
+              <div key={pool.WorkerPoolID} className={cx(styles.panel, styles.panelDefault)}>
                 <div className={styles.tableResponsive}>
                   <table className={styles.table}>
                     <tbody>
@@ -127,7 +127,7 @@ export default class Processes extends React.Component {
                       <tr>
                         <td colSpan="4">
                           <div className={cx(styles.panel, styles.panelDefault)}>
-                            <BusyWorkers worker={busyWorker}/>
+                            <BusyWorkers worker={busyWorker} />
                           </div>
                         </td>
                       </tr>

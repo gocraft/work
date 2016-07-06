@@ -5,7 +5,7 @@
     "dev": "webpack --progress",
     "build": "webpack --progress --config webpack.production.config.js",
     "lint": "eslint src; exit 0",
-    "cover": "istanbul cover _mocha --root src/ --include-all-sources -x '**/*.test.js' -- 'src/**/*.test.js' --require babel-register --require ignore-styles; exit 0"
+    "cover": "istanbul cover _mocha --root src/ --include-all-sources -x '**/*.test.js' -x 'index.js' -- 'src/**/*.test.js' --require babel-register --require ignore-styles; exit 0"
   },
   "devDependencies": {
     "babel-core": "latest",
