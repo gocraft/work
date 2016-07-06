@@ -77,4 +77,6 @@ func TestWorkerPoolStartStop(t *testing.T) {
 	wp.Start()
 	wp.Stop()
 	wp.Stop()
+	wp.Start()
+	wp.Stop()
 }

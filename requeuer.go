@@ -51,7 +51,7 @@ func (r *requeuer) start() {
 }
 
 func (r *requeuer) stop() {
-	close(r.stopChan)
+	r.stopChan <- struct{}{}
 	<-r.doneStoppingChan
 }
 
@@ -70,7 +70,7 @@ func (r *requeuer) loop() {
 	for {
 		select {
 		case <-r.stopChan:
-			close(r.doneStoppingChan)
+			r.doneStoppingChan <- struct{}{}
 			return
 		case <-r.drainChan:
 			for r.process() {

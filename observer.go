@@ -81,7 +81,7 @@ func (o *observer) start() {
 }
 
 func (o *observer) stop() {
-	close(o.stopChan)
+	o.stopChan <- struct{}{}
 	<-o.doneStoppingChan
 }
 
@@ -128,7 +128,7 @@ func (o *observer) loop() {
 	for {
 		select {
 		case <-o.stopChan:
-			close(o.doneStoppingChan)
+			o.doneStoppingChan <- struct{}{}
 			return
 		case <-o.drainChan:
 		DRAIN_LOOP:

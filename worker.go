@@ -72,7 +72,7 @@ func (w *worker) start() {
 }
 
 func (w *worker) stop() {
-	close(w.stopChan)
+	w.stopChan <- struct{}{}
 	<-w.doneStoppingChan
 	w.observer.drain()
 	w.observer.stop()
@@ -97,7 +97,7 @@ func (w *worker) loop() {
 	for {
 		select {
 		case <-w.stopChan:
-			close(w.doneStoppingChan)
+			w.doneStoppingChan <- struct{}{}
 			return
 		case <-w.drainChan:
 			drained = true

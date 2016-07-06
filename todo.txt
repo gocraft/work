@@ -17,7 +17,6 @@ TODO
  - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
  - dont removing from :inprogress if queue onto dead/retry fails
- - make start, stop, start work, & make start idempotent (on the pool)
  - Error message on the context stuff
  - README stuff:
    - context
@@ -25,7 +24,6 @@ TODO
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
  - implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
- - unified signal handling
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

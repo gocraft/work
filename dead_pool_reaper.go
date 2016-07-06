@@ -35,7 +35,7 @@ func (r *deadPoolReaper) start() {
 }
 
 func (r *deadPoolReaper) stop() {
-	close(r.stopChan)
+	r.stopChan <- struct{}{}
 	<-r.doneStoppingChan
 }
 
@@ -52,7 +52,7 @@ func (r *deadPoolReaper) loop() {
 	for {
 		select {
 		case <-r.stopChan:
-			close(r.doneStoppingChan)
+			r.doneStoppingChan <- struct{}{}
 			return
 		case <-timer.C:
 			// Schedule next occurance with jitter

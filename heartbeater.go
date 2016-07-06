@@ -64,7 +64,7 @@ func (h *workerPoolHeartbeater) start() {
 }
 
 func (h *workerPoolHeartbeater) stop() {
-	close(h.stopChan)
+	h.stopChan <- struct{}{}
 	<-h.doneStoppingChan
 }
 
@@ -76,7 +76,7 @@ func (h *workerPoolHeartbeater) loop() {
 		select {
 		case <-h.stopChan:
 			h.removeHeartbeat()
-			close(h.doneStoppingChan)
+			h.doneStoppingChan <- struct{}{}
 			return
 		case <-ticker:
 			h.heartbeat()
