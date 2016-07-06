@@ -18,7 +18,6 @@ TODO
  - Make sure comments are good and all godoc produces good results
  - dont removing from :inprogress if queue onto dead/retry fails
  - make start, stop, start work, & make start idempotent (on the pool)
- - validation on job options, set defaults if relevant.
  - Error message on the context stuff
  - README stuff:
    - context

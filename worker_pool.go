@@ -109,12 +109,13 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 // (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job) error, for the generic handler format.
 func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
-	return wp.JobWithOptions(name, JobOptions{Priority: 1, MaxFails: 3}, fn)
+	return wp.JobWithOptions(name, JobOptions{}, fn)
 }
 
 // JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
-	// TODO: validate the priority >= 1 and <= 1000
+	jobOpts = applyDefaultsAndValidate(jobOpts)
+
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
 	jt := &jobType{
@@ -336,4 +337,20 @@ func isValidMiddlewareType(ctxType reflect.Type, vfn reflect.Value) bool {
 	}
 
 	return true
+}
+
+func applyDefaultsAndValidate(jobOpts JobOptions) JobOptions {
+	if jobOpts.Priority == 0 {
+		jobOpts.Priority = 1
+	}
+
+	if jobOpts.MaxFails == 0 {
+		jobOpts.MaxFails = 4
+	}
+
+	if jobOpts.Priority > 100000 {
+		panic("work: JobOptions.Priority must be between 1 and 100000")
+	}
+
+	return jobOpts
 }

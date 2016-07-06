@@ -284,7 +284,7 @@ func TestClientDeadJobs(t *testing.T) {
 	setNowEpochSecondsMock(1425263429)
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 0}, func(job *Job) error {
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
