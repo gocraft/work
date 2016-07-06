@@ -17,7 +17,6 @@ TODO
  - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
  - dont removing from :inprogress if queue onto dead/retry fails
- - Enqueue should cache job names. If it's a new job name, sadd it
  - checkin stuff -- what's the status on that now?
  - make start, stop, start work, & make start idempotent (on the pool)
  - validation on job options, set defaults if relevant.
@@ -32,7 +31,6 @@ TODO
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time
- - write better tests for Enqueue and EnqueueIn
  - revisit the retry backoff
  - generally, look into process scalability. Eg, if we have 30 processes, each with concurrency=25, that's a lot of pinging redis
  - thought: what if we *scale up* to max workers if some are idle, should we shut them down?

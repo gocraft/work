@@ -236,6 +236,22 @@ func TestWorkerDead(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
+func newTestPool(addr string) *redis.Pool {
+	return &redis.Pool{
+		MaxActive:   10,
+		MaxIdle:     10,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", addr)
+			if err != nil {
+				return nil, err
+			}
+			return c, nil
+		},
+		Wait: true,
+	}
+}
+
 func deleteQueue(pool *redis.Pool, namespace, jobName string) {
 	conn := pool.Get()
 	defer conn.Close()
@@ -318,6 +334,17 @@ func jobOnQueue(pool *redis.Pool, key string) *Job {
 	}
 
 	return job
+}
+
+func knownJobs(pool *redis.Pool, key string) []string {
+	conn := pool.Get()
+	defer conn.Close()
+
+	jobNames, err := redis.Strings(conn.Do("SMEMBERS", key))
+	if err != nil {
+		panic(err)
+	}
+	return jobNames
 }
 
 func cleanKeyspace(namespace string, pool *redis.Pool) {
