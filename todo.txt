@@ -20,7 +20,6 @@ TODO
    - checkin
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
- - retry_test.go -- nothing is in it?!
  - once I have thruput benches in place:
    - rpoplpush in lua script
    - zero context each time
