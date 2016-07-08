@@ -175,7 +175,6 @@ func TestWorkerRetry(t *testing.T) {
 	assert.True(t, ts < (nowEpochSeconds()+80)) // but less than a minute from now (first failure)
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
-	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
 	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
@@ -230,7 +229,6 @@ func TestWorkerDead(t *testing.T) {
 	assert.True(t, ts <= nowEpochSeconds())
 
 	assert.Equal(t, job1, job.Name) // basics are preserved
-	// todo: check that job.EnqueuedAt didn't change. Need mocking for that.
 	assert.EqualValues(t, 1, job.Fails)
 	assert.Equal(t, "sorry kid1", job.LastErr)
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)

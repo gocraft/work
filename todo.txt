@@ -16,14 +16,13 @@ TODO
 ----
  - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
- - dont removing from :inprogress if queue onto dead/retry fails
- - Error message on the context stuff
+ - Dont removing from :inprogress if queue onto dead/retry fails
  - README stuff:
    - context
    - checkin
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
- - implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
+ - Implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

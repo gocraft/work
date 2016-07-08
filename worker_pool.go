@@ -1,11 +1,10 @@
 package work
 
 import (
-	"reflect"
-
 	"github.com/garyburd/redigo/redis"
-	// "fmt"
+	"reflect"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -252,14 +251,51 @@ func validateContextType(ctxType reflect.Type) {
 
 func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidHandlerType(ctxType, vfn) {
-		panic("invalid handler passed") // TODO: write a nice message
+		panic(instructiveMessage(vfn, "a handler", "handler", "job *work.Job", ctxType))
 	}
 }
 
 func validateMiddlewareType(ctxType reflect.Type, vfn reflect.Value) {
 	if !isValidMiddlewareType(ctxType, vfn) {
-		panic("invalid middleware passed") // TODO: write a nice message
+		panic(instructiveMessage(vfn, "middleware", "middleware", "job *work.Job, next NextMiddlewareFunc", ctxType))
 	}
+}
+
+// Since it's easy to pass the wrong method as a middleware/handler, and since the user can't rely on static type checking since we use reflection,
+// lets be super helpful about what they did and what they need to do.
+// Arguments:
+//  - vfn is the failed method
+//  - addingType is for "You are adding {addingType} to a worker pool...". Eg, "middleware" or "a handler"
+//  - yourType is for "Your {yourType} function can have...". Eg, "middleware" or "handler" or "error handler"
+//  - args is like "rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc"
+//    - NOTE: args can be calculated if you pass in each type. BUT, it doesn't have example argument name, so it has less copy/paste value.
+func instructiveMessage(vfn reflect.Value, addingType string, yourType string, args string, ctxType reflect.Type) string {
+	// Get context type without package.
+	ctxString := ctxType.String()
+	splitted := strings.Split(ctxString, ".")
+	if len(splitted) <= 1 {
+		ctxString = splitted[0]
+	} else {
+		ctxString = splitted[1]
+	}
+
+	str := "\n" + strings.Repeat("*", 120) + "\n"
+	str += "* You are adding " + addingType + " to a worker pool with context type '" + ctxString + "'\n"
+	str += "*\n*\n"
+	str += "* Your " + yourType + " function can have one of these signatures:\n"
+	str += "*\n"
+	str += "* // If you don't need context:\n"
+	str += "* func YourFunctionName(" + args + ") error\n"
+	str += "*\n"
+	str += "* // If you want your " + yourType + " to accept a context:\n"
+	str += "* func (c *" + ctxString + ") YourFunctionName(" + args + ") error  // or,\n"
+	str += "* func YourFunctionName(c *" + ctxString + ", " + args + ") error\n"
+	str += "*\n"
+	str += "* Unfortunately, your function has this signature: " + vfn.Type().String() + "\n"
+	str += "*\n"
+	str += strings.Repeat("*", 120) + "\n"
+
+	return str
 }
 
 func isValidHandlerType(ctxType reflect.Type, vfn reflect.Value) bool {
