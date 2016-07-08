@@ -53,6 +53,8 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 	router.Get("/dead_jobs", (*context).deadJobs)
 	router.Post("/delete_dead_job/:died_at:\\d.*/:job_id", (*context).deleteDeadJob)
 	router.Post("/retry_dead_job/:died_at:\\d.*/:job_id", (*context).retryDeadJob)
+	router.Post("/delete_all_dead_jobs", (*context).deleteAllDeadJobs)
+	router.Post("/retry_all_dead_jobs", (*context).retryAllDeadJobs)
 
 	return server
 }
@@ -191,6 +193,16 @@ func (c *context) retryDeadJob(rw web.ResponseWriter, r *web.Request) {
 
 	err = c.client.RetryDeadJob(job)
 
+	render(rw, map[string]string{"status": "ok"}, err)
+}
+
+func (c *context) deleteAllDeadJobs(rw web.ResponseWriter, r *web.Request) {
+	err := c.client.DeleteAllDeadJobs()
+	render(rw, map[string]string{"status": "ok"}, err)
+}
+
+func (c *context) retryAllDeadJobs(rw web.ResponseWriter, r *web.Request) {
+	err := c.client.RetryAllDeadJobs()
 	render(rw, map[string]string{"status": "ok"}, err)
 }
 

@@ -14,14 +14,16 @@ go run main.go
 
 TODO
 ----
- - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
  - README stuff:
    - context
    - checkin
    - scheduled jobs
  - Benchmark latest version of goworker and go-workers again
- - Implement DeleteAllDeadJobs and RetryAllDeadJobs; test; wire up to the webui.
+ - retry_test.go -- nothing is in it?!
+ - once I have thruput benches in place:
+   - rpoplpush in lua script
+   - zero context each time
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

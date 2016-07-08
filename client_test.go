@@ -409,6 +409,159 @@ func TestClientRetryDeadJob(t *testing.T) {
 	assert.EqualValues(t, 0, job1.FailedAt)
 }
 
+func TestClientDeleteAllDeadJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	// Insert a dead job:
+	insertDeadJob(ns, pool, "wat", 12345, 12347)
+	insertDeadJob(ns, pool, "wat", 12345, 12347)
+	insertDeadJob(ns, pool, "wat", 12345, 12349)
+	insertDeadJob(ns, pool, "wat", 12345, 12350)
+
+	client := NewClient(ns, pool)
+	jobs, count, err := client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(jobs))
+	assert.EqualValues(t, 4, count)
+
+	err = client.DeleteAllDeadJobs()
+	assert.NoError(t, err)
+
+	jobs, count, err = client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(jobs))
+	assert.EqualValues(t, 0, count)
+}
+
+func TestClientRetryAllDeadJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	setNowEpochSecondsMock(1425263409)
+	defer resetNowEpochSecondsMock()
+
+	insertDeadJob(ns, pool, "wat1", 12345, 12347)
+	insertDeadJob(ns, pool, "wat2", 12345, 12347)
+	insertDeadJob(ns, pool, "wat3", 12345, 12349)
+	insertDeadJob(ns, pool, "wat4", 12345, 12350)
+
+	client := NewClient(ns, pool)
+	jobs, count, err := client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 4, len(jobs))
+	assert.EqualValues(t, 4, count)
+
+	err = client.RetryAllDeadJobs()
+	assert.NoError(t, err)
+	_, count, err = client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, count)
+
+	job := getQueuedJob(ns, pool, "wat1")
+	assert.NotNil(t, job)
+	assert.Equal(t, "wat1", job.Name)
+	assert.EqualValues(t, 1425263409, job.EnqueuedAt)
+	assert.EqualValues(t, 0, job.Fails)
+	assert.Equal(t, "", job.LastErr)
+	assert.EqualValues(t, 0, job.FailedAt)
+
+	job = getQueuedJob(ns, pool, "wat2")
+	assert.NotNil(t, job)
+	assert.Equal(t, "wat2", job.Name)
+	assert.EqualValues(t, 1425263409, job.EnqueuedAt)
+	assert.EqualValues(t, 0, job.Fails)
+	assert.Equal(t, "", job.LastErr)
+	assert.EqualValues(t, 0, job.FailedAt)
+
+	job = getQueuedJob(ns, pool, "wat3")
+	assert.NotNil(t, job)
+	assert.Equal(t, "wat3", job.Name)
+	assert.EqualValues(t, 1425263409, job.EnqueuedAt)
+	assert.EqualValues(t, 0, job.Fails)
+	assert.Equal(t, "", job.LastErr)
+	assert.EqualValues(t, 0, job.FailedAt)
+
+	job = getQueuedJob(ns, pool, "wat4")
+	assert.NotNil(t, job)
+	assert.Equal(t, "wat4", job.Name)
+	assert.EqualValues(t, 1425263409, job.EnqueuedAt)
+	assert.EqualValues(t, 0, job.Fails)
+	assert.Equal(t, "", job.LastErr)
+	assert.EqualValues(t, 0, job.FailedAt)
+}
+
+func TestClientRetryAllDeadJobsBig(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	conn := pool.Get()
+	defer conn.Close()
+
+	// Ok, we need to efficiently add 10k jobs to the dead queue.
+	// I tried using insertDeadJob but it was too slow (increased test time by 1 second)
+	dead := redisKeyDead(ns)
+	for i := 0; i < 10000; i++ {
+		job := &Job{
+			Name:       "wat1",
+			ID:         makeIdentifier(),
+			EnqueuedAt: 12345,
+			Args:       nil,
+			Fails:      3,
+			LastErr:    "sorry",
+			FailedAt:   12347,
+		}
+
+		rawJSON, _ := job.serialize()
+		conn.Send("ZADD", dead, 12347, rawJSON)
+	}
+	err := conn.Flush()
+	assert.NoError(t, err)
+
+	if _, err := conn.Do("SADD", redisKeyKnownJobs(ns), "wat1"); err != nil {
+		panic(err)
+	}
+
+	// Add a dead job with a non-existant queue:
+	job := &Job{
+		Name:       "dontexist",
+		ID:         makeIdentifier(),
+		EnqueuedAt: 12345,
+		Args:       nil,
+		Fails:      3,
+		LastErr:    "sorry",
+		FailedAt:   12347,
+	}
+
+	rawJSON, _ := job.serialize()
+
+	_, err = conn.Do("ZADD", dead, 12347, rawJSON)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	client := NewClient(ns, pool)
+	_, count, err := client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 10001, count)
+
+	err = client.RetryAllDeadJobs()
+	assert.NoError(t, err)
+	_, count, err = client.DeadJobs(1)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 1, count) // the funny job that we didn't know how to queue up
+
+	jobCount := listSize(pool, redisKeyJobs(ns, "wat1"))
+	assert.EqualValues(t, 10000, jobCount)
+
+	_, job = jobOnZset(pool, dead)
+	assert.Equal(t, "dontexist", job.Name)
+	assert.Equal(t, "unknown job when requeueing", job.LastErr)
+}
+
 func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {
 	job := &Job{
 		Name:       name,
@@ -428,6 +581,11 @@ func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64
 	if err != nil {
 		panic(err.Error())
 	}
+
+	if _, err := conn.Do("SADD", redisKeyKnownJobs(ns), name); err != nil {
+		panic(err)
+	}
+
 	return job
 }
 

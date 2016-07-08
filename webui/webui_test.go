@@ -268,7 +268,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
-	wp.JobWithOptions("wat", work.JobOptions{Priority: 1, MaxFails: 0}, func(job *work.Job) error {
+	wp.JobWithOptions("wat", work.JobOptions{Priority: 1, MaxFails: 1}, func(job *work.Job) error {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
@@ -343,6 +343,107 @@ func TestWebUIDeadJobs(t *testing.T) {
 	if len(queueRes) == 1 {
 		assert.Equal(t, "wat", queueRes[0].JobName)
 	}
+}
+
+func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := work.NewEnqueuer(ns, pool)
+	err := enqueuer.Enqueue("wat", nil)
+	err = enqueuer.Enqueue("wat", nil)
+	assert.Nil(t, err)
+
+	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
+	wp.JobWithOptions("wat", work.JobOptions{Priority: 1, MaxFails: 1}, func(job *work.Job) error {
+		return fmt.Errorf("ohno")
+	})
+	wp.Start()
+	wp.Drain()
+	wp.Stop()
+
+	s := NewServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var res struct {
+		Count int64 `json:"count"`
+		Jobs  []struct {
+			DiedAt int64  `json:"died_at"`
+			Name   string `json:"name"`
+			ID     string `json:"id"`
+			Fails  int64  `json:"fails"`
+		} `json:"jobs"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, 2, res.Count)
+	assert.Equal(t, 2, len(res.Jobs))
+
+	// Ok, now let's retry all
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/retry_all_dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	// Make sure dead queue is empty
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, res.Count)
+
+	// Make sure the "wat" queue has 2 items in it
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/queues", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	var queueRes []struct {
+		JobName string `json:"job_name"`
+		Count   int64  `json:"count"`
+	}
+	err = json.Unmarshal(recorder.Body.Bytes(), &queueRes)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(queueRes))
+	if len(queueRes) == 1 {
+		assert.Equal(t, "wat", queueRes[0].JobName)
+		assert.EqualValues(t, 2, queueRes[0].Count)
+	}
+
+	// Make them dead again:
+	wp.Start()
+	wp.Drain()
+	wp.Stop()
+
+	// Make sure we have 2 dead things again:
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 2, res.Count)
+
+	// Now delete them:
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("POST", "/delete_all_dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+
+	// Make sure dead queue is empty
+	recorder = httptest.NewRecorder()
+	request, _ = http.NewRequest("GET", "/dead_jobs", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+	err = json.Unmarshal(recorder.Body.Bytes(), &res)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, res.Count)
 }
 
 func newTestPool(addr string) *redis.Pool {

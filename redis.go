@@ -90,3 +90,40 @@ if #res > 0 then
 end
 return nil
 `
+
+// KEYS[1] = zset of dead jobs, eg work:dead
+// KEYS[2...] = known job queues, eg ["work:jobs:create_watch", "work:jobs:send_email", ...]
+// ARGV[1] = jobs prefix, eg, "work:jobs:". We'll take that and append the job name from the JSON object in order to queue up a job
+// ARGV[2] = current time in epoch seconds
+// ARGV[3] = max number of jobs to requeue
+// Returns: number of jobs requeued
+var redisLuaRequeueDeadCmd = `
+local jobs, i, j, queue, found, requeuedCount
+jobs = redis.call('zrangebyscore', KEYS[1], '-inf', ARGV[2], 'LIMIT', 0, ARGV[3])
+local jobCount = #jobs
+requeuedCount = 0
+for i=1,jobCount do
+  j = cjson.decode(jobs[i])
+  redis.call('zrem', KEYS[1], jobs[i])
+  queue = ARGV[1] .. j['name']
+  found = false
+  for _,v in pairs(KEYS) do
+    if v == queue then
+      j['t'] = tonumber(ARGV[2])
+      j['fails'] = nil
+      j['failed_at'] = nil
+      j['err'] = nil
+      redis.call('lpush', queue, cjson.encode(j))
+	  requeuedCount = requeuedCount + 1
+      found = true
+      break
+    end
+  end
+  if not found then
+    j['err'] = 'unknown job when requeueing'
+    j['failed_at'] = tonumber(ARGV[2])
+    redis.call('zadd', KEYS[1], ARGV[2] + 5, cjson.encode(j))
+  end
+end
+return requeuedCount
+`
