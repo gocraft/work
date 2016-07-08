@@ -176,7 +176,6 @@ func (w *worker) fetchJob() (*Job, error) {
 }
 
 func (w *worker) processJob(job *Job) {
-	defer w.removeJobFromInProgress(job)
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
@@ -184,14 +183,16 @@ func (w *worker) processJob(job *Job) {
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
 			job.failed(runErr)
-			w.addToRetryOrDead(jt, job, runErr) // TODO: if this fails we shouldn't remove from in-progress
+			w.addToRetryOrDead(jt, job, runErr)
+		} else {
+			w.removeJobFromInProgress(job)
 		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
 		job.failed(runErr)
-		w.addToDead(job, runErr) // TODO: if this fails we shouldn't remove from in-progress
+		w.addToDead(job, runErr)
 	}
 }
 
@@ -226,9 +227,12 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	conn.Send("MULTI")
+	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	_, err = conn.Do("EXEC")
 	if err != nil {
-		logError("worker.add_to_retry.zadd", err)
+		logError("worker.add_to_retry.exec", err)
 	}
 
 }
@@ -244,13 +248,17 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	_, err = conn.Do("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
 	// The max # of jobs seems really horrible. Seems like operations should be on top of it.
 	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
 	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
+
+	conn.Send("MULTI")
+	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
+	_, err = conn.Do("EXEC")
 	if err != nil {
-		logError("worker.add_to_dead.zadd", err)
+		logError("worker.add_to_dead.exec", err)
 	}
 }
 

@@ -16,7 +16,6 @@ TODO
 ----
  - Make sure all TODOs in code are addressed.
  - Make sure comments are good and all godoc produces good results
- - Dont removing from :inprogress if queue onto dead/retry fails
  - README stuff:
    - context
    - checkin
