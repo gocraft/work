@@ -12,7 +12,8 @@ import (
 	"sync"
 )
 
-type WebUIServer struct {
+// Server implements an HTTP server which exposes a JSON API to view and manage gocraft/work items.
+type Server struct {
 	namespace string
 	pool      *redis.Pool
 	client    *work.Client
@@ -23,12 +24,13 @@ type WebUIServer struct {
 }
 
 type context struct {
-	*WebUIServer
+	*Server
 }
 
-func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer {
+// NewServer creates and returns a new server. The 'namespace' param is the redis namespace to use. The hostPort param is the address to bind on to expose the API.
+func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
 	router := web.New(context{})
-	server := &WebUIServer{
+	server := &Server{
 		namespace: namespace,
 		pool:      pool,
 		client:    work.NewClient(namespace, pool),
@@ -38,7 +40,7 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 	}
 
 	router.Middleware(func(c *context, rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
-		c.WebUIServer = server
+		c.Server = server
 		next(rw, r)
 	})
 	router.Middleware(func(rw web.ResponseWriter, r *web.Request, next web.NextMiddlewareFunc) {
@@ -59,15 +61,17 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *WebUIServer
 	return server
 }
 
-func (w *WebUIServer) Start() {
+// Start starts the server listening for requests on the hostPort specified in NewServer.
+func (w *Server) Start() {
 	w.wg.Add(1)
-	go func(w *WebUIServer) {
+	go func(w *Server) {
 		w.server.ListenAndServe()
 		w.wg.Done()
 	}(w)
 }
 
-func (w *WebUIServer) Stop() {
+// Stop stops the server and blocks until it has finished.
+func (w *Server) Stop() {
 	w.server.Close()
 	w.wg.Wait()
 }
