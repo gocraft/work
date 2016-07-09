@@ -1,14 +1,13 @@
 package main
 
 import (
-	"runtime"
-	"os"
-	"time"
-	"github.com/jrallison/go-workers"
-	"github.com/gocraft/health"
-	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/health"
+	"github.com/jrallison/go-workers"
+	"os"
 	"sync/atomic"
+	"time"
 )
 
 func myJob(m *workers.Msg) {
@@ -19,12 +18,11 @@ var namespace = "bench_test"
 var pool = newPool(":6379")
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	
+
 	stream := health.NewStream().AddSink(&health.WriterSink{os.Stdout})
 	stream.Event("wat")
 	cleanKeyspace()
-	
+
 	workers.Configure(map[string]string{
 		// location of redis instance
 		"server": "localhost:6379",
@@ -33,21 +31,20 @@ func main() {
 		// number of connections to keep open with redis
 		"pool": "10",
 		// unique process id for this instance of workers (for proper recovery of inprogress jobs on crash)
-		"process": "1",
+		"process":   "1",
 		"namespace": namespace,
 	})
 	workers.Middleware = &workers.Middlewares{}
-	
-	
+
 	queues := []string{"myqueue", "myqueue2", "myqueue3", "myqueue4", "myqueue5"}
 	numJobs := 100000 / len(queues)
-	
+
 	job := stream.NewJob("enqueue_all")
 	for _, q := range queues {
 		enqueueJobs(q, numJobs)
 	}
 	job.Complete(health.Success)
-	
+
 	for _, q := range queues {
 		workers.Process(q, myJob, 10)
 	}
@@ -59,21 +56,22 @@ func main() {
 }
 
 var totcount int64
+
 func monitor() {
-	t := time.Tick(1*time.Second)
-	
+	t := time.Tick(1 * time.Second)
+
 	curT := 0
 	c1 := int64(0)
 	c2 := int64(0)
 	prev := int64(0)
-	
-	DALOOP:
-	for{
+
+DALOOP:
+	for {
 		select {
 		case <-t:
 			curT++
 			v := atomic.AddInt64(&totcount, 0)
-			fmt.Printf("after %d seconds, count is %d\n",curT, v)
+			fmt.Printf("after %d seconds, count is %d\n", curT, v)
 			if curT == 1 {
 				c1 = v
 			} else if curT == 3 {
@@ -83,9 +81,9 @@ func monitor() {
 				break DALOOP
 			}
 			prev = v
-		}	
+		}
 	}
-	fmt.Println("Jobs/sec: ", float64(c2-c1) / 2.0)
+	fmt.Println("Jobs/sec: ", float64(c2-c1)/2.0)
 	os.Exit(0)
 }
 
@@ -95,11 +93,10 @@ func enqueueJobs(queue string, count int) {
 	}
 }
 
-
 func cleanKeyspace() {
 	conn := pool.Get()
 	defer conn.Close()
-	
+
 	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
 	if err != nil {
 		panic("could not get keys: " + err.Error())
@@ -130,5 +127,5 @@ func newPool(addr string) *redis.Pool {
 		//	_, err := c.Do("PING")
 		//	return err
 		//},
-	}	
+	}
 }

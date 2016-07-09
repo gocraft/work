@@ -1,66 +1,94 @@
 package main
 
 import (
-	"runtime"
-	"os"
-	"time"
-	"github.com/benmanns/goworker"
-	"github.com/gocraft/health"
-	"github.com/garyburd/redigo/redis"
 	"fmt"
+	"github.com/albrow/jobs"
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/health"
+	"os"
 	"sync/atomic"
+	"time"
 )
 
-func myJob(queue string, args ...interface{}) error {
-    atomic.AddInt64(&totcount, 1)
-	//fmt.Println("job! ", queue)
-    return nil
-}
-
-var namespace = "bench_test"
+var namespace = "jobs"
 var pool = newPool(":6379")
 
-// go run bench_goworker/*.go -queues="myqueue,myqueue2,myqueue3,myqueue4,myqueue5" -namespace="bench_test:" -concurrency=50
+type Context struct{}
+
+func epsilonHandler(i int) error {
+	atomic.AddInt64(&totcount, 1)
+	return nil
+}
+
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-	
 	stream := health.NewStream().AddSink(&health.WriterSink{os.Stdout})
-	stream.Event("wat")
 	cleanKeyspace()
-	
-	queues := []string{"myqueue", "myqueue2", "myqueue3", "myqueue4", "myqueue5"}
-	numJobs := 100000 / len(queues)
-	
-	job := stream.NewJob("enqueue_all")
-	for _, q := range queues {
-		enqueueJobs(q, numJobs)
+
+	queueNames := []string{"myqueue", "myqueue2", "myqueue3", "myqueue4", "myqueue5"}
+	queues := []*jobs.Type{}
+
+	for _, qn := range queueNames {
+		q, err := jobs.RegisterType(qn, 3, epsilonHandler)
+		if err != nil {
+			panic(err)
+		}
+		queues = append(queues, q)
 	}
+
+	job := stream.NewJob("enqueue_all")
+
+	numJobs := 40000 / len(queues)
+	for _, q := range queues {
+		for i := 0; i < numJobs; i++ {
+			_, err := q.Schedule(100, time.Now(), i)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
 	job.Complete(health.Success)
-	
-	goworker.Register("MyClass", myJob)
 
 	go monitor()
 
-	// Blocks until process is told to exit via unix signal
-	goworker.Work()
+	job = stream.NewJob("run_all")
+	pool, err := jobs.NewPool(&jobs.PoolConfig{
+	// NumWorkers: 1000,
+	// BatchSize:  3000,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		pool.Close()
+		if err := pool.Wait(); err != nil {
+			panic(err)
+		}
+	}()
+	if err := pool.Start(); err != nil {
+		panic(err)
+	}
+	job.Complete(health.Success)
+	select {}
 }
 
 var totcount int64
+
 func monitor() {
-	t := time.Tick(1*time.Second)
-	
+	t := time.Tick(1 * time.Second)
+
 	curT := 0
 	c1 := int64(0)
 	c2 := int64(0)
 	prev := int64(0)
-	
-	DALOOP:
-	for{
+
+DALOOP:
+	for {
 		select {
 		case <-t:
 			curT++
 			v := atomic.AddInt64(&totcount, 0)
-			fmt.Printf("after %d seconds, count is %d\n",curT, v)
+			fmt.Printf("after %d seconds, count is %d\n", curT, v)
 			if curT == 1 {
 				c1 = v
 			} else if curT == 3 {
@@ -70,27 +98,16 @@ func monitor() {
 				break DALOOP
 			}
 			prev = v
-		}	
+		}
 	}
-	fmt.Println("Jobs/sec: ", float64(c2-c1) / 2.0)
+	fmt.Println("Jobs/sec: ", float64(c2-c1)/2.0)
 	os.Exit(0)
 }
-
-func enqueueJobs(queue string, count int) {
-	conn := pool.Get()
-	defer conn.Close()
-	
-	for i := 0; i < count; i++ {
-		//workers.Enqueue(queue, "Foo", []int{i})
-		conn.Do("RPUSH", "bench_test:queue:"+queue, `{"class":"MyClass","args":[]}`)
-	}
-}
-
 
 func cleanKeyspace() {
 	conn := pool.Get()
 	defer conn.Close()
-	
+
 	keys, err := redis.Strings(conn.Do("KEYS", namespace+"*"))
 	if err != nil {
 		panic("could not get keys: " + err.Error())
@@ -105,8 +122,8 @@ func cleanKeyspace() {
 
 func newPool(addr string) *redis.Pool {
 	return &redis.Pool{
-		MaxActive:   3,
-		MaxIdle:     3,
+		MaxActive:   20,
+		MaxIdle:     20,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", addr)
@@ -121,5 +138,5 @@ func newPool(addr string) *redis.Pool {
 		//	_, err := c.Do("PING")
 		//	return err
 		//},
-	}	
+	}
 }

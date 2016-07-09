@@ -2,7 +2,7 @@
 
 gocraft/work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
 
-* Fast and efficient.
+* Fast and efficient. Faster than [this](https://www.github.com/jrallison/go-workers), [this](https://www.github.com/benmanns/goworker), and [this](https://www.github.com/albrow/jobs). See below for benchmarks.
 * Reliable - don't lose jobs even if your process crashes.
 * Middleware on jobs -- good for metrics instrumentation, logging, etc.
 * If a job fails, it will be retried a specified number of times.
@@ -249,6 +249,18 @@ enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "
 * "retry jobs" - If a job fails and needs to be retried, it will be put on this queue.
 * "scheduled jobs" - Jobs enqueued to be run in th future will be put on a scheduled job queue.
 * "dead jobs" - If a job exceeds its MaxFails count, it will be put on the dead job queue.
+
+
+## Benchmarks
+
+The benches folder contains various benchmark code. In each case, we enqueue 100k jobs across 5 queues. The jobs are almost no-op jobs: they simply increment an atomic counter. We then measure the rate of change of the counter to obtain our measurement.
+
+| Library | Speed |
+| --- | --- |
+| [gocraft/work](https://www.github.com/gocraft/work) | **20351 r/s** |
+| [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
+| [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
+| [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
 
 
 ## gocraft

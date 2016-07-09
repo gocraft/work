@@ -6,7 +6,6 @@ import (
 	"github.com/gocraft/health"
 	"github.com/gocraft/work"
 	"os"
-	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -25,8 +24,6 @@ func epsilonHandler(job *work.Job) error {
 }
 
 func main() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-
 	stream := health.NewStream().AddSink(&health.WriterSink{os.Stdout})
 	cleanKeyspace()
 
@@ -49,7 +46,7 @@ func main() {
 
 	job = stream.NewJob("run_all")
 	workerPool.Start()
-	workerPool.Join()
+	workerPool.Drain()
 	job.Complete(health.Success)
 	select {}
 }
