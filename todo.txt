@@ -14,12 +14,10 @@ go run main.go
 
 TODO
 ----
- - Make sure comments are good and all godoc produces good results
- - README stuff:
-   - context
-   - checkin
-   - scheduled jobs
- - Benchmark latest version of goworker and go-workers again
+ - readme:
+   - webui
+   - references
+ - Benchmark latest version of goworker and go-workers again and that other one
  - once I have thruput benches in place:
    - rpoplpush in lua script
    - zero context each time

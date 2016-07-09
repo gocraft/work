@@ -2,14 +2,12 @@
 
 gocraft/work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
 
-### Features
-
-* Fast and efficient
-* Reliable - don't lose jobs even if your process crashes
+* Fast and efficient.
+* Reliable - don't lose jobs even if your process crashes.
 * Middleware on jobs -- good for metrics instrumentation, logging, etc.
 * If a job fails, it will be retried a specified number of times.
-* Schedule jobs to happen in the future
-* Web UI to manage failed jobs and observe the system
+* Schedule jobs to happen in the future.
+* Web UI to manage failed jobs and observe the system.
 
 ## Enqueue new jobs
 
@@ -141,19 +139,63 @@ func (c *Context) Export(job *work.Job) error {
 }
 ```
 
-## Run the UI
+## Special Features
+
+### Contexts
+
+Just like in [gocraft/web](https://www.github.com/gocraft/web), gocraft/work lets you use your own contexts. Your context can be empty or it can have various fields in it. The fields can be whatever you want - it's your type! When a new job is processed by a worker, we'll allocate an instance of this struct and pass it to your middleware and handlers. This allows you to pass information from one middleware function to the next, and onto your handlers.
+
+Custom contexts aren't really needed for trivial example applications, but are very important for production apps. For instance, one field in your context can be your tagged logger. Your tagged logger augments your log statements with a job-id. This lets you filter your logs by that job-id.
+
+### Check-ins
+
+Since this is a background job processing library, it's fairly common to have jobs that that take a long time to execute. Imagine you have a job that takes an hour to run. It can often be frustrating to know if it's hung, or about to finish, or if it has 30 more minutes to go.
+
+To solve this, you can instrument your jobs to "checkin" every so often with a string message. This checkin status will show up in the web UI. For instance, your job could look like this:
+
+```go
+func (c *Context) Export(job *work.Job) error {
+	rowsToExport := getRows()
+	for i, row := range rowsToExport {
+		exportRow(row)
+		if i % 1000 == 0 {
+			job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells gocraft/work our status
+		}
+	}
+}
+
+```
+
+Then in the web UI, you'll see the status of the worker:
+
+| Name | Arguments | Started At | Check-in At | Check-in |
+| --- | --- | --- | --- | --- |
+| export | {"account_id": 123} | 2016/07/09 04:16:51 | 2016/07/09 05:03:13 | i=335000 |
+
+### Scheduled Jobs
+
+You can schedule jobs to be executed in the future. To do so, make a new ```Enqueuer``` and call its ```EnqueueIn``` method:
+
+```go
+enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
+secondsInTheFuture := 300
+enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "test@example.com"})
+
+```
+
+## Run the Web UI
 
 ## Design and concepts
 
 ### Enqueueing jobs
 
 * When jobs are enqueued, they're serialized with JSON and added to a simple Redis list with LPUSH.
-* Jobs are added to a list with the same name as the job. Each job name gets its own queue.
+* Jobs are added to a list with the same name as the job. Each job name gets its own queue. Whereas with other job systems you have to design which jobs go on which queues, there's no need for that here.
 
 ### Scheduling algorithm
 
 * Each job lives in a list-based queue with the same name as the job.
-* Each of these queues can have an associated priority. The priority is a number from 1 to 10000.
+* Each of these queues can have an associated priority. The priority is a number from 1 to 100000.
 * Each time a worker pulls a job, it needs to choose a queue. It chooses a queue probabilistically based on its relative priority.
 * If the sum of priorities among all queues is 1000, and one queue has priority 100, jobs will be pulled from that queue 10% of the time.
 * Obviously if a queue is empty, it won't be considered.
@@ -186,7 +228,6 @@ func (c *Context) Export(job *work.Job) error {
 
 * After a job has failed a specified number of times, it will be added to the dead job queue.
 * The dead job queue is just a Redis z-set. The score is the timestamp it failed and the value is the job.
-* The dead job queue has a maximum size of X. Old failed jobs will roll off.
 * To retry failed jobs, use the UI or the Client API.
 
 ### The reaper
