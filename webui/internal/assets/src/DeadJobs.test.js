@@ -11,18 +11,18 @@ describe('DeadJobs', () => {
     let deadJobs = r.getMountedInstance();
 
     expect(deadJobs.state.selected.length).toEqual(0);
-    expect(deadJobs.state.Jobs.length).toEqual(0);
+    expect(deadJobs.state.jobs.length).toEqual(0);
 
     deadJobs.setState({
-      Count: 2,
-      Jobs: [
+      count: 2,
+      jobs: [
         {id: 1, name: 'test', args: {}, t: 1467760821, err: 'err1'},
         {id: 2, name: 'test2', args: {}, t: 1467760822, err: 'err2'}
       ]
     });
 
     expect(deadJobs.state.selected.length).toEqual(0);
-    expect(deadJobs.state.Jobs.length).toEqual(2);
+    expect(deadJobs.state.jobs.length).toEqual(2);
 
     let output = r.getRenderOutput();
     let checkbox = findAllByTag(output, 'input');
@@ -59,9 +59,11 @@ describe('DeadJobs', () => {
     expect(checkbox[2].props.checked).toEqual(true);
 
     let button = findAllByTag(output, 'button');
-    expect(button.length).toEqual(2);
+    expect(button.length).toEqual(4);
     button[0].props.onClick();
     button[1].props.onClick();
+    button[2].props.onClick();
+    button[3].props.onClick();
 
     checkbox[0].props.onChange();
 
@@ -92,11 +94,11 @@ describe('DeadJobs', () => {
       return job;
     };
     deadJobs.setState({
-      Count: 21,
-      Jobs: genJob(21)
+      count: 21,
+      jobs: genJob(21)
     });
 
-    expect(deadJobs.state.Jobs.length).toEqual(21);
+    expect(deadJobs.state.jobs.length).toEqual(21);
     expect(deadJobs.state.page).toEqual(1);
 
     let output = r.getRenderOutput();

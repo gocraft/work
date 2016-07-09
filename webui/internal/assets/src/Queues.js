@@ -8,7 +8,7 @@ export default class Queues extends React.Component {
   }
 
   state = {
-    Queues: []
+    queues: []
   }
 
   componentWillMount() {
@@ -18,14 +18,14 @@ export default class Queues extends React.Component {
     fetch(this.props.url).
       then((resp) => resp.json()).
       then((data) => {
-        this.setState({Queues: data});
+        this.setState({queues: data});
       });
   }
 
   get queuedCount() {
     let count = 0;
-    this.state.Queues.map((queue) => {
-      count += queue.Count;
+    this.state.queues.map((queue) => {
+      count += queue.count;
     });
     return count;
   }
@@ -33,9 +33,9 @@ export default class Queues extends React.Component {
   render() {
     return (
       <div className={cx(styles.panel, styles.panelDefault)}>
-        <div className={styles.panelHeading}>Queues</div>
+        <div className={styles.panelHeading}>queues</div>
         <div className={styles.panelBody}>
-          <p>{this.state.Queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
+          <p>{this.state.queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.table}>
@@ -46,12 +46,12 @@ export default class Queues extends React.Component {
                 <th>Latency (seconds)</th>
               </tr>
               {
-                this.state.Queues.map((queue) => {
+                this.state.queues.map((queue) => {
                   return (
-                    <tr key={queue.JobName}>
-                      <td>{queue.JobName}</td>
-                      <td>{queue.Count}</td>
-                      <td>{queue.Latency}</td>
+                    <tr key={queue.job_name}>
+                      <td>{queue.job_name}</td>
+                      <td>{queue.count}</td>
+                      <td>{queue.latency}</td>
                     </tr>
                     );
                 })

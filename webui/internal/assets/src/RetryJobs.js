@@ -11,8 +11,8 @@ export default class RetryJobs extends React.Component {
 
   state = {
     page: 1,
-    Count: 0,
-    Jobs: []
+    count: 0,
+    jobs: []
   }
 
   fetch() {
@@ -23,8 +23,8 @@ export default class RetryJobs extends React.Component {
       then((resp) => resp.json()).
       then((data) => {
         this.setState({
-          Count: data.Count,
-          Jobs: data.Jobs
+          count: data.count,
+          jobs: data.jobs
         });
       });
   }
@@ -42,8 +42,8 @@ export default class RetryJobs extends React.Component {
       <div className={cx(styles.panel, styles.panelDefault)}>
         <div className={styles.panelHeading}>Retry Jobs</div>
         <div className={styles.panelBody}>
-          <p>{this.state.Count} job(s) scheduled to be retried.</p>
-          <PageList page={this.state.page} totalCount={this.state.Count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>
+          <p>{this.state.count} job(s) scheduled to be retried.</p>
+          <PageList page={this.state.page} totalCount={this.state.count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>
         </div>
         <div className={styles.tableResponsive}>
           <table className={styles.table}>
@@ -55,7 +55,7 @@ export default class RetryJobs extends React.Component {
                 <th>Retry At</th>
               </tr>
               {
-                this.state.Jobs.map((job) => {
+                this.state.jobs.map((job) => {
                   return (
                     <tr key={job.id}>
                       <td>{job.name}</td>

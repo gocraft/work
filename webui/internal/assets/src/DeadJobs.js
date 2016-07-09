@@ -8,14 +8,16 @@ export default class DeadJobs extends React.Component {
   static propTypes = {
     fetchURL: React.PropTypes.string,
     deleteURL: React.PropTypes.string,
+    deleteAllURL: React.PropTypes.string,
     retryURL: React.PropTypes.string,
+    retryAllURL: React.PropTypes.string,
   }
 
   state = {
     selected: [],
     page: 1,
-    Count: 0,
-    Jobs: []
+    count: 0,
+    jobs: []
   }
 
   fetch() {
@@ -27,8 +29,8 @@ export default class DeadJobs extends React.Component {
       then((data) => {
         this.setState({
           selected: [],
-          Count: data.Count,
-          Jobs: data.Jobs
+          count: data.count,
+          jobs: data.jobs
         });
       });
   }
@@ -61,7 +63,7 @@ export default class DeadJobs extends React.Component {
     if (this.state.selected.length > 0) {
       this.setState({selected: []});
     } else {
-      this.state.Jobs.map((job) => {
+      this.state.jobs.map((job) => {
         this.state.selected.push(job);
       });
       this.setState({
@@ -70,17 +72,35 @@ export default class DeadJobs extends React.Component {
     }
   }
 
+  deleteAll() {
+    if (!this.props.deleteAllURL) {
+      return;
+    }
+    fetch(this.props.deleteAllURL, {method: 'post'}).then(() => {
+      this.updatePage(1);
+    });
+  }
+
   deleteSelected() {
     let p = [];
     this.state.selected.map((job) => {
       if (!this.props.deleteURL) {
         return;
       }
-      p.push(fetch(`${this.props.deleteURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
+      p.push(fetch(`${this.props.deleteURL}/${job.died_at}/${job.id}`, {method: 'post'}));
     });
 
     Promise.all(p).then(() => {
       this.fetch();
+    });
+  }
+
+  retryAll() {
+    if (!this.props.retryAllURL) {
+      return;
+    }
+    fetch(this.props.retryAllURL, {method: 'post'}).then(() => {
+      this.updatePage(1);
     });
   }
 
@@ -90,7 +110,7 @@ export default class DeadJobs extends React.Component {
       if (!this.props.retryURL) {
         return;
       }
-      p.push(fetch(`${this.props.retryURL}/${job.DiedAt}/${job.id}`, {method: 'post'}));
+      p.push(fetch(`${this.props.retryURL}/${job.died_at}/${job.id}`, {method: 'post'}));
     });
 
     Promise.all(p).then(() => {
@@ -104,8 +124,8 @@ export default class DeadJobs extends React.Component {
         <div className={cx(styles.panel, styles.panelDefault)}>
           <div className={styles.panelHeading}>Dead Jobs</div>
           <div className={styles.panelBody}>
-            <p>{this.state.Count} job(s) are dead.</p>
-            <PageList page={this.state.page} totalCount={this.state.Count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>
+            <p>{this.state.count} job(s) are dead.</p>
+            <PageList page={this.state.page} totalCount={this.state.count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>
           </div>
           <div className={styles.tableResponsive}>
             <table className={styles.table}>
@@ -118,7 +138,7 @@ export default class DeadJobs extends React.Component {
                   <th>Died At</th>
                 </tr>
                 {
-                  this.state.Jobs.map((job) => {
+                  this.state.jobs.map((job) => {
                     return (
                       <tr key={job.id}>
                         <td><input type="checkbox" checked={this.checked(job)} onChange={() => this.check(job)}/></td>
@@ -137,6 +157,8 @@ export default class DeadJobs extends React.Component {
         <div className={styles.btnGroup} role="group">
           <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.deleteSelected()}>Delete Selected Jobs</button>
           <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.retrySelected()}>Retry Selected Jobs</button>
+          <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.deleteAll()}>Delete All Jobs</button>
+          <button type="button" className={cx(styles.btn, styles.btnDefault)} onClick={() => this.retryAll()}>Retry All Jobs</button>
         </div>
       </div>
     );

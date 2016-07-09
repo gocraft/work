@@ -1,6 +1,6 @@
 import React from 'react';
 import UnixTime from './UnixTime';
-import Abbrev from './Abbrev';
+import ShortList from './ShortList';
 import styles from './bootstrap.min.css';
 import cx from './cx';
 
@@ -24,12 +24,12 @@ class BusyWorkers extends React.Component {
             {
               this.props.worker.map((worker) => {
                 return (
-                  <tr key={worker.WorkerID}>
-                    <td>{worker.JobName}</td>
-                    <td>{worker.ArgsJSON}</td>
-                    <td><UnixTime ts={worker.StartedAt}/></td>
-                    <td><UnixTime ts={worker.CheckinAt}/></td>
-                    <td>{worker.Checkin}</td>
+                  <tr key={worker.worker_id}>
+                    <td>{worker.job_name}</td>
+                    <td>{worker.args_json}</td>
+                    <td><UnixTime ts={worker.started_at}/></td>
+                    <td><UnixTime ts={worker.checkin_at}/></td>
+                    <td>{worker.checkin}</td>
                   </tr>
                   );
               })
@@ -70,7 +70,7 @@ export default class Processes extends React.Component {
         then((data) => {
           let workers = [];
           data.map((worker) => {
-            if (worker.Host != '') {
+            if (worker.host != '') {
               workers.push(worker);
             }
           });
@@ -84,7 +84,7 @@ export default class Processes extends React.Component {
   get workerCount() {
     let count = 0;
     this.state.workerPool.map((pool) => {
-      count += pool.WorkerIDs.length;
+      count += pool.worker_ids.length;
     });
     return count;
   }
@@ -92,7 +92,7 @@ export default class Processes extends React.Component {
   getBusyPoolWorker(pool) {
     let workers = [];
     this.state.busyWorker.map((worker) => {
-      if (pool.WorkerIDs.includes(worker.WorkerID)) {
+      if (pool.worker_ids.includes(worker.worker_id)) {
         workers.push(worker);
       }
     });
@@ -108,21 +108,21 @@ export default class Processes extends React.Component {
           this.state.workerPool.map((pool) => {
             let busyWorker = this.getBusyPoolWorker(pool);
             return (
-              <div key={pool.WorkerPoolID} className={cx(styles.panel, styles.panelDefault)}>
+              <div key={pool.worker_pool_id} className={cx(styles.panel, styles.panelDefault)}>
                 <div className={styles.tableResponsive}>
                   <table className={styles.table}>
                     <tbody>
                       <tr>
-                        <td>{pool.Host}: {pool.Pid}</td>
-                        <td>Started <UnixTime ts={pool.StartedAt}/></td>
-                        <td>Last Heartbeat <UnixTime ts={pool.HeartbeatAt}/></td>
-                        <td>Concurrency {pool.Concurrency}</td>
+                        <td>{pool.host}: {pool.pid}</td>
+                        <td>Started <UnixTime ts={pool.started_at}/></td>
+                        <td>Last Heartbeat <UnixTime ts={pool.heartbeat_at}/></td>
+                        <td>Concurrency {pool.concurrency}</td>
                       </tr>
                       <tr>
-                        <td colSpan="4">Servicing <Abbrev item={pool.JobNames} />.</td>
+                        <td colSpan="4">Servicing <ShortList item={pool.job_names} />.</td>
                       </tr>
                       <tr>
-                        <td colSpan="4">{busyWorker.length} active worker(s) and {pool.WorkerIDs.length - busyWorker.length} idle.</td>
+                        <td colSpan="4">{busyWorker.length} active worker(s) and {pool.worker_ids.length - busyWorker.length} idle.</td>
                       </tr>
                       <tr>
                         <td colSpan="4">

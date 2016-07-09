@@ -1,12 +1,12 @@
 import expect from 'expect';
-import Abbrev from './Abbrev';
+import ShortList from './ShortList';
 import React from 'react';
 import ReactTestUtils from 'react-addons-test-utils';
 
-describe('Abbrev', () => {
+describe('ShortList', () => {
   it('lists items', () => {
     let r = ReactTestUtils.createRenderer();
-    r.render(<Abbrev item={['1', '2', '3', '4']} />);
+    r.render(<ShortList item={['1', '2', '3', '4']} />);
     let output = r.getRenderOutput();
 
     expect(output.type).toEqual('ul');

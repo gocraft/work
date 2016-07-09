@@ -8,16 +8,16 @@ describe('Queues', () => {
     let r = ReactTestUtils.createRenderer();
     r.render(<Queues />);
     let queues = r.getMountedInstance();
-    expect(queues.state.Queues.length).toEqual(0);
+    expect(queues.state.queues.length).toEqual(0);
 
     queues.setState({
-      Queues: [
-        {JobName: 'test', Count: 1, Latency: 0},
-        {JobName: 'test2', Count: 2, Latency: 0}
+      queues: [
+        {job_name: 'test', count: 1, latency: 0},
+        {job_name: 'test2', count: 2, latency: 0}
       ]
     });
 
-    expect(queues.state.Queues.length).toEqual(2);
+    expect(queues.state.queues.length).toEqual(2);
     expect(queues.queuedCount).toEqual(3);
   });
 });

@@ -1,7 +1,7 @@
 import React from 'react';
-import styles from './Abbrev.css';
+import styles from './ShortList.css';
 
-export default class Abbrev extends React.Component {
+export default class ShortList extends React.Component {
   static propTypes = {
     item: React.PropTypes.arrayOf(React.PropTypes.string).isRequired,
   }

@@ -16,24 +16,24 @@ describe('Processes', () => {
     processes.setState({
       busyWorker: [
         {
-          WorkerID: '2',
-          JobName: 'job1',
-          StartedAt: 1467753603,
-          CheckinAt: 1467753603,
-          Checkin: '123',
-          ArgsJSON: '{}'
+          worker_id: '2',
+          job_name: 'job1',
+          started_at: 1467753603,
+          checkin_at: 1467753603,
+          checkin: '123',
+          args_json: '{}'
         }
       ],
       workerPool: [
         {
-          WorkerPoolID: '1',
-          StartedAt: 1467753603,
-          HeartbeatAt: 1467753603,
-          JobNames: ['job1', 'job2', 'job3', 'job4'],
-          Concurrency: 10,
-          Host: 'web51',
-          Pid: 123,
-          WorkerIDs: [
+          worker_pool_id: '1',
+          started_at: 1467753603,
+          heartbeat_at: 1467753603,
+          job_names: ['job1', 'job2', 'job3', 'job4'],
+          concurrency: 10,
+          host: 'web51',
+          pid: 123,
+          worker_ids: [
             '1', '2', '3'
           ]
         }
@@ -44,7 +44,7 @@ describe('Processes', () => {
     expect(processes.state.workerPool.length).toEqual(1);
     expect(processes.workerCount).toEqual(3);
 
-    const expectedBusyWorker = [ { ArgsJSON: '{}', Checkin: '123', CheckinAt: 1467753603, JobName: 'job1', StartedAt: 1467753603, WorkerID: '2' } ];
+    const expectedBusyWorker = [ { args_json: '{}', checkin: '123', checkin_at: 1467753603, job_name: 'job1', started_at: 1467753603, worker_id: '2' } ];
 
     let output = r.getRenderOutput();
     let busyWorkers = findAllByTag(output, 'BusyWorkers');

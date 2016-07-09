@@ -49,7 +49,15 @@ render(
       <Route path="/queues" component={ () => <Queues url="/queues" /> } />
       <Route path="/retry_jobs" component={ () => <RetryJobs url="/retry_jobs" /> } />
       <Route path="/scheduled_jobs" component={ () => <ScheduledJobs url="/scheduled_jobs" /> } />
-      <Route path="/dead_jobs" component={ () => <DeadJobs fetchURL="/dead_jobs" retryURL="/retry_dead_job" deleteURL="/delete_dead_job" /> } />
+      <Route path="/dead_jobs" component={ () =>
+        <DeadJobs
+          fetchURL="/dead_jobs"
+          retryURL="/retry_dead_job"
+          retryAllURL="/retry_all_dead_jobs"
+          deleteURL="/delete_dead_job"
+          deleteAllURL="/delete_all_dead_jobs"
+        />
+      } />
       <IndexRedirect from="" to="/processes" />
     </Route>
   </Router>,

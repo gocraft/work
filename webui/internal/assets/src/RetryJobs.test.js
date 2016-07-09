@@ -10,17 +10,17 @@ describe('RetryJobs', () => {
     r.render(<RetryJobs />);
     let retryJobs = r.getMountedInstance();
 
-    expect(retryJobs.state.Jobs.length).toEqual(0);
+    expect(retryJobs.state.jobs.length).toEqual(0);
 
     retryJobs.setState({
-      Count: 2,
-      Jobs: [
+      count: 2,
+      jobs: [
         {id: 1, name: 'test', args: {}, t: 1467760821, err: 'err1'},
         {id: 2, name: 'test2', args: {}, t: 1467760822, err: 'err2'}
       ]
     });
 
-    expect(retryJobs.state.Jobs.length).toEqual(2);
+    expect(retryJobs.state.jobs.length).toEqual(2);
   });
 
   it('has pages', () => {
@@ -42,11 +42,11 @@ describe('RetryJobs', () => {
       return job;
     };
     retryJobs.setState({
-      Count: 21,
-      Jobs: genJob(21)
+      count: 21,
+      jobs: genJob(21)
     });
 
-    expect(retryJobs.state.Jobs.length).toEqual(21);
+    expect(retryJobs.state.jobs.length).toEqual(21);
     expect(retryJobs.state.page).toEqual(1);
 
     let output = r.getRenderOutput();
