@@ -1,27 +1,7 @@
-START
------
-
-start a web UI:
-cd cmd/workwebui
-go run main.go
-open "http://localhost:5040/worker_pools"
-open "http://localhost:5040/busy_workers"
-open "http://localhost:5040/jobs"
-
-Enqueue some foobar jobs:
-cd cmd/workfakedata
-go run main.go
-
-TODO
+IDEAS/TODO:
 ----
- - awesomego PR
- - readme:
-   - webui
- - once I have thruput benches in place:
-   - rpoplpush in lua script
-   - zero context each time
- - do a benchmark to measure memory allocations
- 
+ - zero context each time -- see if that affects performance
+ - benchmarks for memory allocations
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time
  - revisit the retry backoff

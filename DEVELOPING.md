@@ -1,3 +1,11 @@
+## Web UI
+
+```
+cd cmd/workwebui
+go run main.go
+open "http://localhost:5040/"
+```
+
 ## Assets
 
 Web UI frontend is written in [react](https://facebook.github.io/react/). [Webpack](https://webpack.github.io/) is used to transpile and bundle es7 and jsx to run on modern browsers.
