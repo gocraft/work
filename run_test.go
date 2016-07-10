@@ -31,9 +31,9 @@ func TestRunBasicMiddleware(t *testing.T) {
 	}
 
 	middleware := []*middlewareHandler{
-		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
-		&middlewareHandler{IsGeneric: false, DynamicMiddleware: reflect.ValueOf(mw2)},
-		&middlewareHandler{IsGeneric: false, DynamicMiddleware: reflect.ValueOf(mw3)},
+		{IsGeneric: true, GenericMiddlewareHandler: mw1},
+		{IsGeneric: false, DynamicMiddleware: reflect.ValueOf(mw2)},
+		{IsGeneric: false, DynamicMiddleware: reflect.ValueOf(mw3)},
 	}
 
 	jt := &jobType{
@@ -63,7 +63,7 @@ func TestRunHandlerError(t *testing.T) {
 	}
 
 	middleware := []*middlewareHandler{
-		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
 	jt := &jobType{
@@ -94,7 +94,7 @@ func TestRunMwError(t *testing.T) {
 	}
 
 	middleware := []*middlewareHandler{
-		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
 	jt := &jobType{
@@ -123,7 +123,7 @@ func TestRunHandlerPanic(t *testing.T) {
 	}
 
 	middleware := []*middlewareHandler{
-		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
 	jt := &jobType{
@@ -151,7 +151,7 @@ func TestRunMiddlewarePanic(t *testing.T) {
 	}
 
 	middleware := []*middlewareHandler{
-		&middlewareHandler{IsGeneric: true, GenericMiddlewareHandler: mw1},
+		{IsGeneric: true, GenericMiddlewareHandler: mw1},
 	}
 
 	jt := &jobType{

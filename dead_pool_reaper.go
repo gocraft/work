@@ -55,7 +55,7 @@ func (r *deadPoolReaper) loop() {
 			r.doneStoppingChan <- struct{}{}
 			return
 		case <-timer.C:
-			// Schedule next occurence with jitter
+			// Schedule next occurrence with jitter
 			timer.Reset(reapPeriod + time.Duration(rand.Intn(30))*time.Second)
 
 			// Reap
