@@ -3,8 +3,9 @@ package work
 import (
 	// "encoding/json"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 type requeuer struct {
