@@ -3,13 +3,15 @@ package webui
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+	"sync"
+
 	"github.com/braintree/manners"
 	"github.com/garyburd/redigo/redis"
 	"github.com/gocraft/web"
 	"github.com/gocraft/work"
-	"net/http"
-	"strconv"
-	"sync"
+	"github.com/gocraft/work/webui/internal/assets"
 )
 
 // Server implements an HTTP server which exposes a JSON API to view and manage gocraft/work items.
@@ -57,6 +59,19 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
 	router.Post("/retry_dead_job/:died_at:\\d.*/:job_id", (*context).retryDeadJob)
 	router.Post("/delete_all_dead_jobs", (*context).deleteAllDeadJobs)
 	router.Post("/retry_all_dead_jobs", (*context).retryAllDeadJobs)
+
+	//
+	// Build the HTML page:
+	//
+	assetRouter := router.Subrouter(context{}, "")
+	assetRouter.Get("/", func(c *context, rw web.ResponseWriter, req *web.Request) {
+		rw.Header().Set("Content-Type", "text/html; charset=utf-8")
+		rw.Write(assets.MustAsset("index.html"))
+	})
+	assetRouter.Get("/work.js", func(c *context, rw web.ResponseWriter, req *web.Request) {
+		rw.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		rw.Write(assets.MustAsset("work.js"))
+	})
 
 	return server
 }
