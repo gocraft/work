@@ -14,13 +14,13 @@ go run main.go
 
 TODO
 ----
+ - awesomego PR
  - readme:
    - webui
-   - references
- - Benchmark latest version of goworker and go-workers again and that other one
  - once I have thruput benches in place:
    - rpoplpush in lua script
    - zero context each time
+ - do a benchmark to measure memory allocations
  
  - benchmarks for runJob
  - investigate changing runJob to use a shared context, and zero'ing it's value each time

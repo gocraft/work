@@ -56,9 +56,8 @@ var redisLuaRpoplpushMultiCmd = `
 local res
 local keylen = #KEYS
 for i=1,keylen,2 do
-  res = redis.call('rpop', KEYS[i])
+  res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
   if res then
-    redis.call('lpush', KEYS[i+1], res)
     return {res, KEYS[i], KEYS[i+1]}
   end
 end

@@ -257,7 +257,7 @@ The benches folder contains various benchmark code. In each case, we enqueue 100
 
 | Library | Speed |
 | --- | --- |
-| [gocraft/work](https://www.github.com/gocraft/work) | **20351 jobs/s** |
+| [gocraft/work](https://www.github.com/gocraft/work) | **20944 jobs/s** |
 | [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
 | [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
 | [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
