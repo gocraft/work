@@ -13,7 +13,7 @@ import (
 var namespace = "bench_test"
 var pool = newPool(":6379")
 
-type Context struct{}
+type context struct{}
 
 func epsilonHandler(job *work.Job) error {
 	//fmt.Println("hi")
@@ -38,7 +38,7 @@ func main() {
 	enqueueJobs(jobNames, 10000)
 	job.Complete(health.Success)
 
-	workerPool := work.NewWorkerPool(Context{}, 20, namespace, pool)
+	workerPool := work.NewWorkerPool(context{}, 20, namespace, pool)
 	for _, jobName := range jobNames {
 		workerPool.Job(jobName, epsilonHandler)
 	}

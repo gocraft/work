@@ -22,7 +22,7 @@ func epsilonHandler(job *work.Job) error {
 	return nil
 }
 
-type Context struct{}
+type context struct{}
 
 func main() {
 	flag.Parse()
@@ -49,7 +49,7 @@ func main() {
 		}
 	}()
 
-	wp := work.NewWorkerPool(Context{}, 5, *redisNamespace, pool)
+	wp := work.NewWorkerPool(context{}, 5, *redisNamespace, pool)
 	wp.Job("foobar", epsilonHandler)
 	wp.Start()
 

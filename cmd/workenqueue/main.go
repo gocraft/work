@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"github.com/gocraft/work"
-	"github.com/garyburd/redigo/redis"
-	"flag"
 	"encoding/json"
-	"time"
+	"flag"
+	"fmt"
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/work"
 	"os"
+	"time"
 )
 
 var redisHostPort = flag.String("redis", ":6379", "redis hostport")
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	pool := newPool(*redisHostPort)
-	
+
 	var args map[string]interface{}
 	err := json.Unmarshal([]byte(*jobArgs), &args)
 	if err != nil {

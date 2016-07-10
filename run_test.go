@@ -120,8 +120,6 @@ func TestRunHandlerPanic(t *testing.T) {
 		c.record("h1")
 
 		panic("dayam")
-
-		return nil
 	}
 
 	middleware := []*middlewareHandler{
@@ -146,7 +144,6 @@ func TestRunHandlerPanic(t *testing.T) {
 func TestRunMiddlewarePanic(t *testing.T) {
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		panic("dayam")
-		return next()
 	}
 	h1 := func(c *tstCtx, j *Job) error {
 		c.record("h1")

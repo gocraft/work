@@ -13,8 +13,6 @@ import (
 var namespace = "jobs"
 var pool = newPool(":6379")
 
-type Context struct{}
-
 func epsilonHandler(i int) error {
 	atomic.AddInt64(&totcount, 1)
 	return nil

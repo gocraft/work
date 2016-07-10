@@ -1,11 +1,10 @@
 package work
 
 import (
-	"testing"
-	"time"
-
 	"github.com/garyburd/redigo/redis"
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 func TestDeadPoolReaper(t *testing.T) {

@@ -79,10 +79,10 @@ func TestJobArgumentExtraction(t *testing.T) {
 	vString = j.ArgString("str_missing")
 	assert.Equal(t, vString, "")
 	assert.Error(t, j.ArgError())
-	vString = j.ArgString("str1")
-	vInt64 = j.ArgInt64("int1")
-	vBool = j.ArgBool("bool1")
-	vFloat = j.ArgFloat64("float1")
+	_ = j.ArgString("str1")
+	_ = j.ArgInt64("int1")
+	_ = j.ArgBool("bool1")
+	_ = j.ArgFloat64("float1")
 	assert.Error(t, j.ArgError())
 }
 

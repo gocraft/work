@@ -525,7 +525,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 		panic(err)
 	}
 
-	// Add a dead job with a non-existant queue:
+	// Add a dead job with a non-existent queue:
 	job := &Job{
 		Name:       "dontexist",
 		ID:         makeIdentifier(),
