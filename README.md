@@ -185,6 +185,25 @@ enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "
 
 ## Run the Web UI
 
+The web UI provides a view to view the state of your gocraft/work cluster, inspect queued jobs, and retry or delete dead jobs.
+
+Building an installing the binary:
+```bash
+go get github.com/gocraft/work/cmd/workwebui
+go install github.com/gocraft/work/cmd/workwebui
+```
+
+Then, you can run it:
+```bash
+workwebui -redis=":6379" -ns="work" -listen=":5040"
+```
+
+Navigate to ```http://localhost:5040/```.
+
+You'll see a view that looks like this:
+
+![Web UI Screenshot](https://gocraft.github.io/work/images/webui.png)
+
 ## Design and concepts
 
 ### Enqueueing jobs
