@@ -3,26 +3,38 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work/webui"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/work/webui"
 )
 
-var redisHostPort = flag.String("redis", ":6379", "redis hostport")
-var redisNamespace = flag.String("ns", "work", "redis namespace")
-var webHostPort = flag.String("listen", ":5040", "hostport to listen for HTTP JSON API")
+var (
+	redisHostPort  = flag.String("redis", ":6379", "redis hostport")
+	redisDatabase  = flag.String("database", "0", "redis database")
+	redisNamespace = flag.String("ns", "work", "redis namespace")
+	webHostPort    = flag.String("listen", ":5040", "hostport to listen for HTTP JSON API")
+)
 
 func main() {
 	flag.Parse()
 
 	fmt.Println("Starting workwebui:")
 	fmt.Println("redis = ", *redisHostPort)
+	fmt.Println("database = ", *redisDatabase)
 	fmt.Println("namespace = ", *redisNamespace)
 	fmt.Println("listen = ", *webHostPort)
 
-	pool := newPool(*redisHostPort)
+	database, err := strconv.Atoi(*redisDatabase)
+	if err != nil {
+		fmt.Printf("Error: %v is not a valid database value", *redisDatabase)
+		return
+	}
+
+	pool := newPool(*redisHostPort, database)
 
 	server := webui.NewServer(*redisNamespace, pool, *webHostPort)
 	server.Start()
@@ -37,13 +49,13 @@ func main() {
 	fmt.Println("\nQuitting...")
 }
 
-func newPool(addr string) *redis.Pool {
+func newPool(addr string, database int) *redis.Pool {
 	return &redis.Pool{
 		MaxActive:   3,
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", addr)
+			return redis.Dial("tcp", addr, redis.DialDatabase(database))
 		},
 		Wait: true,
 	}
