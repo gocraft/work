@@ -8,6 +8,7 @@ gocraft/work lets you enqueue and processes background jobs in Go. Jobs are dura
 * If a job fails, it will be retried a specified number of times.
 * Schedule jobs to happen in the future.
 * Web UI to manage failed jobs and observe the system.
+* Periodically enqueue jobs on a cron-like schedule.
 
 ## Enqueue new jobs
 
@@ -183,6 +184,16 @@ enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "
 
 ```
 
+### Periodic Enqueueing (Cron)
+
+You can periodically enqueue jobs on your gocraft/work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
+
+```go
+pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
+pool.PeriodicallyEnqueue("0 0 * * * *", "calculate_caches") // This will enqueue a "calculate_caches" job every hour
+pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to register a handler for this job separately
+```
+
 ## Run the Web UI
 
 The web UI provides a view to view the state of your gocraft/work cluster, inspect queued jobs, and retry or delete dead jobs.
@@ -231,7 +242,7 @@ You'll see a view that looks like this:
 ### Workers and WorkerPools
 
 * WorkerPools provide the public API of gocraft/work.
-  * You can attach jobs and middlware to them.
+  * You can attach jobs and middleware to them.
   * You can start and stop them.
   * Based on their concurrency setting, they'll spin up N worker goroutines.
 * Each worker is run in a goroutine. It will get a job from redis, run it, get the next job, etc.
@@ -254,6 +265,13 @@ You'll see a view that looks like this:
 * If a process crashes hard (eg, the power on the server turns off or the kernal freezes), some jobs may be in progress and we won't want to lose them. They're safe in their in-progress queue.
 * The reaper will look for worker pools without a heartbeat. It will scan their in-progress queues and requeue anything it finds.
 
+
+### Periodic Jobs
+
+* You can tell a worker pool to enqueue jobs periodically using a cron schedule.
+* Each worker pool will wake up every 2 minutes, and if jobs haven't been scheduled yet, it will schedule all the jobs that would be executed in the next five minutes.
+* Each periodic job that runs at a given time has a predictable byte pattern. Since jobs are scheduled on the scheduled job queue (a Redis z-set), if the same job is scheduled twice for a given time, it can only exist in the z-set once.
+
 ### Terminology reference
 * "worker pool" - a pool of workers
 * "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
@@ -261,6 +279,7 @@ You'll see a view that looks like this:
 * "heartbeat" - the status written by the heartbeater.
 * "observer" or "worker observer" - observes a worker. Writes stats. makes "observations".
 * "worker observation" - A snapshot made by an observer of what a worker is working on.
+* "periodic enqueuer" - A process that runs with a worker pool that periodically enqueues new jobs based on cron schedules.
 * "job" - the actual bundle of data that constitutes one job
 * "job name" - each job has a name, like "create_watch"
 * "job type" - backend/private nomenclature for the handler+options for processing a job

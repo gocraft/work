@@ -2,6 +2,7 @@ package work
 
 import (
 	"github.com/garyburd/redigo/redis"
+	"github.com/robfig/cron"
 	"reflect"
 	"sort"
 	"strings"
@@ -15,16 +16,18 @@ type WorkerPool struct {
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
 
-	contextType reflect.Type
-	jobTypes    map[string]*jobType
-	middleware  []*middlewareHandler
-	started     bool
+	contextType  reflect.Type
+	jobTypes     map[string]*jobType
+	middleware   []*middlewareHandler
+	started      bool
+	periodicJobs []*periodicJob
 
-	workers        []*worker
-	heartbeater    *workerPoolHeartbeater
-	retrier        *requeuer
-	scheduler      *requeuer
-	deadPoolReaper *deadPoolReaper
+	workers          []*worker
+	heartbeater      *workerPoolHeartbeater
+	retrier          *requeuer
+	scheduler        *requeuer
+	deadPoolReaper   *deadPoolReaper
+	periodicEnqueuer *periodicEnqueuer
 }
 
 type jobType struct {
@@ -137,6 +140,21 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	return wp
 }
 
+// PeriodicallyEnqueue will periodically enqueue jobName according to the cron-based spec.
+// The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
+// Note that the first value is the seconds!
+// If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
+func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
+	schedule, err := cron.Parse(spec)
+	if err != nil {
+		panic(err)
+	}
+
+	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{jobName: jobName, spec: spec, schedule: schedule})
+
+	return wp
+}
+
 // Start starts the workers and associated processes.
 func (wp *WorkerPool) Start() {
 	if wp.started {
@@ -152,6 +170,8 @@ func (wp *WorkerPool) Start() {
 	wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
 	wp.heartbeater.start()
 	wp.startRequeuers()
+	wp.periodicEnqueuer = newPeriodicEnqueuer(wp.namespace, wp.pool, wp.periodicJobs)
+	wp.periodicEnqueuer.start()
 }
 
 // Stop stops the workers and associated processes.
@@ -174,6 +194,7 @@ func (wp *WorkerPool) Stop() {
 	wp.retrier.stop()
 	wp.scheduler.stop()
 	wp.deadPoolReaper.stop()
+	wp.periodicEnqueuer.stop()
 }
 
 // Drain drains all jobs in the queue before returning. Note that if jobs are added faster than we can process them, this function wouldn't return.
