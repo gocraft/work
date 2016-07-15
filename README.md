@@ -7,6 +7,7 @@ gocraft/work lets you enqueue and processes background jobs in Go. Jobs are dura
 * Middleware on jobs -- good for metrics instrumentation, logging, etc.
 * If a job fails, it will be retried a specified number of times.
 * Schedule jobs to happen in the future.
+* Enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once.
 * Web UI to manage failed jobs and observe the system.
 * Periodically enqueue jobs on a cron-like schedule.
 
@@ -184,6 +185,17 @@ enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "
 
 ```
 
+### Unique Jobs
+
+You can enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once. For instance, you might have a worker that expires the cache of an object. It doesn't make sense for multiple such jobs to exist at once. Also note that unique jobs are supported for normal enqueues as well as scheduled enqueues.
+
+```go
+enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
+ok, err := enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // ok=true
+ok, err = enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // ok=false -- this duplicate job isn't enqueued.
+ok, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "789"}) // ok=true (diff id)
+```
+
 ### Periodic Enqueueing (Cron)
 
 You can periodically enqueue jobs on your gocraft/work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
@@ -265,6 +277,12 @@ You'll see a view that looks like this:
 * If a process crashes hard (eg, the power on the server turns off or the kernal freezes), some jobs may be in progress and we won't want to lose them. They're safe in their in-progress queue.
 * The reaper will look for worker pools without a heartbeat. It will scan their in-progress queues and requeue anything it finds.
 
+### Unique jobs
+
+* You can enqueue unique jobs such that a given name/arguments are on the queue at once.
+* Both normal queues and the scheduled queue are considered.
+* When a unique job is enqueued, we'll atomically set a redis key that includes the job name and arguments and enqueue the job.
+* When the job is processed, we'll delete that key to permit another job to be enqueued.
 
 ### Periodic Jobs
 

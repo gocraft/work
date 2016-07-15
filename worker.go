@@ -176,6 +176,9 @@ func (w *worker) fetchJob() (*Job, error) {
 }
 
 func (w *worker) processJob(job *Job) {
+	if job.Unique {
+		w.deleteUniqueJob(job)
+	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
@@ -193,6 +196,20 @@ func (w *worker) processJob(job *Job) {
 		logError("process_job.stray", runErr)
 		job.failed(runErr)
 		w.addToDead(job, runErr)
+	}
+}
+
+func (w *worker) deleteUniqueJob(job *Job) {
+	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
+	if err != nil {
+		logError("worker.delete_unique_job.key", err)
+	}
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	_, err = conn.Do("DEL", uniqueKey)
+	if err != nil {
+		logError("worker.delete_unique_job.del", err)
 	}
 }
 

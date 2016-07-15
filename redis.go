@@ -1,6 +1,10 @@
 package work
 
-import "fmt"
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+)
 
 func redisNamespacePrefix(namespace string) string {
 	l := len(namespace)
@@ -50,6 +54,24 @@ func redisKeyWorkerPools(namespace string) string {
 
 func redisKeyHeartbeat(namespace, workerPoolID string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
+}
+
+func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
+	var buf bytes.Buffer
+
+	buf.WriteString(redisNamespacePrefix(namespace))
+	buf.WriteString("unique:")
+	buf.WriteString(jobName)
+	buf.WriteRune(':')
+
+	if args != nil {
+		err := json.NewEncoder(&buf).Encode(args)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return buf.String(), nil
 }
 
 func redisKeyLastPeriodicEnqueue(namespace string) string {
@@ -129,4 +151,27 @@ for i=1,jobCount do
   end
 end
 return requeuedCount
+`
+
+// KEYS[1] = job queue to push onto
+// KEYS[2] = Unique job's key. Test for existance and set if we push.
+// ARGV[1] = job
+var redisLuaEnqueueUnique = `
+if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
+  redis.call('lpush', KEYS[1], ARGV[1])
+  return 'ok'
+end
+return 'dup'
+`
+
+// KEYS[1] = scheduled job queue
+// KEYS[2] = Unique job's key. Test for existance and set if we push.
+// ARGV[1] = job
+// ARGV[2] = epoch seconds for job to be run at
+var redisLuaEnqueueUniqueIn = `
+if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
+  redis.call('zadd', KEYS[1], ARGV[2], ARGV[1])
+  return 'ok'
+end
+return 'dup'
 `
