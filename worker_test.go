@@ -234,6 +234,31 @@ func TestWorkerDead(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
+func BenchmarkJobProcessing(b *testing.B) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+	enqueuer := NewEnqueuer(ns, pool)
+
+	for i := 0; i < b.N; i++ {
+		err := enqueuer.Enqueue("wat", nil)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Job("wat", func(c *TestContext, job *Job) error {
+		return nil
+	})
+
+	b.ResetTimer()
+
+	wp.Start()
+	wp.Drain()
+	wp.Stop()
+}
+
 func newTestPool(addr string) *redis.Pool {
 	return &redis.Pool{
 		MaxActive:   10,
