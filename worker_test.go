@@ -234,6 +234,23 @@ func TestWorkerDead(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
+// Test that in the case of an unavailable Redis server,
+// the worker loop exits in the case of a WorkerPool.Stop
+func TestStop(t *testing.T) {
+	redisPool := &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			c, err := redis.Dial("tcp", "notworking:6379")
+			if err != nil {
+				return nil, err
+			}
+			return c, nil
+		},
+	}
+	wp := NewWorkerPool(TestContext{}, 10, "work", redisPool)
+	wp.Start()
+	wp.Stop()
+}
+
 func BenchmarkJobProcessing(b *testing.B) {
 	pool := newTestPool(":6379")
 	ns := "work"

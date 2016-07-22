@@ -3,6 +3,7 @@ package work
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"reflect"
 	"time"
 
@@ -94,6 +95,7 @@ func (w *worker) loop() {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+LOOP:
 	for {
 		select {
 		case <-w.stopChan:
@@ -106,12 +108,16 @@ func (w *worker) loop() {
 			gotJob := true
 			for gotJob {
 				job, err := w.fetchJob()
-				if err != nil {
+				switch {
+				case err != nil:
 					logError("worker.fetch", err)
-				} else if job != nil {
+					if _, ok := err.(*net.OpError); ok {
+						continue LOOP
+					}
+				case job != nil:
 					w.processJob(job)
 					consequtiveNoJobs = 0
-				} else {
+				default:
 					gotJob = false
 					if drained {
 						w.doneDrainingChan <- struct{}{}
