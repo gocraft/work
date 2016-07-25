@@ -18,6 +18,10 @@ type Enqueuer struct {
 
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
 func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
+	if pool == nil {
+		panic("NewEnqueuer needs a non-nil *redis.Pool")
+	}
+
 	return &Enqueuer{
 		Namespace:             namespace,
 		Pool:                  pool,

@@ -63,6 +63,10 @@ type middlewareHandler struct {
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers. concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
+	if pool == nil {
+		panic("NewWorkerPool needs a non-nil *redis.Pool")
+	}
+
 	ctxType := reflect.TypeOf(ctx)
 	validateContextType(ctxType)
 	wp := &WorkerPool{
