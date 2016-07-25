@@ -38,10 +38,10 @@ var enqueuer = work.NewEnqueuer("my_app_namespace", redisPool)
 
 func main() {
 	// Enqueue a job named "send_email" with the specified parameters.
-	err := enqueuer.Enqueue("send_email", work.Q{"address": "test@example.com", "subject": "hello world", "customer_id": 4})
-    if err != nil {
-        log.Fatal(err)
-    }
+	_, err := enqueuer.Enqueue("send_email", work.Q{"address": "test@example.com", "subject": "hello world", "customer_id": 4})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 
@@ -181,8 +181,7 @@ You can schedule jobs to be executed in the future. To do so, make a new ```Enqu
 ```go
 enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
 secondsInTheFuture := 300
-enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "test@example.com"})
-
+_, err := enqueuer.EnqueueIn("send_welcome_email", secondsInTheFuture, work.Q{"address": "test@example.com"})
 ```
 
 ### Unique Jobs
@@ -191,9 +190,9 @@ You can enqueue unique jobs so that only one job with a given name/arguments exi
 
 ```go
 enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
-ok, err := enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // ok=true
-ok, err = enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // ok=false -- this duplicate job isn't enqueued.
-ok, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "789"}) // ok=true (diff id)
+job, err := enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // job returned
+job, err = enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) // job == nil -- this duplicate job isn't enqueued.
+job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "789"}) // job != nil (diff id)
 ```
 
 ### Periodic Enqueueing (Cron)

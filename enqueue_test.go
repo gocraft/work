@@ -12,9 +12,15 @@ func TestEnqueue(t *testing.T) {
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
-
+	job, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
+	assert.Equal(t, "wat", job.Name)
+	assert.True(t, len(job.ID) > 10)                        // Something is in it
+	assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+	assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+	assert.Equal(t, "cool", job.ArgString("b"))
+	assert.EqualValues(t, 1, job.ArgInt64("a"))
+	assert.NoError(t, job.ArgError())
 
 	// Make sure "wat" is in the known jobs
 	assert.EqualValues(t, []string{"wat"}, knownJobs(pool, redisKeyKnownJobs(ns)))
@@ -37,8 +43,8 @@ func TestEnqueue(t *testing.T) {
 	assert.NoError(t, j.ArgError())
 
 	// Now enqueue another job, make sure that we can enqueue multiple
-	err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
-	err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
+	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
+	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	assert.EqualValues(t, 2, listSize(pool, redisKeyJobs(ns, "wat")))
 }
@@ -52,9 +58,18 @@ func TestEnqueueIn(t *testing.T) {
 	// Set to expired value to make sure we update the set of known jobs
 	enqueuer.knownJobs["wat"] = 4
 
-	err := enqueuer.EnqueueIn("wat", 300, Q{"a": 1, "b": "cool"})
-
+	job, err := enqueuer.EnqueueIn("wat", 300, Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
+	if assert.NotNil(t, job) {
+		assert.Equal(t, "wat", job.Name)
+		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+		assert.Equal(t, "cool", job.ArgString("b"))
+		assert.EqualValues(t, 1, job.ArgInt64("a"))
+		assert.NoError(t, job.ArgError())
+		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
+	}
 
 	// Make sure "wat" is in the known jobs
 	assert.EqualValues(t, []string{"wat"}, knownJobs(pool, redisKeyKnownJobs(ns)))
@@ -87,29 +102,37 @@ func TestEnqueueUnique(t *testing.T) {
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
-	ok, err := enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+	job, err := enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	if assert.NotNil(t, job) {
+		assert.Equal(t, "wat", job.Name)
+		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+		assert.Equal(t, "cool", job.ArgString("b"))
+		assert.EqualValues(t, 1, job.ArgInt64("a"))
+		assert.NoError(t, job.ArgError())
+	}
 
-	ok, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
 	assert.NoError(t, err)
-	assert.False(t, ok)
+	assert.Nil(t, job)
 
-	ok, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "coolio"})
+	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "coolio"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
-	ok, err = enqueuer.EnqueueUnique("wat", nil)
+	job, err = enqueuer.EnqueueUnique("wat", nil)
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
-	ok, err = enqueuer.EnqueueUnique("wat", nil)
+	job, err = enqueuer.EnqueueUnique("wat", nil)
 	assert.NoError(t, err)
-	assert.False(t, ok)
+	assert.Nil(t, job)
 
-	ok, err = enqueuer.EnqueueUnique("taw", nil)
+	job, err = enqueuer.EnqueueUnique("taw", nil)
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
 	// Process the queues. Ensure the right numbero of jobs was processed
 	var wats, taws int64
@@ -130,19 +153,19 @@ func TestEnqueueUnique(t *testing.T) {
 	assert.EqualValues(t, 1, taws)
 
 	// Enqueue again. Ensure we can.
-	ok, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
-	ok, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "coolio"})
+	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "coolio"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
 	// Even though taw resulted in an error, we should still be able to re-queue it.
 	// This could result in multiple taws enqueued at the same time in a production system.
-	ok, err = enqueuer.EnqueueUnique("taw", nil)
+	job, err = enqueuer.EnqueueUnique("taw", nil)
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 }
 
 func TestEnqueueUniqueIn(t *testing.T) {
@@ -152,13 +175,22 @@ func TestEnqueueUniqueIn(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 
 	// Enqueue two unique jobs -- ensure one job sticks.
-	ok, err := enqueuer.EnqueueUniqueIn("wat", 300, Q{"a": 1, "b": "cool"})
+	job, err := enqueuer.EnqueueUniqueIn("wat", 300, Q{"a": 1, "b": "cool"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	if assert.NotNil(t, job) {
+		assert.Equal(t, "wat", job.Name)
+		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+		assert.Equal(t, "cool", job.ArgString("b"))
+		assert.EqualValues(t, 1, job.ArgInt64("a"))
+		assert.NoError(t, job.ArgError())
+		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
+	}
 
-	ok, err = enqueuer.EnqueueUniqueIn("wat", 10, Q{"a": 1, "b": "cool"})
+	job, err = enqueuer.EnqueueUniqueIn("wat", 10, Q{"a": 1, "b": "cool"})
 	assert.NoError(t, err)
-	assert.False(t, ok)
+	assert.Nil(t, job)
 
 	// Get the job
 	score, j := jobOnZset(pool, redisKeyScheduled(ns))
@@ -176,19 +208,19 @@ func TestEnqueueUniqueIn(t *testing.T) {
 	assert.True(t, j.Unique)
 
 	// Now try to enqueue more stuff and ensure it
-	ok, err = enqueuer.EnqueueUniqueIn("wat", 300, Q{"a": 1, "b": "coolio"})
+	job, err = enqueuer.EnqueueUniqueIn("wat", 300, Q{"a": 1, "b": "coolio"})
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
-	ok, err = enqueuer.EnqueueUniqueIn("wat", 300, nil)
+	job, err = enqueuer.EnqueueUniqueIn("wat", 300, nil)
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 
-	ok, err = enqueuer.EnqueueUniqueIn("wat", 300, nil)
+	job, err = enqueuer.EnqueueUniqueIn("wat", 300, nil)
 	assert.NoError(t, err)
-	assert.False(t, ok)
+	assert.Nil(t, job)
 
-	ok, err = enqueuer.EnqueueUniqueIn("taw", 300, nil)
+	job, err = enqueuer.EnqueueUniqueIn("taw", 300, nil)
 	assert.NoError(t, err)
-	assert.True(t, ok)
+	assert.NotNil(t, job)
 }

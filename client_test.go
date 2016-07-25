@@ -68,9 +68,9 @@ func TestClientWorkerObservations(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
+	_, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue("foo", Q{"a": 3, "b": 4})
+	_, err = enqueuer.Enqueue("foo", Q{"a": 3, "b": 4})
 	assert.Nil(t, err)
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
@@ -137,9 +137,9 @@ func TestClientQueues(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", nil)
-	err = enqueuer.Enqueue("foo", nil)
-	err = enqueuer.Enqueue("zaz", nil)
+	_, err := enqueuer.Enqueue("wat", nil)
+	_, err = enqueuer.Enqueue("foo", nil)
+	_, err = enqueuer.Enqueue("zaz", nil)
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
@@ -159,11 +159,11 @@ func TestClientQueues(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263409)
 	defer resetNowEpochSecondsMock()
-	err = enqueuer.Enqueue("foo", nil)
+	enqueuer.Enqueue("foo", nil)
 	setNowEpochSecondsMock(1425263509)
-	err = enqueuer.Enqueue("foo", nil)
+	enqueuer.Enqueue("foo", nil)
 	setNowEpochSecondsMock(1425263609)
-	err = enqueuer.Enqueue("wat", nil)
+	enqueuer.Enqueue("wat", nil)
 
 	setNowEpochSecondsMock(1425263709)
 	client := NewClient(ns, pool)
@@ -191,9 +191,9 @@ func TestClientScheduledJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263409)
 	defer resetNowEpochSecondsMock()
-	err := enqueuer.EnqueueIn("wat", 0, Q{"a": 1, "b": 2})
-	err = enqueuer.EnqueueIn("zaz", 4, Q{"a": 3, "b": 4})
-	err = enqueuer.EnqueueIn("foo", 2, Q{"a": 3, "b": 4})
+	_, err := enqueuer.EnqueueIn("wat", 0, Q{"a": 1, "b": 2})
+	_, err = enqueuer.EnqueueIn("zaz", 4, Q{"a": 3, "b": 4})
+	_, err = enqueuer.EnqueueIn("foo", 2, Q{"a": 3, "b": 4})
 
 	client := NewClient(ns, pool)
 	jobs, count, err := client.ScheduledJobs(1)
@@ -239,7 +239,7 @@ func TestClientRetryJobs(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
+	_, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
 
 	setNowEpochSecondsMock(1425263429)
@@ -278,7 +278,7 @@ func TestClientDeadJobs(t *testing.T) {
 	defer resetNowEpochSecondsMock()
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
+	_, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
 	assert.Nil(t, err)
 
 	setNowEpochSecondsMock(1425263429)

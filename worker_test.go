@@ -53,11 +53,11 @@ func TestWorkerBasics(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, Q{"a": 1})
+	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job2, Q{"a": 2})
+	_, err = enqueuer.Enqueue(job2, Q{"a": 2})
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job3, Q{"a": 3})
+	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
@@ -106,7 +106,7 @@ func TestWorkerInProgress(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, Q{"a": 1})
+	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
@@ -155,7 +155,7 @@ func TestWorkerRetry(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, Q{"a": 1})
+	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
@@ -208,9 +208,9 @@ func TestWorkerDead(t *testing.T) {
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue(job1, nil)
+	_, err := enqueuer.Enqueue(job1, nil)
 	assert.Nil(t, err)
-	err = enqueuer.Enqueue(job2, nil)
+	_, err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	w.start()
@@ -241,7 +241,7 @@ func BenchmarkJobProcessing(b *testing.B) {
 	enqueuer := NewEnqueuer(ns, pool)
 
 	for i := 0; i < b.N; i++ {
-		err := enqueuer.Enqueue("wat", nil)
+		_, err := enqueuer.Enqueue("wat", nil)
 		if err != nil {
 			panic(err)
 		}

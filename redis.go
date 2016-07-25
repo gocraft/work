@@ -78,6 +78,13 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
 
+// KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
+// KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
+// KEYS[3] = the 2nd job queue...
+// KEYS[4] = the 2nd job queue's in prog queue...
+// ...
+// KEYS[N] = the last job queue...
+// KEYS[N+1] = the last job queue's in prog queue...
 var redisLuaRpoplpushMultiCmd = `
 local res
 local keylen = #KEYS
@@ -87,7 +94,8 @@ for i=1,keylen,2 do
     return {res, KEYS[i], KEYS[i+1]}
   end
 end
-return nil`
+return nil
+`
 
 // KEYS[1] = zset of jobs (retry or scheduled), eg work:retry
 // KEYS[2] = zset of dead, eg work:dead. If we don't know the jobName of a job, we'll put it in dead.

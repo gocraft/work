@@ -33,7 +33,7 @@ func TestWebUIQueues(t *testing.T) {
 
 	// Get some stuff to to show up in the jobs:
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", nil)
+	_, err := enqueuer.Enqueue("wat", nil)
 	assert.NoError(t, err)
 	enqueuer.Enqueue("foo", nil)
 	enqueuer.Enqueue("zaz", nil)
@@ -188,7 +188,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", nil)
+	_, err := enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
@@ -231,7 +231,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.EnqueueIn("watter", 1, nil)
+	_, err := enqueuer.EnqueueIn("watter", 1, nil)
 	assert.Nil(t, err)
 
 	s := NewServer(ns, pool, ":6666")
@@ -264,8 +264,8 @@ func TestWebUIDeadJobs(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", nil)
-	err = enqueuer.Enqueue("wat", nil)
+	_, err := enqueuer.Enqueue("wat", nil)
+	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
@@ -352,8 +352,8 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
-	err := enqueuer.Enqueue("wat", nil)
-	err = enqueuer.Enqueue("wat", nil)
+	_, err := enqueuer.Enqueue("wat", nil)
+	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
 	wp := work.NewWorkerPool(TestContext{}, 2, ns, pool)
