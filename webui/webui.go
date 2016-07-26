@@ -188,12 +188,7 @@ func (c *context) deleteDeadJob(rw web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	job := &work.DeadJob{
-		DiedAt: diedAt,
-		Job:    &work.Job{ID: r.PathParams["job_id"]},
-	}
-
-	err = c.client.DeleteDeadJob(job)
+	err = c.client.DeleteDeadJob(diedAt, r.PathParams["job_id"])
 
 	render(rw, map[string]string{"status": "ok"}, err)
 }
@@ -205,12 +200,7 @@ func (c *context) retryDeadJob(rw web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	job := &work.DeadJob{
-		DiedAt: diedAt,
-		Job:    &work.Job{ID: r.PathParams["job_id"]},
-	}
-
-	err = c.client.RetryDeadJob(job)
+	err = c.client.RetryDeadJob(diedAt, r.PathParams["job_id"])
 
 	render(rw, map[string]string{"status": "ok"}, err)
 }

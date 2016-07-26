@@ -1,12 +1,6 @@
-Client refactor:
- - delete/retry dead jobs should take the explicit params instead of job
-
 Client:
  - delete scheduled jobs. Take into account unique jobs.
  - delete retry jobs
-
-refactor:
- - clean up enqueue code -- bit too much duplication.
 
 IDEAS/TODO:
 ----

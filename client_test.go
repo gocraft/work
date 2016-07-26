@@ -315,7 +315,7 @@ func TestClientDeadJobs(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 
 	// Delete it!
-	err = client.DeleteDeadJob(deadJob)
+	err = client.DeleteDeadJob(deadJob.DiedAt, deadJob.ID)
 	assert.NoError(t, err)
 
 	jobs, count, err = client.DeadJobs(1)
@@ -343,7 +343,7 @@ func TestClientDeleteDeadJob(t *testing.T) {
 
 	tot := count
 	for _, j := range jobs {
-		err = client.DeleteDeadJob(j)
+		err = client.DeleteDeadJob(j.DiedAt, j.ID)
 		assert.NoError(t, err)
 		_, count, err = client.DeadJobs(1)
 		assert.NoError(t, err)
@@ -372,7 +372,7 @@ func TestClientRetryDeadJob(t *testing.T) {
 
 	tot := count
 	for _, j := range jobs {
-		err = client.RetryDeadJob(j)
+		err = client.RetryDeadJob(j.DiedAt, j.ID)
 		assert.NoError(t, err)
 		_, count, err = client.DeadJobs(1)
 		assert.NoError(t, err)
@@ -407,6 +407,50 @@ func TestClientRetryDeadJob(t *testing.T) {
 	assert.EqualValues(t, 0, job1.Fails)
 	assert.Equal(t, "", job1.LastErr)
 	assert.EqualValues(t, 0, job1.FailedAt)
+}
+
+func TestClientRetryDeadJobWithArgs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	// Enqueue a job with arguments
+	name := "foobar"
+	encAt := int64(12345)
+	failAt := int64(12347)
+	job := &Job{
+		Name:       name,
+		ID:         makeIdentifier(),
+		EnqueuedAt: encAt,
+		Args:       map[string]interface{}{"a": "wat"},
+		Fails:      3,
+		LastErr:    "sorry",
+		FailedAt:   failAt,
+	}
+
+	rawJSON, _ := job.serialize()
+
+	conn := pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("ZADD", redisKeyDead(ns), failAt, rawJSON)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if _, err := conn.Do("SADD", redisKeyKnownJobs(ns), name); err != nil {
+		panic(err)
+	}
+
+	client := NewClient(ns, pool)
+	err = client.RetryDeadJob(failAt, job.ID)
+	assert.NoError(t, err)
+
+	job1 := getQueuedJob(ns, pool, name)
+	if assert.NotNil(t, job1) {
+		assert.Equal(t, name, job1.Name)
+		assert.Equal(t, "wat", job1.ArgString("a"))
+		assert.NoError(t, job1.ArgError())
+	}
 }
 
 func TestClientDeleteAllDeadJobs(t *testing.T) {

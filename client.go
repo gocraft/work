@@ -342,12 +342,12 @@ func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 	return jobs, count, nil
 }
 
-// DeleteDeadJob deletes a dead job from Redis. The job.DiedAt and job.ID fields must be set.
-func (c *Client) DeleteDeadJob(job *DeadJob) error {
+// DeleteDeadJob deletes a dead job from Redis.
+func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
 	conn := c.pool.Get()
 	defer conn.Close()
 	key := redisKeyDead(c.namespace)
-	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, job.DiedAt, job.DiedAt))
+	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, diedAt, diedAt))
 	if err != nil {
 		logError("client.retry_dead_job.values", err)
 		return err
@@ -367,7 +367,7 @@ func (c *Client) DeleteDeadJob(job *DeadJob) error {
 			logError("client.retry_dead_job.new_job", err)
 			return err
 		}
-		if j.ID == job.ID {
+		if j.ID == jobID {
 			jobs = append(jobs, j)
 		}
 
@@ -390,31 +390,43 @@ func (c *Client) DeleteDeadJob(job *DeadJob) error {
 	return nil
 }
 
-// RetryDeadJob retries a dead job. The job.DiedAt and job.ID fields must be set. The job will be re-queued on the normal work queue for eventual processing by a worker.
-func (c *Client) RetryDeadJob(job *DeadJob) error {
-	modifiedJob := *job
-
-	modifiedJob.Fails = 0
-	modifiedJob.FailedAt = 0
-	modifiedJob.LastErr = ""
-
-	rawJSON, err := modifiedJob.serialize()
+// RetryDeadJob retries a dead job. The job will be re-queued on the normal work queue for eventual processing by a worker.
+func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
+	// Get queues for job names
+	queues, err := c.Queues()
 	if err != nil {
-		logError("client.retry_dead_job.serialze", err)
+		logError("client.retry_all_dead_jobs.queues", err)
 		return err
 	}
 
-	// NOTE: don't defer close here b/c DeleteDeadJob also uses a connection and we don't want to use 2.
+	// Extract job names
+	var jobNames []string
+	for _, q := range queues {
+		jobNames = append(jobNames, q.JobName)
+	}
+
+	script := redis.NewScript(len(jobNames)+1, redisLuaRequeueSingleDeadCmd)
+
+	args := make([]interface{}, 0, len(jobNames)+1+3)
+	args = append(args, redisKeyDead(c.namespace)) // KEY[1]
+	for _, jobName := range jobNames {
+		args = append(args, redisKeyJobs(c.namespace, jobName)) // KEY[2, 3, ...]
+	}
+	args = append(args, redisKeyJobsPrefix(c.namespace)) // ARGV[1]
+	args = append(args, nowEpochSeconds())
+	args = append(args, diedAt)
+	args = append(args, jobID)
+
 	conn := c.pool.Get()
+	defer conn.Close()
 
-	_, err = conn.Do("LPUSH", redisKeyJobsPrefix(c.namespace)+job.Name, rawJSON)
-	conn.Close()
+	_, err = redis.Int64(script.Do(conn, args...))
 	if err != nil {
-		logError("client.retry_dead_job.lpush", err)
+		logError("client.retry_dead_job.do", err)
 		return err
 	}
 
-	return c.DeleteDeadJob(job)
+	return nil
 }
 
 // RetryAllDeadJobs requeues all dead jobs. In other words, it puts them all back on the normal work queue for workers to pull from and process.
@@ -432,7 +444,7 @@ func (c *Client) RetryAllDeadJobs() error {
 		jobNames = append(jobNames, q.JobName)
 	}
 
-	script := redis.NewScript(len(jobNames)+1, redisLuaRequeueDeadCmd)
+	script := redis.NewScript(len(jobNames)+1, redisLuaRequeueAllDeadCmd)
 
 	args := make([]interface{}, 0, len(jobNames)+1+3)
 	args = append(args, redisKeyDead(c.namespace)) // KEY[1]
