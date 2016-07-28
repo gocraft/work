@@ -140,6 +140,7 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
+	cleanKeyspace(ns, pool)
 
 	conn := pool.Get()
 	defer conn.Close()
@@ -148,7 +149,6 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 
 	// Create redis data
 	var err error
-	cleanKeyspace(ns, pool)
 	err = conn.Send("SADD", workerPoolsKey, "1")
 	assert.NoError(t, err)
 	err = conn.Send("SADD", workerPoolsKey, "2")
@@ -172,7 +172,7 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 	reaper := newDeadPoolReaper(ns, pool)
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
-	assert.Equal(t, deadPools, map[string][]string{"2": {"type1", "type2"}})
+	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}}, deadPools)
 
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "1", "type1"), "foo")
