@@ -606,6 +606,82 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 	assert.Equal(t, "unknown job when requeueing", job.LastErr)
 }
 
+func TestClientDeleteScheduledJob(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	// Delete an invalid job. Make sure we get error
+	client := NewClient(ns, pool)
+	err := client.DeleteScheduledJob(3, "bob")
+	assert.Equal(t, ErrNotDeleted, err)
+
+	// Schedule a job. Delete it.
+	enq := NewEnqueuer(ns, pool)
+	j, err := enq.EnqueueIn("foo", 10, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, j)
+
+	err = client.DeleteScheduledJob(j.RunAt, j.ID)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
+}
+
+func TestClientDeleteScheduledUniqueJob(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	// Schedule a unique job. Delete it. Ensure we can schedule it again.
+	enq := NewEnqueuer(ns, pool)
+	j, err := enq.EnqueueUniqueIn("foo", 10, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, j)
+
+	client := NewClient(ns, pool)
+	err = client.DeleteScheduledJob(j.RunAt, j.ID)
+	assert.NoError(t, err)
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
+
+	j, err = enq.EnqueueUniqueIn("foo", 10, nil) // Can do it again
+	assert.NoError(t, err)
+	assert.NotNil(t, j) // Nil? We didn't clear the unique job signature.
+}
+
+func TestClientDeleteRetryJob(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "testwork"
+	cleanKeyspace(ns, pool)
+
+	setNowEpochSecondsMock(1425263409)
+	defer resetNowEpochSecondsMock()
+
+	enqueuer := NewEnqueuer(ns, pool)
+	job, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": 2})
+	assert.Nil(t, err)
+
+	setNowEpochSecondsMock(1425263429)
+
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp.Job("wat", func(job *Job) error {
+		return fmt.Errorf("ohno")
+	})
+	wp.Start()
+	wp.Drain()
+	wp.Stop()
+
+	// Ok so now we have a retry job
+	client := NewClient(ns, pool)
+	jobs, count, err := client.RetryJobs(1)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(jobs))
+	if assert.EqualValues(t, 1, count) {
+		err = client.DeleteRetryJob(jobs[0].RetryAt, job.ID)
+		assert.NoError(t, err)
+		assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
+	}
+}
+
 func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {
 	job := &Job{
 		Name:       name,

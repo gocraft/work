@@ -1,7 +1,3 @@
-Client:
- - delete scheduled jobs. Take into account unique jobs.
- - delete retry jobs
-
 IDEAS/TODO:
 ----
  - zero context each time -- see if that affects performance

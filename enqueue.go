@@ -132,9 +132,8 @@ func (e *Enqueuer) EnqueueUnique(jobName string, args map[string]interface{}) (*
 	res, err := redis.String(e.enqueueUniqueScript.Do(conn, scriptArgs...))
 	if res == "ok" && err == nil {
 		return job, nil
-	} else {
-		return nil, err
 	}
+	return nil, err
 }
 
 // EnqueueUniqueIn enqueues a unique job in the scheduled job queue for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
@@ -179,9 +178,8 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 
 	if res == "ok" && err == nil {
 		return scheduledJob, nil
-	} else {
-		return nil, err
 	}
+	return nil, err
 }
 
 func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {

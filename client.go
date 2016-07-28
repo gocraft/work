@@ -8,6 +8,14 @@ import (
 	"strings"
 )
 
+// ErrNotDeleted is returned by functions that delete jobs to indicate that although the redis commands were successful,
+// no object was actually deleted by those commmands.
+var ErrNotDeleted = fmt.Errorf("nothing deleted")
+
+// ErrNotRetried is returned by functions that retry jobs to indicate that although the redis commands were successful,
+// no object was actually retried by those commmands.
+var ErrNotRetried = fmt.Errorf("nothing retried")
+
 // Client implements all of the functionality of the web UI. It can be used to inspect the status of a running cluster and retry dead jobs.
 type Client struct {
 	namespace string
@@ -344,49 +352,13 @@ func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 
 // DeleteDeadJob deletes a dead job from Redis.
 func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
-	conn := c.pool.Get()
-	defer conn.Close()
-	key := redisKeyDead(c.namespace)
-	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, diedAt, diedAt))
+	ok, _, err := c.deleteZsetJob(redisKeyDead(c.namespace), diedAt, jobID)
 	if err != nil {
-		logError("client.retry_dead_job.values", err)
 		return err
 	}
-
-	var jobsBytes [][]byte
-	if err := redis.ScanSlice(values, &jobsBytes); err != nil {
-		logError("client.retry_dead_job.scan_slice", err)
-		return err
+	if !ok {
+		return ErrNotDeleted
 	}
-
-	var jobs []*Job
-
-	for _, jobBytes := range jobsBytes {
-		j, err := newJob(jobBytes, nil, nil)
-		if err != nil {
-			logError("client.retry_dead_job.new_job", err)
-			return err
-		}
-		if j.ID == jobID {
-			jobs = append(jobs, j)
-		}
-
-	}
-
-	if len(jobs) == 0 {
-		err = fmt.Errorf("no job found")
-		logError("client.retry_dead_job.no_job", err)
-		return err
-	}
-
-	for _, j := range jobs {
-		conn.Send("ZREM", key, j.rawJSON)
-	}
-	if err := conn.Flush(); err != nil {
-		logError("client.retry_dead_job.new_job", err)
-		return err
-	}
-
 	return nil
 }
 
@@ -420,10 +392,14 @@ func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 	conn := c.pool.Get()
 	defer conn.Close()
 
-	_, err = redis.Int64(script.Do(conn, args...))
+	cnt, err := redis.Int64(script.Do(conn, args...))
 	if err != nil {
 		logError("client.retry_dead_job.do", err)
 		return err
+	}
+
+	if cnt == 0 {
+		return ErrNotRetried
 	}
 
 	return nil
@@ -486,6 +462,82 @@ func (c *Client) DeleteAllDeadJobs() error {
 	}
 
 	return nil
+}
+
+// DeleteScheduledJob deletes a job in the scheduled queue.
+func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
+	ok, jobBytes, err := c.deleteZsetJob(redisKeyScheduled(c.namespace), scheduledFor, jobID)
+	if err != nil {
+		return err
+	}
+
+	// If we get a job back, parse it and see if it's a unique job. If it is, we need to delete the unique key.
+	if len(jobBytes) > 0 {
+		job, err := newJob(jobBytes, nil, nil)
+		if err != nil {
+			logError("client.delete_scheduled_job.new_job", err)
+			return err
+		}
+
+		if job.Unique {
+			uniqueKey, err := redisKeyUniqueJob(c.namespace, job.Name, job.Args)
+			if err != nil {
+				logError("client.delete_scheduled_job.redis_key_unique_job", err)
+				return err
+			}
+			conn := c.pool.Get()
+			defer conn.Close()
+
+			_, err = conn.Do("DEL", uniqueKey)
+			if err != nil {
+				logError("worker.delete_unique_job.del", err)
+				return err
+			}
+		}
+	}
+
+	if !ok {
+		return ErrNotDeleted
+	}
+	return nil
+}
+
+// DeleteRetryJob deletes a job in the retry queue.
+func (c *Client) DeleteRetryJob(retryAt int64, jobID string) error {
+	ok, _, err := c.deleteZsetJob(redisKeyRetry(c.namespace), retryAt, jobID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrNotDeleted
+	}
+	return nil
+}
+
+// deleteZsetJob deletes the job in the specified zset (dead, retry, or scheduled queue). zsetKey is like "work:dead" or "work:scheduled". The function deletes all jobs with the given jobID with the specified zscore (there should only be one, but in theory there could be bad data). It will return if at least one job is deleted and if
+func (c *Client) deleteZsetJob(zsetKey string, zscore int64, jobID string) (bool, []byte, error) {
+	script := redis.NewScript(1, redisLuaDeleteSingleCmd)
+
+	args := make([]interface{}, 0, 1+2)
+	args = append(args, zsetKey) // KEY[1]
+	args = append(args, zscore)  // ARGV[1]
+	args = append(args, jobID)   // ARGV[2]
+
+	conn := c.pool.Get()
+	defer conn.Close()
+	values, err := redis.Values(script.Do(conn, args...))
+	if len(values) != 2 {
+		return false, nil, fmt.Errorf("need 2 elements back from redis command")
+	}
+
+	cnt, err := redis.Int64(values[0], err)
+	jobBytes, err := redis.Bytes(values[1], err)
+	if err != nil {
+		logError("client.delete_zset_job.do", err)
+		return false, nil, err
+	}
+
+	return cnt > 0, jobBytes, nil
 }
 
 type jobScore struct {
