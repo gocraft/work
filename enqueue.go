@@ -1,8 +1,10 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"sync"
 	"time"
+
+	"github.com/garyburd/redigo/redis"
 )
 
 // Enqueuer can enqueue jobs.
@@ -14,6 +16,7 @@ type Enqueuer struct {
 	knownJobs             map[string]int64
 	enqueueUniqueScript   *redis.Script
 	enqueueUniqueInScript *redis.Script
+	mtx                   sync.RWMutex
 }
 
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
@@ -185,7 +188,11 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 	needSadd := true
 	now := time.Now().Unix()
+
+	e.mtx.RLock()
 	t, ok := e.knownJobs[jobName]
+	e.mtx.RUnlock()
+
 	if ok {
 		if now < t {
 			needSadd = false
@@ -195,7 +202,10 @@ func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 		if _, err := conn.Do("SADD", redisKeyKnownJobs(e.Namespace), jobName); err != nil {
 			return err
 		}
+
+		e.mtx.Lock()
 		e.knownJobs[jobName] = now + 300
+		e.mtx.Unlock()
 	}
 
 	return nil
