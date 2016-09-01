@@ -180,6 +180,57 @@ func TestWorkerRetry(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
+// Check if a custom backoff function functions functionally.
+func TestWorkerRetryWithCustomBackoff(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+	calledCustom := 0
+
+	custombo := func(job *Job) int64 {
+		calledCustom++
+		return 5 // Always 5 seconds
+	}
+
+	jobTypes := make(map[string]*jobType)
+	jobTypes[job1] = &jobType{
+		Name:       job1,
+		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			return fmt.Errorf("sorry kid")
+		},
+	}
+
+	enqueuer := NewEnqueuer(ns, pool)
+	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	assert.Nil(t, err)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w.start()
+	w.drain()
+	w.stop()
+
+	// Ensure the right stuff is in our queues:
+	assert.EqualValues(t, 1, zsetSize(pool, redisKeyRetry(ns)))
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+
+	// Get the job on the retry queue
+	ts, job := jobOnZset(pool, redisKeyRetry(ns))
+
+	assert.True(t, ts > nowEpochSeconds())      // enqueued in the future
+	assert.True(t, ts < (nowEpochSeconds()+10)) // but less than ten secs in
+
+	assert.Equal(t, job1, job.Name) // basics are preserved
+	assert.EqualValues(t, 1, job.Fails)
+	assert.Equal(t, "sorry kid", job.LastErr)
+	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
+	assert.Equal(t, 1, calledCustom)
+}
+
 func TestWorkerDead(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"

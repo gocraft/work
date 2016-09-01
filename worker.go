@@ -246,9 +246,20 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
+	var backoff BackoffCalculator
+
+	// Choose the backoff provider
+	jt, ok := w.jobTypes[job.Name]; if ok {
+		backoff = jt.Backoff
+	}
+
+	if backoff == nil {
+		backoff = defaultBackoffCalculator
+	}
+
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job.Fails), rawJSON)
+	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
 	_, err = conn.Do("EXEC")
 	if err != nil {
 		logError("worker.add_to_retry.exec", err)
@@ -281,7 +292,8 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	}
 }
 
-// backoff returns number of seconds t
-func backoff(fails int64) int64 {
+// Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
+func defaultBackoffCalculator(job *Job) int64 {
+	fails := job.Fails
 	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
 }
