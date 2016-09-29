@@ -152,6 +152,19 @@ func (j *Job) ArgBool(key string) bool {
 	return false
 }
 
+// Arg returns j.Args[key] directly. If the key is missing, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
+func (j *Job) Arg(key string) interface{} {
+	v, ok := j.Args[key]
+	if ok {
+		return v
+	} else {
+		j.argError = missingKeyError("arg", key)
+	}
+	return nil
+}
+
 // ArgError returns the last error generated when extracting typed params. Returns nil if extracting the args went fine.
 func (j *Job) ArgError() error {
 	return j.argError

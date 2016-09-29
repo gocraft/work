@@ -1,9 +1,10 @@
 package work
 
 import (
-	"github.com/stretchr/testify/assert"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJobArgumentExtraction(t *testing.T) {
@@ -18,6 +19,8 @@ func TestJobArgumentExtraction(t *testing.T) {
 	j.setArg("bool1", true)
 
 	j.setArg("float1", 3.14)
+
+	j.setArg("mapstring", map[string]string{"a": "b", "c": "d"})
 
 	//
 	// Success cases:
@@ -50,6 +53,10 @@ func TestJobArgumentExtraction(t *testing.T) {
 	assert.Equal(t, vFloat, 3.14)
 	assert.NoError(t, j.ArgError())
 
+	vArg := j.Arg("mapstring")
+	assert.Equal(t, vArg.(map[string]string), map[string]string{"a": "b", "c": "d"})
+	assert.NoError(t, j.ArgError())
+
 	// Missing key results in error:
 	vString = j.ArgString("str_missing")
 	assert.Equal(t, vString, "")
@@ -71,6 +78,12 @@ func TestJobArgumentExtraction(t *testing.T) {
 
 	vFloat = j.ArgFloat64("float_missing")
 	assert.Equal(t, vFloat, 0.0)
+	assert.Error(t, j.ArgError())
+	j.argError = nil
+	assert.NoError(t, j.ArgError())
+
+	vArg = j.Arg("arg_missing")
+	assert.Equal(t, vArg, nil)
 	assert.Error(t, j.ArgError())
 	j.argError = nil
 	assert.NoError(t, j.ArgError())
