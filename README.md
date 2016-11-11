@@ -73,10 +73,6 @@ var redisPool = &redis.Pool{
 	},
 }
 
-type Context struct{
-    customerID int64
-}
-
 func main() {
 	// Make a new pool. Arguments:
 	// 10 is the max concurrency
@@ -148,12 +144,12 @@ Since this is a background job processing library, it's fairly common to have jo
 To solve this, you can instrument your jobs to "checkin" every so often with a string message. This checkin status will show up in the web UI. For instance, your job could look like this:
 
 ```go
-func (c *Context) Export(job *work.Job) error {
+func ExportHandler(ctx *work.Context) error {
 	rowsToExport := getRows()
 	for i, row := range rowsToExport {
 		exportRow(row)
 		if i % 1000 == 0 {
-			job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells DispatchMe/go-work our status
+			ctx.Job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells DispatchMe/go-work our status
 		}
 	}
 }
@@ -192,9 +188,9 @@ job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "78
 You can periodically enqueue jobs on your DispatchMe/go-work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
 
 ```go
-pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
+pool := work.NewWorkerPool(10, "my_app_namespace", redisPool)
 pool.PeriodicallyEnqueue("0 0 * * * *", "calculate_caches") // This will enqueue a "calculate_caches" job every hour
-pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to register a handler for this job separately
+pool.Job("calculate_caches", CalculateCaches) // Still need to register a handler for this job separately
 ```
 
 ## Run the Web UI
