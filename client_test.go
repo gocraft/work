@@ -15,14 +15,14 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(job *Job) error { return nil })
-	wp.Job("bob", func(job *Job) error { return nil })
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error { return nil })
+	wp.Job("bob", func(ctx *Context) error { return nil })
 	wp.Start()
 
-	wp2 := NewWorkerPool(TestContext{}, 11, ns, pool)
-	wp2.Job("foo", func(job *Job) error { return nil })
-	wp2.Job("bar", func(job *Job) error { return nil })
+	wp2 := NewWorkerPool(11, ns, pool)
+	wp2.Job("foo", func(ctx *Context) error { return nil })
+	wp2.Job("bar", func(ctx *Context) error { return nil })
 	wp2.Start()
 
 	time.Sleep(20 * time.Millisecond)
@@ -73,12 +73,12 @@ func TestClientWorkerObservations(t *testing.T) {
 	_, err = enqueuer.Enqueue("foo", Q{"a": 3, "b": 4})
 	assert.Nil(t, err)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error {
 		time.Sleep(50 * time.Millisecond)
 		return nil
 	})
-	wp.Job("foo", func(job *Job) error {
+	wp.Job("foo", func(ctx *Context) error {
 		time.Sleep(50 * time.Millisecond)
 		return nil
 	})
@@ -143,14 +143,14 @@ func TestClientQueues(t *testing.T) {
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error {
 		return nil
 	})
-	wp.Job("foo", func(job *Job) error {
+	wp.Job("foo", func(ctx *Context) error {
 		return nil
 	})
-	wp.Job("zaz", func(job *Job) error {
+	wp.Job("zaz", func(ctx *Context) error {
 		return nil
 	})
 	wp.Start()
@@ -244,8 +244,8 @@ func TestClientRetryJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
@@ -283,8 +283,8 @@ func TestClientDeadJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(ctx *Context) error {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
@@ -662,8 +662,8 @@ func TestClientDeleteRetryJob(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error {
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()

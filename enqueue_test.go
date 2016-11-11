@@ -136,12 +136,12 @@ func TestEnqueueUnique(t *testing.T) {
 
 	// Process the queues. Ensure the right numbero of jobs was processed
 	var wats, taws int64
-	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
-	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
+	wp := NewWorkerPool(3, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(ctx *Context) error {
 		wats++
 		return nil
 	})
-	wp.JobWithOptions("taw", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
+	wp.JobWithOptions("taw", JobOptions{Priority: 1, MaxFails: 1}, func(ctx *Context) error {
 		taws++
 		return fmt.Errorf("ohno")
 	})

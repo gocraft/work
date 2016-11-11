@@ -27,27 +27,24 @@ func TestWorkerBasics(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
-			arg1 = job.Args["a"].(float64)
+		Handler: func(ctx *Context) error {
+			arg1 = ctx.Job.Args["a"].(float64)
 			return nil
 		},
 	}
 	jobTypes[job2] = &jobType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
-			arg2 = job.Args["a"].(float64)
+		Handler: func(ctx *Context) error {
+			arg2 = ctx.Job.Args["a"].(float64)
 			return nil
 		},
 	}
 	jobTypes[job3] = &jobType{
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
-			arg3 = job.Args["a"].(float64)
+		Handler: func(ctx *Context) error {
+			arg3 = ctx.Job.Args["a"].(float64)
 			return nil
 		},
 	}
@@ -60,7 +57,7 @@ func TestWorkerBasics(t *testing.T) {
 	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, nil, jobTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -98,8 +95,7 @@ func TestWorkerInProgress(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		Handler: func(ctx *Context) error {
 			time.Sleep(30 * time.Millisecond)
 			return nil
 		},
@@ -109,7 +105,7 @@ func TestWorkerInProgress(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, nil, jobTypes)
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
@@ -148,8 +144,7 @@ func TestWorkerRetry(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		Handler: func(ctx *Context) error {
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -157,7 +152,7 @@ func TestWorkerRetry(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, nil, jobTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -198,8 +193,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		Handler: func(ctx *Context) error {
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -207,7 +201,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, nil, jobTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -244,16 +238,14 @@ func TestWorkerDead(t *testing.T) {
 	jobTypes[job1] = &jobType{
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		Handler: func(ctx *Context) error {
 			return fmt.Errorf("sorry kid1")
 		},
 	}
 	jobTypes[job2] = &jobType{
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
-		IsGeneric:  true,
-		GenericHandler: func(job *Job) error {
+		Handler: func(ctx *Context) error {
 			return fmt.Errorf("sorry kid2")
 		},
 	}
@@ -263,7 +255,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, nil, jobTypes)
 	w.start()
 	w.drain()
 	w.stop()
@@ -297,7 +289,7 @@ func TestStop(t *testing.T) {
 			return c, nil
 		},
 	}
-	wp := NewWorkerPool(TestContext{}, 10, "work", redisPool)
+	wp := NewWorkerPool(10, "work", redisPool)
 	wp.Start()
 	wp.Stop()
 }
@@ -315,8 +307,8 @@ func BenchmarkJobProcessing(b *testing.B) {
 		}
 	}
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
-	wp.Job("wat", func(c *TestContext, job *Job) error {
+	wp := NewWorkerPool(10, ns, pool)
+	wp.Job("wat", func(ctx *Context) error {
 		return nil
 	})
 

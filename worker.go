@@ -3,20 +3,18 @@ package work
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
 )
 
 type worker struct {
-	workerID    string
-	poolID      string
-	namespace   string
-	pool        *redis.Pool
-	jobTypes    map[string]*jobType
-	middleware  []*middlewareHandler
-	contextType reflect.Type
+	workerID   string
+	poolID     string
+	namespace  string
+	pool       *redis.Pool
+	jobTypes   map[string]*jobType
+	middleware []Middleware
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
@@ -29,16 +27,15 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, middleware []Middleware, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
 	w := &worker{
-		workerID:    workerID,
-		poolID:      poolID,
-		namespace:   namespace,
-		pool:        pool,
-		contextType: contextType,
+		workerID:  workerID,
+		poolID:    poolID,
+		namespace: namespace,
+		pool:      pool,
 
 		observer: ob,
 
@@ -55,7 +52,7 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 }
 
 // note: can't be called while the thing is started
-func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jobTypes map[string]*jobType) {
+func (w *worker) updateMiddlewareAndJobTypes(middleware []Middleware, jobTypes map[string]*jobType) {
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
@@ -182,9 +179,10 @@ func (w *worker) processJob(job *Job) {
 		w.deleteUniqueJob(job)
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
+		ctx := NewContext(job)
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
-		_, runErr := runJob(job, w.contextType, w.middleware, jt)
+		runErr := runJob(ctx, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
 			job.failed(runErr)
@@ -249,7 +247,8 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	var backoff BackoffCalculator
 
 	// Choose the backoff provider
-	jt, ok := w.jobTypes[job.Name]; if ok {
+	jt, ok := w.jobTypes[job.Name]
+	if ok {
 		backoff = jt.Backoff
 	}
 
