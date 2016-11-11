@@ -1,6 +1,8 @@
-# gocraft/work [![GoDoc](https://godoc.org/github.com/gocraft/work?status.png)](https://godoc.org/github.com/gocraft/work)
+# DispatchMe/go-work [![GoDoc](https://godoc.org/github.com/DispatchMe/go-work?status.png)](https://godoc.org/github.com/DispatchMe/go-work)
 
-gocraft/work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
+**This is a fork of [gocraft/work](https://www.github.com/gocraft/work) that removes their strange usage of custom contexts. The use of reflection to support that was detracting from efficiency and didn't feel very "go-like", so we made this change**
+
+DispatchMe/go-work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
 
 * Fast and efficient. Faster than [this](https://www.github.com/jrallison/go-workers), [this](https://www.github.com/benmanns/goworker), and [this](https://www.github.com/albrow/jobs). See below for benchmarks.
 * Reliable - don't lose jobs even if your process crashes.
@@ -20,7 +22,7 @@ package main
 
 import (
 	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
+	"github.com/DispatchMe/go-work"
 )
 
 // Make a redis pool
@@ -56,7 +58,7 @@ package main
 
 import (
 	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
+	"github.com/DispatchMe/go-work"
 	"os"
 	"os/signal"
 )
@@ -77,21 +79,20 @@ type Context struct{
 
 func main() {
 	// Make a new pool. Arguments:
-	// Context{} is a struct that will be the context for the request.
 	// 10 is the max concurrency
 	// "my_app_namespace" is the Redis namespace
 	// redisPool is a Redis pool
-	pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
+	pool := work.NewWorkerPool(10, "my_app_namespace", redisPool)
 
 	// Add middleware that will be executed for each job
-	pool.Middleware((*Context).Log)
-	pool.Middleware((*Context).FindCustomer)
+	pool.Middleware(LogMiddleware)
+	pool.Middleware(FindCustomerMiddleware)
 
 	// Map the name of jobs to handler functions
-	pool.Job("send_email", (*Context).SendEmail)
+	pool.Job("send_email", SendEmailHandler)
 
 	// Customize options:
-	pool.JobWithOptions("export", JobOptions{Priority: 10, MaxFails: 1}, (*Context).Export)
+	pool.JobWithOptions("export", JobOptions{Priority: 10, MaxFails: 1}, ExportHandler)
 
 	// Start processing jobs
 	pool.Start()
@@ -105,28 +106,25 @@ func main() {
 	pool.Stop()
 }
 
-func (c *Context) Log(job *work.Job, next work.NextMiddlewareFunc) error {
-	fmt.Println("Starting job: ", job.Name)
+func LogMiddleware(ctx *work.Context, next work.NextMiddlewareFunc) error {
+	fmt.Println("Starting job: ", ctx.Job.Name)
 	return next()
 }
 
-func (c *Context) FindCustomer(job *work.Job, next work.NextMiddlewareFunc) error {
+func FindCustomerMiddleware(ctx *work.Context, next work.NextMiddlewareFunc) error {
 	// If there's a customer_id param, set it in the context for future middleware and handlers to use.
 	if _, ok := job.Args["customer_id"]; ok {
-		c.customerID = job.ArgInt64("customer_id")
-		if err := job.ArgError(); err != nil {
-			return err
-		}
+		ctx.Set("customer_id", ctx.job.Args["customer_id"])
 	}
 
 	return next()
 }
 
-func (c *Context) SendEmail(job *work.Job) error {
+func SendEmailHandler(ctx *work.Context) error {
 	// Extract arguments:
-	addr := job.ArgString("address")
-	subject := job.ArgString("subject")
-	if err := job.ArgError(); err != nil {
+	addr := ctx.Job.ArgString("address")
+	subject := ctx.Job.ArgString("subject")
+	if err := ctx.Job.ArgError(); err != nil {
 		return err
 	}
 
@@ -136,18 +134,12 @@ func (c *Context) SendEmail(job *work.Job) error {
 	return nil
 }
 
-func (c *Context) Export(job *work.Job) error {
+func ExportHandler(ctx *work.Context) error {
 	return nil
 }
 ```
 
 ## Special Features
-
-### Contexts
-
-Just like in [gocraft/web](https://www.github.com/gocraft/web), gocraft/work lets you use your own contexts. Your context can be empty or it can have various fields in it. The fields can be whatever you want - it's your type! When a new job is processed by a worker, we'll allocate an instance of this struct and pass it to your middleware and handlers. This allows you to pass information from one middleware function to the next, and onto your handlers.
-
-Custom contexts aren't really needed for trivial example applications, but are very important for production apps. For instance, one field in your context can be your tagged logger. Your tagged logger augments your log statements with a job-id. This lets you filter your logs by that job-id.
 
 ### Check-ins
 
@@ -161,7 +153,7 @@ func (c *Context) Export(job *work.Job) error {
 	for i, row := range rowsToExport {
 		exportRow(row)
 		if i % 1000 == 0 {
-			job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells gocraft/work our status
+			job.Checkin("i=" + fmt.Sprint(i))   // Here's the magic! This tells DispatchMe/go-work our status
 		}
 	}
 }
@@ -197,7 +189,7 @@ job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "78
 
 ### Periodic Enqueueing (Cron)
 
-You can periodically enqueue jobs on your gocraft/work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
+You can periodically enqueue jobs on your DispatchMe/go-work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
 
 ```go
 pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
@@ -207,12 +199,12 @@ pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to regist
 
 ## Run the Web UI
 
-The web UI provides a view to view the state of your gocraft/work cluster, inspect queued jobs, and retry or delete dead jobs.
+The web UI provides a view to view the state of your DispatchMe/go-work cluster, inspect queued jobs, and retry or delete dead jobs.
 
 Building an installing the binary:
 ```bash
-go get github.com/gocraft/work/cmd/workwebui
-go install github.com/gocraft/work/cmd/workwebui
+go get github.com/DispatchMe/go-work/cmd/workwebui
+go install github.com/DispatchMe/go-work/cmd/workwebui
 ```
 
 Then, you can run it:
@@ -248,11 +240,11 @@ You'll see a view that looks like this:
 * The worker will then run the job. The job will either finish successfully or result in an error or panic.
   * If the process completely crashes, the reaper will eventually find it in its in-progress queue and requeue it.
 * If the job is successful, we'll simply remove the job from the in-progress queue.
-* If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue. 
+* If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue.
 
 ### Workers and WorkerPools
 
-* WorkerPools provide the public API of gocraft/work.
+* WorkerPools provide the public API of DispatchMe/go-work.
   * You can attach jobs and middleware to them.
   * You can start and stop them.
   * Based on their concurrency setting, they'll spin up N worker goroutines.
@@ -312,22 +304,10 @@ The benches folder contains various benchmark code. In each case, we enqueue 100
 
 | Library | Speed |
 | --- | --- |
-| [gocraft/work](https://www.github.com/gocraft/work) | **20944 jobs/s** |
+| [DispatchMe/go-work](https://www.github.com/DispatchMe/go-work) | **20944 jobs/s** |
 | [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
 | [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
 | [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
-
-
-## gocraft
-
-gocraft offers a toolkit for building web apps. Currently these packages are available:
-
-* [gocraft/web](https://github.com/gocraft/web) - Go Router + Middleware. Your Contexts.
-* [gocraft/dbr](https://github.com/gocraft/dbr) - Additions to Go's database/sql for super fast performance and convenience.
-* [gocraft/health](https://github.com/gocraft/health) - Instrument your web apps with logging and metrics.
-* [gocraft/work](https://github.com/gocraft/work) - Process background jobs in Go.
-
-These packages were developed by the [engineering team](https://eng.uservoice.com) at [UserVoice](https://www.uservoice.com) and currently power much of its infrastructure and tech stack.
 
 ## Authors
 
