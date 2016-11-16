@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 func redisNamespacePrefix(namespace string) string {
@@ -56,7 +57,7 @@ func redisKeyHeartbeat(namespace, workerPoolID string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
 }
 
-func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
+func redisKeyUniqueJob(namespace, jobName string, payload interface{}) (string, error) {
 	var buf bytes.Buffer
 
 	buf.WriteString(redisNamespacePrefix(namespace))
@@ -64,14 +65,25 @@ func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (
 	buf.WriteString(jobName)
 	buf.WriteRune(':')
 
-	if args != nil {
-		err := json.NewEncoder(&buf).Encode(args)
+	if payload != nil {
+		var err error
+		// If it's already a byte array, use that. Otherwise encode it
+		if byteArr, ok := payload.([]byte); ok {
+			_, err = buf.Write(byteArr)
+		} else {
+
+			err = json.NewEncoder(&buf).Encode(payload)
+		}
+
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return buf.String(), nil
+	// JSON encode adds a new line at the end so will not be the same as
+	// the decoded byte array. Need to strip it.
+	// https://github.com/golang/go/issues/7767
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
 func redisKeyLastPeriodicEnqueue(namespace string) string {

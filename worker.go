@@ -180,7 +180,7 @@ func (w *worker) processJob(job *Job) {
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		ctx := NewContext(job)
-		w.observeStarted(job.Name, job.ID, job.Args)
+		w.observeStarted(job.Name, job.ID, job.Payload)
 		job.observer = w.observer // for Checkin
 		runErr := runJob(ctx, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
@@ -200,7 +200,7 @@ func (w *worker) processJob(job *Job) {
 }
 
 func (w *worker) deleteUniqueJob(job *Job) {
-	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
+	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Payload)
 	if err != nil {
 		logError("worker.delete_unique_job.key", err)
 	}

@@ -1,10 +1,9 @@
 package work
 
 import (
+	"github.com/garyburd/redigo/redis"
 	"sync"
 	"time"
-
-	"github.com/garyburd/redigo/redis"
 )
 
 // Enqueuer can enqueue jobs.
@@ -37,12 +36,18 @@ func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 
 // Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, error) {
+func (e *Enqueuer) Enqueue(jobName string, payload interface{}) (*Job, error) {
 	job := &Job{
 		Name:       jobName,
 		ID:         makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
+	}
+
+	if payload != nil {
+		err := job.SetPayload(payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rawJSON, err := job.serialize()
@@ -65,12 +70,18 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 }
 
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
-func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
+func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, payload interface{}) (*ScheduledJob, error) {
 	job := &Job{
 		Name:       jobName,
 		ID:         makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
+	}
+
+	if payload != nil {
+		err := job.SetPayload(payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rawJSON, err := job.serialize()
@@ -101,8 +112,8 @@ func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[stri
 // EnqueueUnique enqueues a job unless a job is already enqueued with the same name and arguments. The already-enqueued job can be in the normal work queue or in the scheduled job queue. Once a worker begins processing a job, another job with the same name and arguments can be enqueued again. Any failed jobs in the retry queue or dead queue don't count against the uniqueness -- so if a job fails and is retried, two unique jobs with the same name and arguments can be enqueued at once.
 // In order to add robustness to the system, jobs are only unique for 24 hours after they're enqueued. This is mostly relevant for scheduled jobs.
 // EnqueueUnique returns the job if it was enqueued and nil if it wasn't
-func (e *Enqueuer) EnqueueUnique(jobName string, args map[string]interface{}) (*Job, error) {
-	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, args)
+func (e *Enqueuer) EnqueueUnique(jobName string, payload interface{}) (*Job, error) {
+	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +122,13 @@ func (e *Enqueuer) EnqueueUnique(jobName string, args map[string]interface{}) (*
 		Name:       jobName,
 		ID:         makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
 		Unique:     true,
+	}
+	if payload != nil {
+		err = job.SetPayload(payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rawJSON, err := job.serialize()
@@ -140,8 +156,8 @@ func (e *Enqueuer) EnqueueUnique(jobName string, args map[string]interface{}) (*
 }
 
 // EnqueueUniqueIn enqueues a unique job in the scheduled job queue for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
-func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
-	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, args)
+func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, payload interface{}) (*ScheduledJob, error) {
+	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -150,8 +166,14 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 		Name:       jobName,
 		ID:         makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
 		Unique:     true,
+	}
+
+	if payload != nil {
+		err = job.SetPayload(payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rawJSON, err := job.serialize()
@@ -182,6 +204,7 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 	if res == "ok" && err == nil {
 		return scheduledJob, nil
 	}
+
 	return nil, err
 }
 

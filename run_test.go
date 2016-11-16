@@ -18,12 +18,14 @@ func appendToContext(ctx *Context, val interface{}) {
 
 func TestRunBasicMiddleware(t *testing.T) {
 	mw1 := func(ctx *Context, next NextMiddlewareFunc) error {
-		ctx.Job.setArg("mw1", "mw1")
+		ctx.Job.SetPayload(Q{"mw1": "mw1", "a": "foo"})
 		return next()
 	}
 
 	mw2 := func(ctx *Context, next NextMiddlewareFunc) error {
-		appendToContext(ctx, ctx.Job.Args["mw1"])
+		var q Q
+		assert.NoError(t, ctx.Job.GetPayload(&q))
+		appendToContext(ctx, q["mw1"])
 		appendToContext(ctx, "mw2")
 		return next()
 	}
@@ -34,8 +36,10 @@ func TestRunBasicMiddleware(t *testing.T) {
 	}
 
 	h1 := func(ctx *Context) error {
+		var q Q
+		assert.NoError(t, ctx.Job.GetPayload(&q))
 		appendToContext(ctx, "h1")
-		appendToContext(ctx, ctx.Job.Args["a"])
+		appendToContext(ctx, q["a"])
 		return nil
 	}
 
@@ -48,7 +52,6 @@ func TestRunBasicMiddleware(t *testing.T) {
 
 	job := &Job{
 		Name: "foo",
-		Args: map[string]interface{}{"a": "foo"},
 	}
 
 	ctx := NewContext(job)

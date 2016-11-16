@@ -1,7 +1,6 @@
 package work
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"time"
@@ -49,7 +48,7 @@ type observation struct {
 
 	// These need to be set when starting a job
 	startedAt int64
-	arguments map[string]interface{}
+	payload   []byte
 
 	// If we're done w/ the job, err will indicate the success/failure of it
 	err error // nil: success. not nil: the error we got when running the job
@@ -90,13 +89,13 @@ func (o *observer) drain() {
 	<-o.doneDrainingChan
 }
 
-func (o *observer) observeStarted(jobName, jobID string, arguments map[string]interface{}) {
+func (o *observer) observeStarted(jobName, jobID string, payload []byte) {
 	o.observationsChan <- &observation{
 		kind:      observationKindStarted,
 		jobName:   jobName,
 		jobID:     jobID,
 		startedAt: nowEpochSeconds(),
-		arguments: arguments,
+		payload:   payload,
 	}
 }
 
@@ -200,24 +199,13 @@ func (o *observer) writeStatus(obv *observation) error {
 		// checkin -> obv.checkin
 		// checkin_at -> obv.checkinAt
 
-		var argsJSON []byte
-		if len(obv.arguments) == 0 {
-			argsJSON = []byte("")
-		} else {
-			var err error
-			argsJSON, err = json.Marshal(obv.arguments)
-			if err != nil {
-				return err
-			}
-		}
-
 		args := make([]interface{}, 0, 13)
 		args = append(args,
 			key,
 			"job_name", obv.jobName,
 			"job_id", obv.jobID,
 			"started_at", obv.startedAt,
-			"args", argsJSON,
+			"payload", obv.payload,
 		)
 
 		if (obv.checkin != "") && (obv.checkinAt > 0) {
