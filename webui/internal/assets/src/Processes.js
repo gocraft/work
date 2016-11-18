@@ -26,7 +26,7 @@ class BusyWorkers extends React.Component {
                 return (
                   <tr key={worker.worker_id}>
                     <td>{worker.job_name}</td>
-                    <td>{worker.args_json}</td>
+                    <td>{worker.payload}</td>
                     <td><UnixTime ts={worker.started_at}/></td>
                     <td><UnixTime ts={worker.checkin_at}/></td>
                     <td>{worker.checkin}</td>
