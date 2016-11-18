@@ -33,7 +33,7 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
 			args := new(WorkerTestJobArgs)
-			ctx.Job.GetPayload(args)
+			ctx.Job.UnmarshalPayload(args)
 			arg1 = args.A
 			return nil
 		},
@@ -43,7 +43,7 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
 			args := new(WorkerTestJobArgs)
-			ctx.Job.GetPayload(args)
+			ctx.Job.UnmarshalPayload(args)
 			arg2 = args.A
 			return nil
 		},
@@ -53,7 +53,7 @@ func TestWorkerBasics(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
 			args := new(WorkerTestJobArgs)
-			ctx.Job.GetPayload(args)
+			ctx.Job.UnmarshalPayload(args)
 			arg3 = args.A
 			return nil
 		},

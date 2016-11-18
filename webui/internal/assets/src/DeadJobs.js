@@ -143,7 +143,7 @@ export default class DeadJobs extends React.Component {
                       <tr key={job.id}>
                         <td><input type="checkbox" checked={this.checked(job)} onChange={() => this.check(job)}/></td>
                         <td>{job.name}</td>
-                        <td>{JSON.stringify(job.args)}</td>
+                        <td>{job.payload}</td>
                         <td>{job.err}</td>
                         <td><UnixTime ts={job.t} /></td>
                       </tr>

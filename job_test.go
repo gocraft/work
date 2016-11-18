@@ -18,7 +18,7 @@ func TestJobPayload(t *testing.T) {
 	}))
 
 	payload := new(FakeJobPayload)
-	assert.Nil(t, j.GetPayload(payload))
+	assert.Nil(t, j.UnmarshalPayload(payload))
 	assert.Equal(t, "foo", payload.Str1)
 	assert.Equal(t, 2, payload.Int1)
 }

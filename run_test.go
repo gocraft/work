@@ -24,7 +24,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 
 	mw2 := func(ctx *Context, next NextMiddlewareFunc) error {
 		var q Q
-		assert.NoError(t, ctx.Job.GetPayload(&q))
+		assert.NoError(t, ctx.Job.UnmarshalPayload(&q))
 		appendToContext(ctx, q["mw1"])
 		appendToContext(ctx, "mw2")
 		return next()
@@ -37,7 +37,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 
 	h1 := func(ctx *Context) error {
 		var q Q
-		assert.NoError(t, ctx.Job.GetPayload(&q))
+		assert.NoError(t, ctx.Job.UnmarshalPayload(&q))
 		appendToContext(ctx, "h1")
 		appendToContext(ctx, q["a"])
 		return nil

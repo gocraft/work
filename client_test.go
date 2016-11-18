@@ -214,7 +214,7 @@ func TestClientScheduledJobs(t *testing.T) {
 		assert.EqualValues(t, 1425263409, jobs[2].EnqueuedAt)
 
 		var q Q
-		err = jobs[0].GetPayload(&q)
+		err = jobs[0].UnmarshalPayload(&q)
 		assert.Nil(t, err)
 		assert.EqualValues(t, interface{}(1), q["a"])
 		assert.EqualValues(t, interface{}(2), q["b"])
@@ -266,7 +266,7 @@ func TestClientRetryJobs(t *testing.T) {
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
 		var q Q
-		assert.Nil(t, jobs[0].GetPayload(&q))
+		assert.Nil(t, jobs[0].UnmarshalPayload(&q))
 		assert.EqualValues(t, interface{}(1), q["a"])
 		assert.EqualValues(t, 1, jobs[0].Fails)
 		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
@@ -308,7 +308,7 @@ func TestClientDeadJobs(t *testing.T) {
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
 		var q Q
-		assert.Nil(t, jobs[0].GetPayload(&q))
+		assert.Nil(t, jobs[0].UnmarshalPayload(&q))
 		assert.EqualValues(t, interface{}(1), q["a"])
 		assert.EqualValues(t, 1, jobs[0].Fails)
 		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
@@ -455,7 +455,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 	job1 := getQueuedJob(ns, pool, name)
 	if assert.NotNil(t, job1) {
 		var q Q
-		assert.Nil(t, job1.GetPayload(&q))
+		assert.Nil(t, job1.UnmarshalPayload(&q))
 		assert.Equal(t, name, job1.Name)
 		assert.Equal(t, "wat", q["a"].(string))
 	}

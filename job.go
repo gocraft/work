@@ -39,7 +39,7 @@ func (j *Job) SetPayload(payload interface{}) error {
 	return nil
 }
 
-func (j *Job) GetPayload(dest interface{}) error {
+func (j *Job) UnmarshalPayload(dest interface{}) error {
 	return json.Unmarshal(j.Payload, dest)
 }
 
