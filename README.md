@@ -35,12 +35,18 @@ var redisPool = &redis.Pool{
 	},
 }
 
+type SendEmailJobParameters struct {
+	Address string
+	Subject string
+	CustomerID int
+}
+
 // Make an enqueuer with a particular namespace
 var enqueuer = work.NewEnqueuer("my_app_namespace", redisPool)
 
 func main() {
 	// Enqueue a job named "send_email" with the specified parameters.
-	_, err := enqueuer.Enqueue("send_email", work.Q{"address": "test@example.com", "subject": "hello world", "customer_id": 4})
+	_, err := enqueuer.Enqueue("send_email", &SendEmailJobParameters{Address: "test@example.com", Subject: "hello world", CustomerID: 4})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,7 +88,6 @@ func main() {
 
 	// Add middleware that will be executed for each job
 	pool.Middleware(LogMiddleware)
-	pool.Middleware(FindCustomerMiddleware)
 
 	// Map the name of jobs to handler functions
 	pool.Job("send_email", SendEmailHandler)
@@ -107,25 +112,16 @@ func LogMiddleware(ctx *work.Context, next work.NextMiddlewareFunc) error {
 	return next()
 }
 
-func FindCustomerMiddleware(ctx *work.Context, next work.NextMiddlewareFunc) error {
-	// If there's a customer_id param, set it in the context for future middleware and handlers to use.
-	if _, ok := job.Args["customer_id"]; ok {
-		ctx.Set("customer_id", ctx.job.Args["customer_id"])
-	}
-
-	return next()
-}
-
 func SendEmailHandler(ctx *work.Context) error {
 	// Extract arguments:
-	addr := ctx.Job.ArgString("address")
-	subject := ctx.Job.ArgString("subject")
-	if err := ctx.Job.ArgError(); err != nil {
+	args := new(SendEmailJobParameters)
+	err := ctx.Job.UnmarshalPayload(args)
+	if err != nil {
 		return err
 	}
 
 	// Go ahead and send the email...
-	// sendEmailTo(addr, subject)
+	// sendEmailTo(args.Address, args.Subject)
 
 	return nil
 }

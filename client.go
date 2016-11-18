@@ -125,7 +125,7 @@ type WorkerObservation struct {
 	JobName   string `json:"job_name"`
 	JobID     string `json:"job_id"`
 	StartedAt int64  `json:"started_at"`
-	ArgsJSON  string `json:"args_json"`
+	Payload   []byte `json:"payload"`
 	Checkin   string `json:"checkin"`
 	CheckinAt int64  `json:"checkin_at"`
 }
@@ -182,8 +182,8 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 				ob.JobID = value
 			} else if key == "started_at" {
 				ob.StartedAt, err = strconv.ParseInt(value, 10, 64)
-			} else if key == "args" {
-				ob.ArgsJSON = value
+			} else if key == "payload" {
+				ob.Payload = []byte(value)
 			} else if key == "checkin" {
 				ob.Checkin = value
 			} else if key == "checkin_at" {
@@ -480,7 +480,7 @@ func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
 		}
 
 		if job.Unique {
-			uniqueKey, err := redisKeyUniqueJob(c.namespace, job.Name, job.Args)
+			uniqueKey, err := redisKeyUniqueJob(c.namespace, job.Name, job.Payload)
 			if err != nil {
 				logError("client.delete_scheduled_job.redis_key_unique_job", err)
 				return err

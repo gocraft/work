@@ -97,13 +97,13 @@ func TestClientWorkerObservations(t *testing.T) {
 		if ob.JobName == "foo" {
 			fooCount++
 			assert.True(t, ob.IsBusy)
-			assert.Equal(t, `{"a":3,"b":4}`, ob.ArgsJSON)
+			assert.Equal(t, []byte(`{"a":3,"b":4}`), ob.Payload)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
 			assert.True(t, ob.JobID != "")
 		} else if ob.JobName == "wat" {
 			watCount++
 			assert.True(t, ob.IsBusy)
-			assert.Equal(t, `{"a":1,"b":2}`, ob.ArgsJSON)
+			assert.Equal(t, []byte(`{"a":1,"b":2}`), ob.Payload)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
 			assert.True(t, ob.JobID != "")
 		} else {
@@ -213,8 +213,11 @@ func TestClientScheduledJobs(t *testing.T) {
 		assert.EqualValues(t, 1425263409, jobs[1].EnqueuedAt)
 		assert.EqualValues(t, 1425263409, jobs[2].EnqueuedAt)
 
-		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
-		assert.EqualValues(t, interface{}(2), jobs[0].Args["b"])
+		var q Q
+		err = jobs[0].UnmarshalPayload(&q)
+		assert.Nil(t, err)
+		assert.EqualValues(t, interface{}(1), q["a"])
+		assert.EqualValues(t, interface{}(2), q["b"])
 
 		assert.EqualValues(t, 0, jobs[0].Fails)
 		assert.EqualValues(t, 0, jobs[1].Fails)
@@ -262,7 +265,9 @@ func TestClientRetryJobs(t *testing.T) {
 		assert.EqualValues(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
+		var q Q
+		assert.Nil(t, jobs[0].UnmarshalPayload(&q))
+		assert.EqualValues(t, interface{}(1), q["a"])
 		assert.EqualValues(t, 1, jobs[0].Fails)
 		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)
@@ -302,7 +307,9 @@ func TestClientDeadJobs(t *testing.T) {
 		assert.EqualValues(t, 1425263429, jobs[0].FailedAt)
 		assert.Equal(t, "wat", jobs[0].Name)
 		assert.EqualValues(t, 1425263409, jobs[0].EnqueuedAt)
-		assert.EqualValues(t, interface{}(1), jobs[0].Args["a"])
+		var q Q
+		assert.Nil(t, jobs[0].UnmarshalPayload(&q))
+		assert.EqualValues(t, interface{}(1), q["a"])
 		assert.EqualValues(t, 1, jobs[0].Fails)
 		assert.EqualValues(t, 1425263429, jobs[0].Job.FailedAt)
 		assert.Equal(t, "ohno", jobs[0].LastErr)
@@ -422,7 +429,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 		Name:       name,
 		ID:         makeIdentifier(),
 		EnqueuedAt: encAt,
-		Args:       map[string]interface{}{"a": "wat"},
+		Payload:    []byte(`{"a": "wat"}`),
 		Fails:      3,
 		LastErr:    "sorry",
 		FailedAt:   failAt,
@@ -447,9 +454,10 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 
 	job1 := getQueuedJob(ns, pool, name)
 	if assert.NotNil(t, job1) {
+		var q Q
+		assert.Nil(t, job1.UnmarshalPayload(&q))
 		assert.Equal(t, name, job1.Name)
-		assert.Equal(t, "wat", job1.ArgString("a"))
-		assert.NoError(t, job1.ArgError())
+		assert.Equal(t, "wat", q["a"].(string))
 	}
 }
 
@@ -553,7 +561,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 			Name:       "wat1",
 			ID:         makeIdentifier(),
 			EnqueuedAt: 12345,
-			Args:       nil,
+			Payload:    nil,
 			Fails:      3,
 			LastErr:    "sorry",
 			FailedAt:   12347,
@@ -574,7 +582,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 		Name:       "dontexist",
 		ID:         makeIdentifier(),
 		EnqueuedAt: 12345,
-		Args:       nil,
+		Payload:    nil,
 		Fails:      3,
 		LastErr:    "sorry",
 		FailedAt:   12347,
@@ -687,7 +695,7 @@ func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64
 		Name:       name,
 		ID:         makeIdentifier(),
 		EnqueuedAt: encAt,
-		Args:       nil,
+		Payload:    nil,
 		Fails:      3,
 		LastErr:    "sorry",
 		FailedAt:   failAt,

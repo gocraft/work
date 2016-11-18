@@ -21,7 +21,7 @@ describe('Processes', () => {
           started_at: 1467753603,
           checkin_at: 1467753603,
           checkin: '123',
-          args_json: '{}'
+          payload: '{}'
         }
       ],
       workerPool: [
@@ -44,7 +44,7 @@ describe('Processes', () => {
     expect(processes.state.workerPool.length).toEqual(1);
     expect(processes.workerCount).toEqual(3);
 
-    const expectedBusyWorker = [ { args_json: '{}', checkin: '123', checkin_at: 1467753603, job_name: 'job1', started_at: 1467753603, worker_id: '2' } ];
+    const expectedBusyWorker = [ { payload: '{}', checkin: '123', checkin_at: 1467753603, job_name: 'job1', started_at: 1467753603, worker_id: '2' } ];
 
     let output = r.getRenderOutput();
     let busyWorkers = findAllByTag(output, 'BusyWorkers');

@@ -1,12 +1,18 @@
 package work
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	// "time"
 )
+
+func parsePayload(payload Q) []byte {
+	data, _ := json.Marshal(payload)
+	return data
+}
 
 func TestObserverStarted(t *testing.T) {
 	pool := newTestPool(":6379")
@@ -18,7 +24,7 @@ func TestObserverStarted(t *testing.T) {
 
 	observer := newObserver(ns, pool, "abcd")
 	observer.start()
-	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
+	observer.observeStarted("foo", "bar", parsePayload(Q{"a": 1, "b": "wat"}))
 	//observer.observeDone("foo", "bar", nil)
 	observer.drain()
 	observer.stop()
@@ -27,7 +33,7 @@ func TestObserverStarted(t *testing.T) {
 	assert.Equal(t, "foo", h["job_name"])
 	assert.Equal(t, "bar", h["job_id"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
-	assert.Equal(t, `{"a":1,"b":"wat"}`, h["args"])
+	assert.Equal(t, `{"a":1,"b":"wat"}`, h["payload"])
 }
 
 func TestObserverStartedDone(t *testing.T) {
@@ -40,7 +46,7 @@ func TestObserverStartedDone(t *testing.T) {
 
 	observer := newObserver(ns, pool, "abcd")
 	observer.start()
-	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
+	observer.observeStarted("foo", "bar", parsePayload(Q{"a": 1, "b": "wat"}))
 	observer.observeDone("foo", "bar", nil)
 	observer.drain()
 	observer.stop()
@@ -59,7 +65,7 @@ func TestObserverCheckin(t *testing.T) {
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
-	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
+	observer.observeStarted("foo", "bar", parsePayload(Q{"a": 1, "b": "wat"}))
 
 	tMockCheckin := int64(1425263402)
 	setNowEpochSecondsMock(tMockCheckin)
@@ -71,7 +77,7 @@ func TestObserverCheckin(t *testing.T) {
 	assert.Equal(t, "foo", h["job_name"])
 	assert.Equal(t, "bar", h["job_id"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
-	assert.Equal(t, `{"a":1,"b":"wat"}`, h["args"])
+	assert.Equal(t, `{"a":1,"b":"wat"}`, h["payload"])
 	assert.Equal(t, "doin it", h["checkin"])
 	assert.Equal(t, fmt.Sprint(tMockCheckin), h["checkin_at"])
 }
@@ -86,7 +92,7 @@ func TestObserverCheckinFromJob(t *testing.T) {
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
-	observer.observeStarted("foo", "barbar", Q{"a": 1, "b": "wat"})
+	observer.observeStarted("foo", "barbar", parsePayload(Q{"a": 1, "b": "wat"}))
 
 	tMockCheckin := int64(1425263402)
 	setNowEpochSecondsMock(tMockCheckin)

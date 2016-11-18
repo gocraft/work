@@ -13,7 +13,7 @@ import (
 var redisHostPort = flag.String("redis", ":6379", "redis hostport")
 var redisNamespace = flag.String("ns", "work", "redis namespace")
 var jobName = flag.String("job", "", "job name")
-var jobArgs = flag.String("args", "{}", "job arguments")
+var jobPayload = flag.String("payload", "{}", "job payload")
 
 func main() {
 	flag.Parse()
@@ -25,15 +25,15 @@ func main() {
 
 	pool := newPool(*redisHostPort)
 
-	var args map[string]interface{}
-	err := json.Unmarshal([]byte(*jobArgs), &args)
+	var payload map[string]interface{}
+	err := json.Unmarshal([]byte(*jobPayload), &payload)
 	if err != nil {
 		fmt.Println("invalid args:", err)
 		os.Exit(1)
 	}
 
 	en := work.NewEnqueuer(*redisNamespace, pool)
-	en.Enqueue(*jobName, args)
+	en.Enqueue(*jobName, payload)
 }
 
 func newPool(addr string) *redis.Pool {

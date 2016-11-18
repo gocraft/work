@@ -18,9 +18,11 @@ func TestEnqueue(t *testing.T) {
 	assert.True(t, len(job.ID) > 10)                        // Something is in it
 	assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-	assert.Equal(t, "cool", job.ArgString("b"))
-	assert.EqualValues(t, 1, job.ArgInt64("a"))
-	assert.NoError(t, job.ArgError())
+	var args Q
+	assert.Nil(t, job.UnmarshalPayload(&args))
+
+	assert.Equal(t, "cool", args["b"].(string))
+	assert.EqualValues(t, 1, args["a"].(float64))
 
 	// Make sure "wat" is in the known jobs
 	assert.EqualValues(t, []string{"wat"}, knownJobs(pool, redisKeyKnownJobs(ns)))
@@ -38,9 +40,10 @@ func TestEnqueue(t *testing.T) {
 	assert.True(t, len(j.ID) > 10)                        // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-	assert.Equal(t, "cool", j.ArgString("b"))
-	assert.EqualValues(t, 1, j.ArgInt64("a"))
-	assert.NoError(t, j.ArgError())
+	var q Q
+	assert.Nil(t, j.UnmarshalPayload(&q))
+	assert.Equal(t, "cool", q["b"].(string))
+	assert.EqualValues(t, 1, q["a"].(float64))
 
 	// Now enqueue another job, make sure that we can enqueue multiple
 	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
@@ -65,9 +68,10 @@ func TestEnqueueIn(t *testing.T) {
 		assert.True(t, len(job.ID) > 10)                        // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-		assert.Equal(t, "cool", job.ArgString("b"))
-		assert.EqualValues(t, 1, job.ArgInt64("a"))
-		assert.NoError(t, job.ArgError())
+		var q Q
+		assert.Nil(t, job.UnmarshalPayload(&q))
+		assert.Equal(t, "cool", q["b"].(string))
+		assert.EqualValues(t, 1, q["a"].(float64))
 		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
 	}
 
@@ -91,9 +95,10 @@ func TestEnqueueIn(t *testing.T) {
 	assert.True(t, len(j.ID) > 10)                        // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-	assert.Equal(t, "cool", j.ArgString("b"))
-	assert.EqualValues(t, 1, j.ArgInt64("a"))
-	assert.NoError(t, j.ArgError())
+	var q Q
+	assert.Nil(t, j.UnmarshalPayload(&q))
+	assert.Equal(t, "cool", q["b"].(string))
+	assert.EqualValues(t, 1, q["a"].(float64))
 }
 
 func TestEnqueueUnique(t *testing.T) {
@@ -109,9 +114,10 @@ func TestEnqueueUnique(t *testing.T) {
 		assert.True(t, len(job.ID) > 10)                        // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-		assert.Equal(t, "cool", job.ArgString("b"))
-		assert.EqualValues(t, 1, job.ArgInt64("a"))
-		assert.NoError(t, job.ArgError())
+		var q Q
+		assert.Nil(t, job.UnmarshalPayload(&q))
+		assert.Equal(t, "cool", q["b"].(string))
+		assert.EqualValues(t, 1, q["a"].(float64))
 	}
 
 	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
@@ -134,7 +140,7 @@ func TestEnqueueUnique(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
-	// Process the queues. Ensure the right numbero of jobs was processed
+	// Process the queues. Ensure the right number of jobs was processed
 	var wats, taws int64
 	wp := NewWorkerPool(3, ns, pool)
 	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(ctx *Context) error {
@@ -182,9 +188,11 @@ func TestEnqueueUniqueIn(t *testing.T) {
 		assert.True(t, len(job.ID) > 10)                        // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-		assert.Equal(t, "cool", job.ArgString("b"))
-		assert.EqualValues(t, 1, job.ArgInt64("a"))
-		assert.NoError(t, job.ArgError())
+
+		var q Q
+		assert.Nil(t, job.UnmarshalPayload(&q))
+		assert.Equal(t, "cool", q["b"].(string))
+		assert.EqualValues(t, 1, q["a"].(float64))
 		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
 	}
 
@@ -202,9 +210,10 @@ func TestEnqueueUniqueIn(t *testing.T) {
 	assert.True(t, len(j.ID) > 10)                        // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-	assert.Equal(t, "cool", j.ArgString("b"))
-	assert.EqualValues(t, 1, j.ArgInt64("a"))
-	assert.NoError(t, j.ArgError())
+	var q Q
+	assert.Nil(t, j.UnmarshalPayload(&q))
+	assert.Equal(t, "cool", q["b"].(string))
+	assert.EqualValues(t, 1, q["a"].(float64))
 	assert.True(t, j.Unique)
 
 	// Now try to enqueue more stuff and ensure it

@@ -10,6 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type WorkerTestJobArgs struct {
+	A float64
+}
+
 func TestWorkerBasics(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
@@ -28,7 +32,9 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job1,
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
-			arg1 = ctx.Job.Args["a"].(float64)
+			args := new(WorkerTestJobArgs)
+			ctx.Job.UnmarshalPayload(args)
+			arg1 = args.A
 			return nil
 		},
 	}
@@ -36,7 +42,9 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job2,
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
-			arg2 = ctx.Job.Args["a"].(float64)
+			args := new(WorkerTestJobArgs)
+			ctx.Job.UnmarshalPayload(args)
+			arg2 = args.A
 			return nil
 		},
 	}
@@ -44,17 +52,19 @@ func TestWorkerBasics(t *testing.T) {
 		Name:       job3,
 		JobOptions: JobOptions{Priority: 1},
 		Handler: func(ctx *Context) error {
-			arg3 = ctx.Job.Args["a"].(float64)
+			args := new(WorkerTestJobArgs)
+			ctx.Job.UnmarshalPayload(args)
+			arg3 = args.A
 			return nil
 		},
 	}
 
 	enqueuer := NewEnqueuer(ns, pool)
-	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	_, err := enqueuer.Enqueue(job1, &WorkerTestJobArgs{1})
 	assert.Nil(t, err)
-	_, err = enqueuer.Enqueue(job2, Q{"a": 2})
+	_, err = enqueuer.Enqueue(job2, &WorkerTestJobArgs{2})
 	assert.Nil(t, err)
-	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
+	_, err = enqueuer.Enqueue(job3, &WorkerTestJobArgs{3})
 	assert.Nil(t, err)
 
 	w := newWorker(ns, "1", pool, nil, jobTypes)
@@ -118,7 +128,7 @@ func TestWorkerInProgress(t *testing.T) {
 	w.observer.drain()
 	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
-	assert.Equal(t, `{"a":1}`, h["args"])
+	assert.Equal(t, `{"a":1}`, h["payload"])
 	// NOTE: we could check for job_id and started_at, but it's a PITA and it's tested in observer_test.
 
 	w.drain()

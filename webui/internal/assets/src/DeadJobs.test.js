@@ -16,8 +16,8 @@ describe('DeadJobs', () => {
     deadJobs.setState({
       count: 2,
       jobs: [
-        {id: 1, name: 'test', args: {}, t: 1467760821, err: 'err1'},
-        {id: 2, name: 'test2', args: {}, t: 1467760822, err: 'err2'}
+        {id: 1, name: 'test', payload: {}, t: 1467760821, err: 'err1'},
+        {id: 2, name: 'test2', payload: {}, t: 1467760822, err: 'err2'}
       ]
     });
 
@@ -86,7 +86,7 @@ describe('DeadJobs', () => {
         job.push({
           id: i,
           name: 'test',
-          args: {},
+          payload: '{}',
           t: 1467760821,
           err: 'err',
         });
