@@ -79,8 +79,6 @@ var redisPool = &redis.Pool{
 	},
 }
 
-type SendEmail
-
 func main() {
 	// Make a new pool. Arguments:
 	// 10 is the max concurrency
