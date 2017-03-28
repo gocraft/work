@@ -291,8 +291,8 @@ You'll see a view that looks like this:
 
 ## Paused jobs
 
-* You can pause all workers in a worker pool from processing any further jobs by setting a specific "paused" redis key (see `redisKeyJobsPaused`)
-** Conversely, jobs will resume once the paused redis key is removed
+* You can pause jobs from being processed from a specific queue by setting a "paused" redis key (see `redisKeyJobsPaused`)
+* Conversely, jobs in the queue will resume being processed once the paused redis key is removed
 
 ### Terminology reference
 * "worker pool" - a pool of workers
@@ -309,7 +309,7 @@ You'll see a view that looks like this:
 * "retry jobs" - if a job fails and needs to be retried, it will be put on this queue.
 * "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
 * "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
-* "paused workers" - if workers are paused, then no jobs will be processed by any workers in that worker pool until they are unpaused.
+* "paused jobs" - if paused key is present for a queue, then no jobs from that queue will be processed by any workers until that queue's paused key is removed
 
 ## Benchmarks
 
