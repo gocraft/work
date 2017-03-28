@@ -310,7 +310,7 @@ func TestWorkersPaused(t *testing.T) {
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	// pause the jobs prior to starting
 	pauseJobs(ns, job1, pool)
-	// reset the backoff times to help with testing here
+	// reset the backoff times to help with testing
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
 	w.start()
 
@@ -325,7 +325,6 @@ func TestWorkersPaused(t *testing.T) {
 	unpauseJobs(ns, job1, pool)
 	// sleep through 2 backoffs to make sure we allow enough time to start running
 	time.Sleep(20 * time.Millisecond)
-	// Make sure to sleep enough to let the timer expire (see sleepBackoffsInMilliseconds)
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
