@@ -283,11 +283,16 @@ You'll see a view that looks like this:
 * When a unique job is enqueued, we'll atomically set a redis key that includes the job name and arguments and enqueue the job.
 * When the job is processed, we'll delete that key to permit another job to be enqueued.
 
-### Periodic Jobs
+### Periodic jobs
 
 * You can tell a worker pool to enqueue jobs periodically using a cron schedule.
 * Each worker pool will wake up every 2 minutes, and if jobs haven't been scheduled yet, it will schedule all the jobs that would be executed in the next five minutes.
 * Each periodic job that runs at a given time has a predictable byte pattern. Since jobs are scheduled on the scheduled job queue (a Redis z-set), if the same job is scheduled twice for a given time, it can only exist in the z-set once.
+
+## Paused jobs
+
+* You can pause all workers in a worker pool from processing any further jobs by setting a specific "paused" redis key (see `redisKeyJobsPaused`)
+** Conversely, jobs will resume once the paused redis key is removed
 
 ### Terminology reference
 * "worker pool" - a pool of workers
@@ -301,10 +306,10 @@ You'll see a view that looks like this:
 * "job name" - each job has a name, like "create_watch"
 * "job type" - backend/private nomenclature for the handler+options for processing a job
 * "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
-* "retry jobs" - If a job fails and needs to be retried, it will be put on this queue.
-* "scheduled jobs" - Jobs enqueued to be run in th future will be put on a scheduled job queue.
-* "dead jobs" - If a job exceeds its MaxFails count, it will be put on the dead job queue.
-
+* "retry jobs" - if a job fails and needs to be retried, it will be put on this queue.
+* "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
+* "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
+* "paused workers" - if workers are paused, then no jobs will be processed by any workers in that worker pool until they are unpaused.
 
 ## Benchmarks
 
