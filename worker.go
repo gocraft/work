@@ -59,11 +59,11 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name))
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name))
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*2, redisLuaRpoplpushMultiCmd)
+	w.redisFetchScript = redis.NewScript(len(jobTypes)*3, redisLuaRpoplpushMultiCmd)
 }
 
 func (w *worker) start() {
@@ -136,9 +136,9 @@ func (w *worker) fetchJob() (*Job, error) {
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
 
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*2)
+	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*3)
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused)
 	}
 
 	conn := w.pool.Get()

@@ -285,6 +285,67 @@ func TestWorkerDead(t *testing.T) {
 	assert.True(t, (nowEpochSeconds()-job.FailedAt) <= 2)
 }
 
+func TestWorkersPaused(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+
+	jobTypes := make(map[string]*jobType)
+	jobTypes[job1] = &jobType{
+		Name:       job1,
+		JobOptions: JobOptions{Priority: 1},
+		IsGeneric:  true,
+		GenericHandler: func(job *Job) error {
+			time.Sleep(30 * time.Millisecond)
+			return nil
+		},
+	}
+
+	enqueuer := NewEnqueuer(ns, pool)
+	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
+	assert.Nil(t, err)
+
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	// pause the jobs prior to starting
+	pauseJobs(ns, job1, pool)
+	// reset the backoff times to help with testing here
+	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
+	w.start()
+
+	// make sure the jobs stay in the still in the run queue and not moved to in progress
+	for i := 0; i < 2; i++ {
+		time.Sleep(10 * time.Millisecond)
+		assert.EqualValues(t, 1, listSize(pool, redisKeyJobs(ns, job1)))
+		assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	}
+
+	// now unpause the jobs and check that they start
+	unpauseJobs(ns, job1, pool)
+	// sleep through 2 backoffs to make sure we allow enough time to start running
+	time.Sleep(20 * time.Millisecond)
+	// Make sure to sleep enough to let the timer expire (see sleepBackoffsInMilliseconds)
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+
+	// nothing in the worker status
+	w.observer.drain()
+	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
+	assert.Equal(t, job1, h["job_name"])
+	assert.Equal(t, `{"a":1}`, h["args"])
+	w.drain()
+	w.stop()
+
+	// At this point, it should all be empty.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+
+	// nothing in the worker status
+	h = readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
+	assert.EqualValues(t, 0, len(h))
+}
+
 // Test that in the case of an unavailable Redis server,
 // the worker loop exits in the case of a WorkerPool.Stop
 func TestStop(t *testing.T) {
@@ -450,5 +511,25 @@ func cleanKeyspace(namespace string, pool *redis.Pool) {
 		if _, err := conn.Do("DEL", k); err != nil {
 			panic("could not del: " + err.Error())
 		}
+	}
+}
+
+func pauseJobs(namespace, jobName string, pool *redis.Pool) {
+	conn := pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("SET", redisKeyJobsPaused(namespace, jobName), "1")
+	if err !=  nil {
+		panic(fmt.Sprintf("job %s:%s could not be paused: ", namespace, jobName, err.Error()))
+	}
+}
+
+func unpauseJobs(namespace, jobName string, pool *redis.Pool) {
+	conn := pool.Get()
+	defer conn.Close()
+
+	_, err := conn.Do("DEL", redisKeyJobsPaused(namespace, jobName))
+	if err !=  nil {
+		panic(fmt.Sprintf("job %s:%s could not be unpaused: ", namespace, jobName, err.Error()))
 	}
 }

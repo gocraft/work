@@ -56,6 +56,10 @@ func redisKeyHeartbeat(namespace, workerPoolID string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
 }
 
+func redisKeyJobsPaused(namespace, jobName string) string {
+	return fmt.Sprintf("%s:%s", redisKeyJobs(namespace, jobName), "paused")
+}
+
 func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
 	var buf bytes.Buffer
 
@@ -80,18 +84,26 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
 // KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
-// KEYS[3] = the 2nd job queue...
-// KEYS[4] = the 2nd job queue's in prog queue...
+// KEYS[3] = the 1st job queue's paused key, eg, "work:jobs:emails:paused"
+// KEYS[4] = the 2nd job queue...
+// KEYS[5] = the 2nd job queue's in prog queue...
+// KEYS[6] = the 2nd job queue's paused key...
 // ...
 // KEYS[N] = the last job queue...
 // KEYS[N+1] = the last job queue's in prog queue...
+// KEYS[N+2] = the last job queue's paused key...
 var redisLuaRpoplpushMultiCmd = `
+local function isPaused(pausekey)
+  return redis.call('get', pausekey)
+end
 local res
 local keylen = #KEYS
-for i=1,keylen,2 do
-  res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
-  if res then
-    return {res, KEYS[i], KEYS[i+1]}
+for i=1,keylen,3 do
+  if not isPaused(KEYS[i+2]) then
+    res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
+    if res then
+      return {res, KEYS[i], KEYS[i+1]}
+    end
   end
 end
 return nil
@@ -236,7 +248,7 @@ return 'dup'
 `
 
 // KEYS[1] = scheduled job queue
-// KEYS[2] = Unique job's key. Test for existance and set if we push.
+// KEYS[2] = Unique job's key. Test for existence and set if we push.
 // ARGV[1] = job
 // ARGV[2] = epoch seconds for job to be run at
 var redisLuaEnqueueUniqueIn = `
