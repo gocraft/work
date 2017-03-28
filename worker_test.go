@@ -328,7 +328,6 @@ func TestWorkersPaused(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
-	// nothing in the worker status
 	w.observer.drain()
 	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
