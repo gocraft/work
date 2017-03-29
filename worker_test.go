@@ -291,7 +291,7 @@ func TestWorkersPaused(t *testing.T) {
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
-	deletePausedAndLockedKey(ns, job1, pool)
+	deletePausedAndLockedKeys(ns, job1, pool)
 
 	jobTypes := make(map[string]*jobType)
 	jobTypes[job1] = &jobType{
@@ -535,7 +535,7 @@ func unpauseJobs(namespace, jobName string, pool *redis.Pool) error {
 	return nil
 }
 
-func deletePausedAndLockedKey(namespace, jobName string, pool *redis.Pool) error {
+func deletePausedAndLockedKeys(namespace, jobName string, pool *redis.Pool) error {
 	conn := pool.Get()
 	defer conn.Close()
 
@@ -547,3 +547,14 @@ func deletePausedAndLockedKey(namespace, jobName string, pool *redis.Pool) error
 	}
 	return nil
 }
+
+func createQueueLock(pool *redis.Pool, namespace, jobName string) error {
+	conn := pool.Get()
+	defer conn.Close()
+
+	if _, err := conn.Do("SET", redisKeyJobsLocked(namespace, jobName), "1"); err != nil {
+		return err
+	}
+	return nil
+}
+

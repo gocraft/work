@@ -187,14 +187,14 @@ func (w *worker) processJob(job *Job) {
 		job.observer = w.observer // for Checkin
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
-		if jt.RunExclusiveJobs {
-			w.unlockRunQueue(job.Name)
-		}
 		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		} else {
 			w.removeJobFromInProgress(job)
+		}
+		if jt.RunExclusiveJobs {
+			w.unlockRunQueue(job.Name)
 		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries

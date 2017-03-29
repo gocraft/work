@@ -299,3 +299,20 @@ if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
 end
 return 'dup'
 `
+
+// KEYS[1] = jobs run queue
+// KEYS[2] = job types lock key
+var redisLuaCheckStaleQueueLocks = `
+local function isLocked(lockedKey)
+  return redis.call('get', lockedKey)
+end
+
+local function isInProgress(runQueue)
+  return redis.call('keys', runQueue .. ':*:inprogress')
+end
+
+if isLocked(KEYS[2]) and next(isInProgress(KEYS[1])) == nil then
+  return 1
+end
+return 0
+`
