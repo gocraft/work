@@ -309,7 +309,8 @@ func TestWorkersPaused(t *testing.T) {
 
 	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
 	// pause the jobs prior to starting
-	pauseJobs(ns, job1, pool)
+	err = pauseJobs(ns, job1, pool)
+	assert.Nil(t, err)
 	// reset the backoff times to help with testing
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
 	w.start()
@@ -322,7 +323,8 @@ func TestWorkersPaused(t *testing.T) {
 	}
 
 	// now unpause the jobs and check that they start
-	unpauseJobs(ns, job1, pool)
+	err = unpauseJobs(ns, job1, pool)
+	assert.Nil(t, err)
 	// sleep through 2 backoffs to make sure we allow enough time to start running
 	time.Sleep(20 * time.Millisecond)
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
@@ -512,22 +514,22 @@ func cleanKeyspace(namespace string, pool *redis.Pool) {
 	}
 }
 
-func pauseJobs(namespace, jobName string, pool *redis.Pool) {
+func pauseJobs(namespace, jobName string, pool *redis.Pool) error {
 	conn := pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("SET", redisKeyJobsPaused(namespace, jobName), "1")
-	if err !=  nil {
-		panic(fmt.Sprintf("job %s:%s could not be paused: ", namespace, jobName, err.Error()))
+	if _, err := conn.Do("SET", redisKeyJobsPaused(namespace, jobName), "1"); err != nil {
+		return err
 	}
+	return nil
 }
 
-func unpauseJobs(namespace, jobName string, pool *redis.Pool) {
+func unpauseJobs(namespace, jobName string, pool *redis.Pool) error {
 	conn := pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("DEL", redisKeyJobsPaused(namespace, jobName))
-	if err !=  nil {
-		panic(fmt.Sprintf("job %s:%s could not be unpaused: ", namespace, jobName, err.Error()))
+	if _, err := conn.Do("DEL", redisKeyJobsPaused(namespace, jobName)); err != nil {
+		return err
 	}
+	return nil
 }
