@@ -18,6 +18,10 @@ func redisKeyKnownJobs(namespace string) string {
 	return redisNamespacePrefix(namespace) + "known_jobs"
 }
 
+func redisKeyExclusiveJobs(namespace string) string {
+	return redisNamespacePrefix(namespace) + "exclusive_jobs"
+}
+
 // returns "<namespace>:jobs:"
 // so that we can just append the job name and be good to go
 func redisKeyJobsPrefix(namespace string) string {
@@ -82,6 +86,12 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
 
+// To help with usages of redisLuaRpoplpushMultiCmd
+// 3 args per job + 1 arg for exclusive set (which is per namespace)
+func numArgsFetchJobLuaScript(numJobTypes int) int {
+	return (numJobTypes * 3) + 1
+}
+
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
 // KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
 // KEYS[3] = the 1st job queue's paused key, eg, "work:jobs:emails:paused"
@@ -96,12 +106,25 @@ var redisLuaRpoplpushMultiCmd = `
 local function isPaused(pausekey)
   return redis.call('get', pausekey)
 end
+
+local function isExclusive(queueName, exclQueues)
+  return redis.call('sismember', exclQueues, queueName) == 1
+end
+
+local function checkRunExclusive(queueName, pauseKey, exclQueues)
+  if isExclusive(queueName, exclQueues) then
+    redis.call('set', pauseKey, '1')
+  end
+end
+
 local res
-local keylen = #KEYS
-for i=1,keylen,3 do
+local exclQueues = KEYS[1]
+local keylen = #KEYS - 1
+for i=2,keylen,3 do
   if not isPaused(KEYS[i+2]) then
     res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
     if res then
+      checkRunExclusive(KEYS[i], KEYS[i+2], exclQueues)
       return {res, KEYS[i], KEYS[i+1]}
     end
   end

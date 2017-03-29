@@ -47,10 +47,11 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority uint // Priority from 1 to 10000
-	MaxFails uint // 1: send straight to dead (unless SkipDead)
-	SkipDead bool // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	Backoff  BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority         uint              // Priority from 1 to 10000
+	MaxFails         uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead         bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	RunExclusiveJobs bool              // If true, ensure that at most one job is running at a time of this job type
+	Backoff          BackoffCalculator // If not set, uses the default backoff algorithm
 }
 
 // GenericHandler is a job handler without any custom context.
@@ -118,7 +119,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	return wp
 }
 
-// Job registers the job name to the specified handler fn. For instnace, when workers pull jobs from the name queue, they'll be processed by the specified handler function.
+// Job registers the job name to the specified handler fn. For instance, when workers pull jobs from the name queue they'll be processed by the specified handler function.
 // fn can take one of these forms:
 // (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job) error, for the generic handler format.
@@ -174,6 +175,8 @@ func (wp *WorkerPool) Start() {
 	wp.started = true
 
 	go wp.writeKnownJobsToRedis()
+	go wp.writeExclusiveJobsToRedis()
+
 	for _, w := range wp.workers {
 		go w.start()
 	}
@@ -259,9 +262,33 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 		jobNames = append(jobNames, k)
 	}
 
-	_, err := conn.Do("SADD", jobNames...)
-	if err != nil {
+	if _, err := conn.Do("SADD", jobNames...); err != nil {
 		logError("write_known_jobs", err)
+	}
+}
+
+func (wp *WorkerPool) writeExclusiveJobsToRedis() {
+	if len(wp.jobTypes) == 0 {
+		return
+	}
+
+	conn := wp.pool.Get()
+	defer conn.Close()
+
+	setArgs := make([]interface{}, 0, len(wp.jobTypes)+1)
+	setArgs = append(setArgs, redisKeyExclusiveJobs(wp.namespace))
+	for k, v := range wp.jobTypes {
+		if v.RunExclusiveJobs {
+			// note that we want the name of the queue so we can check during Lua fetch script
+			setArgs = append(setArgs, redisKeyJobs(wp.namespace, k))
+		}
+	}
+
+	// make sure we have at least one exclusive run queue
+	if len(setArgs) > 1 {
+		if _, err := conn.Do("SADD", setArgs...); err != nil {
+			logError("write_exclusive_jobs", err)
+		}
 	}
 }
 

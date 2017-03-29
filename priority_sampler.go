@@ -5,8 +5,8 @@ import (
 )
 
 type prioritySampler struct {
-	sum     uint
-	samples []sampleItem
+	sum           uint
+	samples       []sampleItem
 }
 
 type sampleItem struct {
