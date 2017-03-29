@@ -176,6 +176,7 @@ func (wp *WorkerPool) Start() {
 
 	go wp.writeKnownJobsToRedis()
 	go wp.writeExclusiveJobsToRedis()
+	wp.removeStaleQueueLocks()
 
 	for _, w := range wp.workers {
 		go w.start()
@@ -288,6 +289,26 @@ func (wp *WorkerPool) writeExclusiveJobsToRedis() {
 	if len(setArgs) > 1 {
 		if _, err := conn.Do("SADD", setArgs...); err != nil {
 			logError("write_exclusive_jobs", err)
+		}
+	}
+}
+
+func (wp *WorkerPool) removeStaleQueueLocks() {
+	if len(wp.jobTypes) == 0 {
+		return
+	}
+
+	conn := wp.pool.Get()
+	defer conn.Close()
+
+	staleLockScript := redis.NewScript(2, redisLuaCheckStaleQueueLocks)
+	for k := range wp.jobTypes {
+		if staleQueueLocks, err := redis.Bool(staleLockScript.Do(conn, redisKeyJobs(wp.namespace, k), redisKeyJobsLocked(wp.namespace, k))); err != nil {
+			logError("check_stale_queue_locks", err)
+		} else if staleQueueLocks {
+			if _, err := conn.Do("DEL", redisKeyJobsLocked(wp.namespace, k)); err != nil {
+				logError("remove_stale_queue_lock", err)
+			}
 		}
 	}
 }
