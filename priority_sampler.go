@@ -15,13 +15,15 @@ type sampleItem struct {
 	// payload:
 	redisJobs       string
 	redisJobsInProg string
+	redisJobsPaused string
 }
 
-func (s *prioritySampler) add(priority uint, redisJobs, redisJobsInProg string) {
+func (s *prioritySampler) add(priority uint, redisJobs, redisJobsInProg, redisJobsPaused string) {
 	sample := sampleItem{
 		priority:        priority,
 		redisJobs:       redisJobs,
 		redisJobsInProg: redisJobsInProg,
+		redisJobsPaused: redisJobsPaused,
 	}
 	s.samples = append(s.samples, sample)
 	s.sum += priority
