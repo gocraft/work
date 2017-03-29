@@ -106,7 +106,7 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 
 	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(r.namespace))
 	for _, jobType := range jobTypes {
-		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsPaused(r.namespace, jobType))
+		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsPaused(r.namespace, jobType), redisKeyJobsLocked(r.namespace, jobType))
 	}
 
 	conn := r.pool.Get()

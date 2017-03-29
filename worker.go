@@ -59,7 +59,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name))
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name), redisKeyJobsLocked(w.namespace, jt.Name))
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
@@ -139,7 +139,7 @@ func (w *worker) fetchJob() (*Job, error) {
 	var scriptArgs = make([]interface{}, 0, numArgsFetchJobLuaScript(len(w.sampler.samples)))
 	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(w.namespace))
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused, s.redisJobsLocked)
 	}
 
 	conn := w.pool.Get()
@@ -245,7 +245,7 @@ func (w *worker) unlockRunQueue(jobName string) {
 	defer conn.Close()
 
 	// TODO: in the future we would decr a count here once we introduce controls over number of active jobs in execution
-	if _, err := conn.Do("DEL", redisKeyJobsPaused(w.namespace, jobName)); err != nil {
+	if _, err := conn.Do("DEL", redisKeyJobsLocked(w.namespace, jobName)); err != nil {
 		logError("worker.unlock_run_queue.del", err)
 	}
 }
