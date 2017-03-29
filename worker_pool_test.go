@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type tstCtx struct {
@@ -109,4 +110,47 @@ func TestWorkerPoolValidations(t *testing.T) {
 
 		wp.Job("wat", TestWorkerPoolValidations)
 	}()
+}
+
+func (t *TestContext) SleepyJob(job *Job) error {
+	sleepTime := time.Duration(job.ArgInt64("sleep"))
+	time.Sleep(sleepTime * time.Millisecond)
+	return nil
+}
+
+func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	numJobs, concurrency, sleepTime := 5, 5, 2
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+	deletePausedKey(ns, job1, pool)
+
+	wp := NewWorkerPool(TestContext{}, uint(concurrency), ns, pool)
+	wp.JobWithOptions(job1, JobOptions{Priority: 1, RunExclusiveJobs: true}, (*TestContext).SleepyJob)
+	wp.Start()
+
+	// enqueue some jobs
+	enqueuer := NewEnqueuer(ns, pool)
+	for i := 0; i < numJobs; i++ {
+		_, err := enqueuer.Enqueue(job1, Q{"sleep": sleepTime})
+		assert.Nil(t, err)
+	}
+	assert.True(t, int64(numJobs) >= listSize(pool, redisKeyJobs(ns, job1)))
+
+	// now make sure the during the duration of job execution there is never > 1 job in flight
+	start := time.Now()
+	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	for time.Since(start) < totalRuntime {
+		jobsInProgress := listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1))
+		assert.True(t, jobsInProgress <= 1)
+		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	}
+	wp.Drain()
+	wp.Stop()
+
+	// At this point it should all be empty.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
 }
