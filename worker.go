@@ -103,29 +103,25 @@ func (w *worker) loop() {
 			drained = true
 			timer.Reset(0)
 		case <-timer.C:
-			gotJob := true
-			for gotJob {
-				job, err := w.fetchJob()
-				if err != nil {
-					logError("worker.fetch", err)
-					gotJob = false
-					timer.Reset(10 * time.Millisecond)
-				} else if job != nil {
-					w.processJob(job)
-					consequtiveNoJobs = 0
-				} else {
-					gotJob = false
-					if drained {
-						w.doneDrainingChan <- struct{}{}
-						drained = false
-					}
-					consequtiveNoJobs++
-					idx := consequtiveNoJobs
-					if idx >= int64(len(sleepBackoffsInMilliseconds)) {
-						idx = int64(len(sleepBackoffsInMilliseconds)) - 1
-					}
-					timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
+			job, err := w.fetchJob()
+			if err != nil {
+				logError("worker.fetch", err)
+				timer.Reset(10 * time.Millisecond)
+			} else if job != nil {
+				w.processJob(job)
+				consequtiveNoJobs = 0
+				timer.Reset(0)
+			} else {
+				if drained {
+					w.doneDrainingChan <- struct{}{}
+					drained = false
 				}
+				consequtiveNoJobs++
+				idx := consequtiveNoJobs
+				if idx >= int64(len(sleepBackoffsInMilliseconds)) {
+					idx = int64(len(sleepBackoffsInMilliseconds)) - 1
+				}
+				timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
 			}
 		}
 	}
