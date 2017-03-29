@@ -533,3 +533,13 @@ func unpauseJobs(namespace, jobName string, pool *redis.Pool) error {
 	}
 	return nil
 }
+
+func deletePausedKey(namespace, jobName string, pool *redis.Pool) error {
+	conn := pool.Get()
+	defer conn.Close()
+
+	if _, err := conn.Do("DEL", redisKeyJobsPaused(namespace, jobName)); err != nil {
+		return err
+	}
+	return nil
+}

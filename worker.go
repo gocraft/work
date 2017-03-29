@@ -188,7 +188,7 @@ func (w *worker) processJob(job *Job) {
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 		if jt.RunExclusiveJobs {
-			w.removeExclusiveQueueLock()
+			w.unlockRunQueue(job.Name)
 		}
 		if runErr != nil {
 			job.failed(runErr)
@@ -240,12 +240,13 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	}
 }
 
-func (w *worker) removeExclusiveQueueLock() {
+func (w *worker) unlockRunQueue(jobName string) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	if _, err := conn.Do("DEL", redisKeyExclusiveJobs(w.namespace)); err != nil {
-		logError("worker.remove_job_from_in_progress.lrem", err)
+	// TODO: in the future we would decr a count here once we introduce controls over number of active jobs in execution
+	if _, err := conn.Do("DEL", redisKeyJobsPaused(w.namespace, jobName)); err != nil {
+		logError("worker.unlock_run_queue.del", err)
 	}
 }
 
