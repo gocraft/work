@@ -125,7 +125,7 @@ func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
 	numJobs, concurrency, sleepTime := 5, 5, 2
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
-	deletePausedKey(ns, job1, pool)
+	deletePausedAndLockedKey(ns, job1, pool)
 
 	wp := NewWorkerPool(TestContext{}, uint(concurrency), ns, pool)
 	wp.JobWithOptions(job1, JobOptions{Priority: 1, RunExclusiveJobs: true}, (*TestContext).SleepyJob)
@@ -147,6 +147,55 @@ func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
 		assert.True(t, jobsInProgress <= 1)
 		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
 	}
+	wp.Drain()
+	wp.Stop()
+
+	// At this point it should all be empty.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+}
+
+func TestWorkerPoolExclusiveJobsCanPause(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	numJobs, concurrency, sleepTime := 5, 5, 2
+	deleteQueue(pool, ns, job1)
+	deleteRetryAndDead(pool, ns)
+	deletePausedAndLockedKey(ns, job1, pool)
+
+	wp := NewWorkerPool(TestContext{}, uint(concurrency), ns, pool)
+	wp.JobWithOptions(job1, JobOptions{Priority: 1, RunExclusiveJobs: true}, (*TestContext).SleepyJob)
+	// reset the backoff times to help with testing
+	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
+	wp.Start()
+
+	// enqueue some jobs
+	enqueuer := NewEnqueuer(ns, pool)
+	for i := 0; i < numJobs; i++ {
+		_, err := enqueuer.Enqueue(job1, Q{"sleep": sleepTime})
+		assert.Nil(t, err)
+	}
+	assert.True(t, int64(numJobs) >= listSize(pool, redisKeyJobs(ns, job1)))
+
+	// pause work and allow time for any outstanding jobs to finish
+	pauseJobs(ns, job1, pool)
+	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	// check that we still have some jobs to process
+	assert.True(t, listSize(pool, redisKeyJobs(ns, job1)) > int64(0))
+
+	// now make sure no jobs get started until we unpause
+	start := time.Now()
+	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	for time.Since(start) < totalRuntime {
+		assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	}
+
+	// unpause work and get past the backoff time
+	unpauseJobs(ns, job1, pool)
+	time.Sleep(10 * time.Millisecond)
+
 	wp.Drain()
 	wp.Stop()
 

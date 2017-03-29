@@ -64,6 +64,10 @@ func redisKeyJobsPaused(namespace, jobName string) string {
 	return fmt.Sprintf("%s:%s", redisKeyJobs(namespace, jobName), "paused")
 }
 
+func redisKeyJobsLocked(namespace, jobName string) string {
+	return fmt.Sprintf("%s:%s", redisKeyJobs(namespace, jobName), "locked")
+}
+
 func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
 	var buf bytes.Buffer
 
@@ -87,45 +91,59 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 }
 
 // To help with usages of redisLuaRpoplpushMultiCmd
-// 3 args per job + 1 arg for exclusive set (which is per namespace)
+// 4 args per job + 1 arg for exclusive set (which is per namespace)
 func numArgsFetchJobLuaScript(numJobTypes int) int {
-	return (numJobTypes * 3) + 1
+	return (numJobTypes * 4) + 1
 }
 
-// KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
-// KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
-// KEYS[3] = the 1st job queue's paused key, eg, "work:jobs:emails:paused"
-// KEYS[4] = the 2nd job queue...
-// KEYS[5] = the 2nd job queue's in prog queue...
-// KEYS[6] = the 2nd job queue's paused key...
+// KEYS[1] = the set of jobs that are to run jobs exclusively
+// KEYS[2] = the 1st job queue we want to try, eg, "work:jobs:emails"
+// KEYS[3] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
+// KEYS[4] = the 1st job queue's paused key, eg, "work:jobs:emails:paused"
+// KEYS[5] = the 1st job queue's lock key, e.g., "work:jobs:emails:locked"
+// KEYS[6] = the 2nd job queue...
+// KEYS[7] = the 2nd job queue's in prog queue...
+// KEYS[8] = the 2nd job queue's paused key...
+// KEYS[9] = the 2nd job queue's locked key...
 // ...
 // KEYS[N] = the last job queue...
 // KEYS[N+1] = the last job queue's in prog queue...
 // KEYS[N+2] = the last job queue's paused key...
+// KEYS[N+3] = the last job queue's locked key...
 var redisLuaRpoplpushMultiCmd = `
-local function isPaused(pausekey)
-  return redis.call('get', pausekey)
+local function isPaused(p)
+  return redis.call('get', p)
 end
 
-local function isExclusive(queueName, exclQueues)
-  return redis.call('sismember', exclQueues, queueName) == 1
+local function isLocked(l)
+  return redis.call('get', l)
 end
 
-local function checkRunExclusive(queueName, pauseKey, exclQueues)
-  if isExclusive(queueName, exclQueues) then
-    redis.call('set', pauseKey, '1')
+local function isExclusive(q, exc)
+  return redis.call('sismember', exc, q) == 1
+end
+
+local function runExclusive(q, l, exc)
+  if isExclusive(q, exc) then
+    redis.call('set', l, '1')
   end
 end
 
-local res
+local res, runQueue, inProgQueue, pauseKey, lockedKey
 local exclQueues = KEYS[1]
 local keylen = #KEYS - 1
-for i=2,keylen,3 do
-  if not isPaused(KEYS[i+2]) then
-    res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
+
+for i=2,keylen,4 do
+  runQueue = KEYS[i]
+  inProgQueue = KEYS[i+1]
+  pauseKey = KEYS[i+2]
+  lockedKey = KEYS[i+3]
+
+  if not isPaused(pauseKey) and not isLocked(lockedKey) then
+    res = redis.call('rpoplpush', runQueue, inProgQueue)
     if res then
-      checkRunExclusive(KEYS[i], KEYS[i+2], exclQueues)
-      return {res, KEYS[i], KEYS[i+1]}
+      runExclusive(runQueue, lockedKey, exclQueues)
+      return {res, runQueue, inProgQueue}
     end
   end
 end
