@@ -63,7 +63,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*3, redisLuaRpoplpushMultiCmd)
+	w.redisFetchScript = redis.NewScript(numArgsFetchJobLuaScript(len(jobTypes)), redisLuaRpoplpushMultiCmd)
 }
 
 func (w *worker) start() {
@@ -136,7 +136,8 @@ func (w *worker) fetchJob() (*Job, error) {
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
 
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*3)
+	var scriptArgs = make([]interface{}, 0, numArgsFetchJobLuaScript(len(w.sampler.samples)))
+	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(w.namespace))
 	for _, s := range w.sampler.samples {
 		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused)
 	}
@@ -186,6 +187,9 @@ func (w *worker) processJob(job *Job) {
 		job.observer = w.observer // for Checkin
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
+		if jt.RunExclusiveJobs {
+			w.removeExclusiveQueueLock()
+		}
 		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
@@ -236,6 +240,15 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	}
 }
 
+func (w *worker) removeExclusiveQueueLock() {
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	if _, err := conn.Do("DEL", redisKeyExclusiveJobs(w.namespace)); err != nil {
+		logError("worker.remove_job_from_in_progress.lrem", err)
+	}
+}
+
 func (w *worker) addToRetry(job *Job, runErr error) {
 	rawJSON, err := job.serialize()
 	if err != nil {
@@ -264,7 +277,6 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if err != nil {
 		logError("worker.add_to_retry.exec", err)
 	}
-
 }
 
 func (w *worker) addToDead(job *Job, runErr error) {
