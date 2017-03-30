@@ -59,7 +59,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name), redisKeyJobsLocked(w.namespace, jt.Name))
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name))
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
@@ -135,15 +135,15 @@ func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
-
 	var scriptArgs = make([]interface{}, 0, numArgsFetchJobLuaScript(len(w.sampler.samples)))
-	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(w.namespace))
+
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused, s.redisJobsLocked)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg)
 	}
 
 	conn := w.pool.Get()
 	defer conn.Close()
+	// fmt.Printf("scriptArgs=%v\n", scriptArgs)
 	values, err := redis.Values(w.redisFetchScript.Do(conn, scriptArgs...))
 	if err == redis.ErrNil {
 		return nil, nil
@@ -193,8 +193,8 @@ func (w *worker) processJob(job *Job) {
 		} else {
 			w.removeJobFromInProgress(job)
 		}
-		if jt.RunExclusiveJobs {
-			w.unlockRunQueue(job.Name)
+		if jt.MaxConcurrency > 0 {
+			w.decrLockCount(job.Name)
 		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
@@ -240,13 +240,12 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	}
 }
 
-func (w *worker) unlockRunQueue(jobName string) {
+func (w *worker) decrLockCount(jobName string) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	// TODO: in the future we would decr a count here once we introduce controls over number of active jobs in execution
-	if _, err := conn.Do("DEL", redisKeyJobsLocked(w.namespace, jobName)); err != nil {
-		logError("worker.unlock_run_queue.del", err)
+	if _, err := conn.Do("DECR", redisKeyJobsLocked(w.namespace, jobName)); err != nil {
+		logError("worker.decr_run_queue.del", err)
 	}
 }
 
