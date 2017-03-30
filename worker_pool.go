@@ -176,7 +176,7 @@ func (wp *WorkerPool) Start() {
 
 	wp.removeStaleQueueLocks()
 	wp.writeConfigHash()
-	wp.writeKnownJobsToRedis()
+	go wp.writeKnownJobsToRedis()
 
 	for _, w := range wp.workers {
 		go w.start()
