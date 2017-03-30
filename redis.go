@@ -90,12 +90,6 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
 
-// To help with usages of redisLuaFetchJob
-// 4 args per job + 1 arg for exclusive set (which is per namespace)
-func numArgsFetchJobLuaScript(numJobTypes int) int {
-	return (numJobTypes * 2)
-}
-
 // Used by Lua scripts below and needs to follow same naming convention as redisKeyJobs* functions above
 var redisLuaJobsPausedKey = `
 local function getPauseKey(jobQueue)

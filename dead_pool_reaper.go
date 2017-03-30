@@ -100,7 +100,7 @@ func (r *deadPoolReaper) reap() error {
 }
 
 func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string) error {
-	numArgs := numArgsFetchJobLuaScript(len(jobTypes))
+	numArgs := len(jobTypes) * 2
 	redisRequeueScript := redis.NewScript(numArgs, redisLuaRpoplpushMultiCmd)
 	var scriptArgs = make([]interface{}, 0, numArgs)
 
