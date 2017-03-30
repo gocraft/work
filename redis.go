@@ -157,16 +157,15 @@ local function canRun(lockKey, maxConcurrency)
   end
 end
 
-local res, jobQueue, configKey, inProgQueue, pauseKey, lockKey, maxConcurrency
+local res, jobQueue, inProgQueue, pauseKey, lockKey, maxConcurrency
 local keylen = #KEYS
 
 for i=1,keylen,2 do
   jobQueue = KEYS[i]
   inProgQueue = KEYS[i+1]
-  configKey = jobQueue .. ':config'
   pauseKey = getPauseKey(jobQueue)
   lockKey = getLockKey(jobQueue)
-  maxConcurrency = getConcurrencyKey(jobQueue)
+  maxConcurrency = redis.call('get', getConcurrencyKey(jobQueue))
 
   if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, maxConcurrency) then
     res = redis.call('rpoplpush', jobQueue, inProgQueue)
