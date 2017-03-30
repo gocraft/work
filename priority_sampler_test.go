@@ -8,9 +8,9 @@ import (
 
 func TestPrioritySampler(t *testing.T) {
 	ps := prioritySampler{}
-	ps.add(5, "jobs.5", "jobsinprog.5", "jobs.5.paused", "jobs.5.locked")
-	ps.add(2, "jobs.2a", "jobsinprog.2a", "jobs.2a.paused", "jobs.5.locked")
-	ps.add(1, "jobs.1b", "jobsinprog.1b", "jobs.1b.paused", "jobs.5.locked")
+	ps.add(5, "jobs.5", "jobsinprog.5")
+	ps.add(2, "jobs.2a", "jobsinprog.2a")
+	ps.add(1, "jobs.1b", "jobsinprog.1b")
 
 	var c5 = 0
 	var c2 = 0
@@ -41,7 +41,7 @@ func TestPrioritySampler(t *testing.T) {
 func BenchmarkPrioritySampler(b *testing.B) {
 	ps := prioritySampler{}
 	for i := 0; i < 200; i++ {
-		ps.add(uint(i)+1, "jobs."+fmt.Sprint(i), "jobsinprog."+fmt.Sprint(i), "jobspaused."+fmt.Sprint(i), "jobslocked."+fmt.Sprint(i))
+		ps.add(uint(i)+1, "jobs."+fmt.Sprint(i), "jobsinprog."+fmt.Sprint(i))
 	}
 
 	b.ResetTimer()

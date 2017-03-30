@@ -547,14 +547,3 @@ func deletePausedAndLockedKeys(namespace, jobName string, pool *redis.Pool) erro
 	}
 	return nil
 }
-
-func createQueueLock(pool *redis.Pool, namespace, jobName string) error {
-	conn := pool.Get()
-	defer conn.Close()
-
-	if _, err := conn.Do("SET", redisKeyJobsLocked(namespace, jobName), "1"); err != nil {
-		return err
-	}
-	return nil
-}
-
