@@ -105,6 +105,7 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 	var scriptArgs = make([]interface{}, 0, numArgs)
 
 	for _, jobType := range jobTypes {
+		// pop from in progress and push into job queue
 		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType))
 	}
 

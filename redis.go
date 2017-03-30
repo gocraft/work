@@ -90,7 +90,7 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
 
-// To help with usages of redisLuaRpoplpushMultiCmd
+// To help with usages of redisLuaFetchJob
 // 4 args per job + 1 arg for exclusive set (which is per namespace)
 func numArgsFetchJobLuaScript(numJobTypes int) int {
 	return (numJobTypes * 2)
@@ -114,7 +114,8 @@ local function getConcurrencyKey(jobQueue)
   return string.format("%s:max_concurrency", jobQueue)
 end
 `
-
+// Used to fetch the next job to run
+//
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
 // KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
 // KEYS[3] = the 2nd job queue...
@@ -122,7 +123,7 @@ end
 // ...
 // KEYS[N] = the last job queue...
 // KEYS[N+1] = the last job queue's in prog queue...
-var redisLuaRpoplpushMultiCmd = fmt.Sprintf(`
+var redisLuaFetchJob = fmt.Sprintf(`
 -- getPauseKey will be inserted below
 %s
 -- getLockKey will be inserted below
@@ -175,6 +176,27 @@ for i=1,keylen,2 do
 end
 return nil
 `, redisLuaJobsPausedKey, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
+
+// Used by the reaper to re-enqueue jobs that were in progress
+//
+// KEYS[1] = the 1st job's queue we're popping from
+// KEYS[2] = the 1st job's queue we're pushing into
+// KEYS[3] = the 2nd job's queue...
+// KEYS[4] = the 2nd job's queue we're pushing into
+// ...
+// KEYS[N] = the last job's queue we're popping from
+// KEYS[N+1] = the last job's queue we're pushing into
+var redisLuaRpoplpushMultiCmd = `
+local res
+local keylen = #KEYS
+for i=1,keylen,2 do
+  res = redis.call('rpoplpush', KEYS[i], KEYS[i+1])
+  if res then
+    return {res, KEYS[i], KEYS[i+1]}
+  end
+end
+return nil
+`
 
 // KEYS[1] = zset of jobs (retry or scheduled), eg work:retry
 // KEYS[2] = zset of dead, eg work:dead. If we don't know the jobName of a job, we'll put it in dead.

@@ -63,7 +63,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(numArgsFetchJobLuaScript(len(jobTypes)), redisLuaRpoplpushMultiCmd)
+	w.redisFetchScript = redis.NewScript(numArgsFetchJobLuaScript(len(jobTypes)), redisLuaFetchJob)
 }
 
 func (w *worker) start() {
