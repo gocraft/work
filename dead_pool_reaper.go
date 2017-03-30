@@ -100,11 +100,13 @@ func (r *deadPoolReaper) reap() error {
 }
 
 func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string) error {
-	redisRequeueScript := redis.NewScript(len(jobTypes)*3, redisLuaRpoplpushMultiCmd)
+	numArgs := numArgsFetchJobLuaScript(len(jobTypes))
+	redisRequeueScript := redis.NewScript(numArgs, redisLuaRpoplpushMultiCmd)
+	var scriptArgs = make([]interface{}, 0, numArgs)
 
-	var scriptArgs = make([]interface{}, 0, len(jobTypes)*3)
+	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(r.namespace))
 	for _, jobType := range jobTypes {
-		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsPaused(r.namespace, jobType))
+		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsPaused(r.namespace, jobType), redisKeyJobsLocked(r.namespace, jobType))
 	}
 
 	conn := r.pool.Get()

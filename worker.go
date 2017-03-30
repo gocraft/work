@@ -59,11 +59,11 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	w.middleware = middleware
 	sampler := prioritySampler{}
 	for _, jt := range jobTypes {
-		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name))
+		sampler.add(jt.Priority, redisKeyJobs(w.namespace, jt.Name), redisKeyJobsInProgress(w.namespace, w.poolID, jt.Name), redisKeyJobsPaused(w.namespace, jt.Name), redisKeyJobsLocked(w.namespace, jt.Name))
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*3, redisLuaRpoplpushMultiCmd)
+	w.redisFetchScript = redis.NewScript(numArgsFetchJobLuaScript(len(jobTypes)), redisLuaRpoplpushMultiCmd)
 }
 
 func (w *worker) start() {
@@ -136,9 +136,10 @@ func (w *worker) fetchJob() (*Job, error) {
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
 
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*3)
+	var scriptArgs = make([]interface{}, 0, numArgsFetchJobLuaScript(len(w.sampler.samples)))
+	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(w.namespace))
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, s.redisJobsPaused, s.redisJobsLocked)
 	}
 
 	conn := w.pool.Get()
@@ -192,6 +193,9 @@ func (w *worker) processJob(job *Job) {
 		} else {
 			w.removeJobFromInProgress(job)
 		}
+		if jt.RunExclusiveJobs {
+			w.unlockRunQueue(job.Name)
+		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
@@ -236,6 +240,16 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	}
 }
 
+func (w *worker) unlockRunQueue(jobName string) {
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	// TODO: in the future we would decr a count here once we introduce controls over number of active jobs in execution
+	if _, err := conn.Do("DEL", redisKeyJobsLocked(w.namespace, jobName)); err != nil {
+		logError("worker.unlock_run_queue.del", err)
+	}
+}
+
 func (w *worker) addToRetry(job *Job, runErr error) {
 	rawJSON, err := job.serialize()
 	if err != nil {
@@ -264,7 +278,6 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	if err != nil {
 		logError("worker.add_to_retry.exec", err)
 	}
-
 }
 
 func (w *worker) addToDead(job *Job, runErr error) {

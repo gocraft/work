@@ -3,9 +3,12 @@ package work
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/stretchr/testify/assert"
 )
 
 type tstCtx struct {
@@ -109,4 +112,137 @@ func TestWorkerPoolValidations(t *testing.T) {
 
 		wp.Job("wat", TestWorkerPoolValidations)
 	}()
+}
+
+func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	numJobs, concurrency, sleepTime := 5, 5, 2
+	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, RunExclusiveJobs: true})
+
+	wp.Start()
+	// enqueue some jobs
+	enqueuer := NewEnqueuer(ns, pool)
+	for i := 0; i < numJobs; i++ {
+		_, err := enqueuer.Enqueue(job1, Q{"sleep": sleepTime})
+		assert.Nil(t, err)
+	}
+	assert.True(t, int64(numJobs) >= listSize(pool, redisKeyJobs(ns, job1)))
+
+	// now make sure the during the duration of job execution there is never > 1 job in flight
+	start := time.Now()
+	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	for time.Since(start) < totalRuntime {
+		jobsInProgress := listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1))
+		assert.True(t, jobsInProgress <= 1, fmt.Sprintf("jobsInProgress should never exceed 1: actual=%d", jobsInProgress))
+		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	}
+	wp.Drain()
+	wp.Stop()
+
+	// At this point it should all be empty.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+}
+
+func TestWorkerPoolPauseExclusiveJobs(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns, job1 := "work", "job1"
+	numJobs, concurrency, sleepTime := 5, 5, 2
+	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, RunExclusiveJobs: true})
+	// reset the backoff times to help with testing
+	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
+
+	wp.Start()
+	// enqueue some jobs
+	enqueuer := NewEnqueuer(ns, pool)
+	for i := 0; i < numJobs; i++ {
+		_, err := enqueuer.Enqueue(job1, Q{"sleep": sleepTime})
+		assert.Nil(t, err)
+	}
+	assert.True(t, int64(numJobs) >= listSize(pool, redisKeyJobs(ns, job1)))
+
+	// pause work and allow time for any outstanding jobs to finish
+	pauseJobs(ns, job1, pool)
+	time.Sleep(time.Duration(sleepTime * 2) * time.Millisecond)
+	// check that we still have some jobs to process
+	assert.True(t, listSize(pool, redisKeyJobs(ns, job1)) > int64(0))
+
+	// now make sure no jobs get started until we unpause
+	start := time.Now()
+	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	for time.Since(start) < totalRuntime {
+		assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+		time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	}
+
+	// unpause work and get past the backoff time
+	unpauseJobs(ns, job1, pool)
+	time.Sleep(10 * time.Millisecond)
+
+	wp.Drain()
+	wp.Stop()
+
+	// At this point it should all be empty.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+}
+
+func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns, job1 := "work", "job1"
+	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, RunExclusiveJobs: true})
+
+	conn := pool.Get()
+	defer conn.Close()
+	// create a stale lock (no jobs in progress)
+	_, err := conn.Do("SET", redisKeyJobsLocked(ns, job1), "1")
+	assert.NoError(t, err)
+
+	// start worker pool and make sure stale lock is deleted
+	wp.Start()
+	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
+	assert.NoError(t, err)
+	assert.Nil(t, lockedKey)
+	wp.Stop()
+}
+
+func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns, job1 := "work", "job1"
+	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, RunExclusiveJobs: true})
+
+	conn := pool.Get()
+	defer conn.Close()
+	// create a queue lock
+	_, err := conn.Do("SET", redisKeyJobsLocked(ns, job1), "1")
+	assert.NoError(t, err)
+	// set jobs in progress key
+	_, err = conn.Do("SET", redisKeyJobsInProgress(ns, "1", job1), "1")
+	assert.NoError(t, err)
+
+	// start worker pool and make sure it doesn't remove the queue lock
+	wp.Start()
+	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
+	assert.NoError(t, err)
+	assert.NotNil(t, lockedKey)
+	wp.Stop()
+}
+
+// Test Helpers
+func (t *TestContext) SleepyJob(job *Job) error {
+	sleepTime := time.Duration(job.ArgInt64("sleep"))
+	time.Sleep(sleepTime * time.Millisecond)
+	return nil
+}
+
+func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrency int, jobOpts JobOptions) *WorkerPool {
+	deleteQueue(pool, namespace, jobName)
+	deleteRetryAndDead(pool, namespace)
+	deletePausedAndLockedKeys(namespace, jobName, pool)
+
+	wp := NewWorkerPool(TestContext{}, uint(concurrency), namespace, pool)
+	wp.JobWithOptions(jobName, jobOpts, (*TestContext).SleepyJob)
+	return wp
 }
