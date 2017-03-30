@@ -134,7 +134,7 @@ func TestEnqueueUnique(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
-	// Process the queues. Ensure the right numbero of jobs was processed
+	// Process the queues. Ensure the right number of jobs were processed
 	var wats, taws int64
 	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
 	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {

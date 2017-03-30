@@ -139,7 +139,8 @@ local function isPaused(pauseKey)
 end
 
 local function canRun(lockKey, maxConcurrency)
-  local activeJobs = redis.call('get', lockKey)
+  local activeJobs = tonumber(redis.call('get', lockKey))
+
   if not maxConcurrency or maxConcurrency == 0 then
     -- default case: maxConcurrency not defined or set to 0 means no cap on concurrent jobs
     return true
@@ -165,7 +166,7 @@ for i=1,keylen,2 do
   inProgQueue = KEYS[i+1]
   pauseKey = getPauseKey(jobQueue)
   lockKey = getLockKey(jobQueue)
-  maxConcurrency = redis.call('get', getConcurrencyKey(jobQueue))
+  maxConcurrency = tonumber(redis.call('get', getConcurrencyKey(jobQueue)))
 
   if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, maxConcurrency) then
     res = redis.call('rpoplpush', jobQueue, inProgQueue)
