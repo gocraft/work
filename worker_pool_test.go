@@ -114,12 +114,12 @@ func TestWorkerPoolValidations(t *testing.T) {
 	}()
 }
 
-func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
+func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	job1 := "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
-	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, RunExclusiveJobs: true})
+	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, MaxConcurrency: 1})
 
 	wp.Start()
 	// enqueue some jobs
@@ -146,11 +146,11 @@ func TestWorkersPoolRunExclusiveJobs(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
 }
 
-func TestWorkerPoolPauseExclusiveJobs(t *testing.T) {
+func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns, job1 := "work", "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
-	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, RunExclusiveJobs: true})
+	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, MaxConcurrency: 1})
 	// reset the backoff times to help with testing
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}
 
@@ -192,7 +192,7 @@ func TestWorkerPoolPauseExclusiveJobs(t *testing.T) {
 func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns, job1 := "work", "job1"
-	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, RunExclusiveJobs: true})
+	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, MaxConcurrency: 5})
 
 	conn := pool.Get()
 	defer conn.Close()
@@ -200,8 +200,8 @@ func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
 	_, err := conn.Do("SET", redisKeyJobsLocked(ns, job1), "1")
 	assert.NoError(t, err)
 
-	// start worker pool and make sure stale lock is deleted
-	wp.Start()
+	// make sure stale lock is deleted
+	wp.removeStaleQueueLocks()
 	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
 	assert.NoError(t, err)
 	assert.Nil(t, lockedKey)
@@ -211,7 +211,7 @@ func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
 func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns, job1 := "work", "job1"
-	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, RunExclusiveJobs: true})
+	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, MaxConcurrency: 2})
 
 	conn := pool.Get()
 	defer conn.Close()
@@ -222,8 +222,8 @@ func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
 	_, err = conn.Do("SET", redisKeyJobsInProgress(ns, "1", job1), "1")
 	assert.NoError(t, err)
 
-	// start worker pool and make sure it doesn't remove the queue lock
-	wp.Start()
+	// make sure active queue locks are not deleted
+	wp.removeStaleQueueLocks()
 	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
 	assert.NoError(t, err)
 	assert.NotNil(t, lockedKey)

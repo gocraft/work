@@ -47,11 +47,11 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority         uint              // Priority from 1 to 10000
-	MaxFails         uint              // 1: send straight to dead (unless SkipDead)
-	SkipDead         bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	RunExclusiveJobs bool              // If true, ensure that at most one job is running at a time of this job type
-	Backoff          BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority       uint              // Priority from 1 to 10000
+	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
+	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
 }
 
 // GenericHandler is a job handler without any custom context.
@@ -174,9 +174,9 @@ func (wp *WorkerPool) Start() {
 	}
 	wp.started = true
 
-	go wp.writeKnownJobsToRedis()
-	go wp.writeExclusiveJobsToRedis()
 	wp.removeStaleQueueLocks()
+	wp.writeConfigHash()
+	wp.writeKnownJobsToRedis()
 
 	for _, w := range wp.workers {
 		go w.start()
@@ -254,9 +254,7 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 
 	conn := wp.pool.Get()
 	defer conn.Close()
-
 	key := redisKeyKnownJobs(wp.namespace)
-
 	jobNames := make([]interface{}, 0, len(wp.jobTypes)+1)
 	jobNames = append(jobNames, key)
 	for k := range wp.jobTypes {
@@ -268,27 +266,29 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	}
 }
 
-func (wp *WorkerPool) writeExclusiveJobsToRedis() {
+func (wp *WorkerPool) writeConfigHash() {
 	if len(wp.jobTypes) == 0 {
 		return
 	}
 
 	conn := wp.pool.Get()
 	defer conn.Close()
-
-	setArgs := make([]interface{}, 0, len(wp.jobTypes)+1)
-	setArgs = append(setArgs, redisKeyExclusiveJobs(wp.namespace))
-	for k, v := range wp.jobTypes {
-		if v.RunExclusiveJobs {
-			// note that we want the name of the queue so we can check during Lua fetch script
-			setArgs = append(setArgs, redisKeyJobs(wp.namespace, k))
+	for jobName, jobType := range wp.jobTypes {
+		configHashKey := redisKeyJobsConfig(wp.namespace, jobName)
+		if _, err := conn.Do("HSET", configHashKey, "max_concurrency", jobType.MaxConcurrency); err != nil {
+			logError("write_config_hash_max_concurrency", err)
 		}
-	}
-
-	// make sure we have at least one exclusive run queue
-	if len(setArgs) > 1 {
-		if _, err := conn.Do("SADD", setArgs...); err != nil {
-			logError("write_exclusive_jobs", err)
+		if _, err := conn.Do("HSET", configHashKey, "pause_key", redisKeyJobsPaused(wp.namespace, jobName)); err != nil {
+			logError("write_config_hash_pause_key", err)
+		}
+		if _, err := conn.Do("HSET", configHashKey, "lock_key", redisKeyJobsLocked(wp.namespace, jobName)); err != nil {
+			logError("write_config_hash_lock_key", err)
+		}
+		// init job queue lock, technically shouldn't be necessary since Lua fetch fxn will handled this case too
+		if jobType.MaxConcurrency > 0 {
+			if _, err := conn.Do("SET", redisKeyJobsLocked(wp.namespace, jobName), 0); err != nil {
+				logError("write_config_hash_init_lock_key", err)
+			}
 		}
 	}
 }
@@ -300,7 +300,6 @@ func (wp *WorkerPool) removeStaleQueueLocks() {
 
 	conn := wp.pool.Get()
 	defer conn.Close()
-
 	staleLockScript := redis.NewScript(2, redisLuaCheckStaleQueueLocks)
 	for k := range wp.jobTypes {
 		if staleQueueLocks, err := redis.Bool(staleLockScript.Do(conn, redisKeyJobs(wp.namespace, k), redisKeyJobsLocked(wp.namespace, k))); err != nil {

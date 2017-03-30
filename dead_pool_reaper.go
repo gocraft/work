@@ -104,9 +104,9 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 	redisRequeueScript := redis.NewScript(numArgs, redisLuaRpoplpushMultiCmd)
 	var scriptArgs = make([]interface{}, 0, numArgs)
 
-	scriptArgs = append(scriptArgs, redisKeyExclusiveJobs(r.namespace))
 	for _, jobType := range jobTypes {
-		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsPaused(r.namespace, jobType), redisKeyJobsLocked(r.namespace, jobType))
+		// TODO: I think there is a bug below: order of redisKeyJobsInProgress and redisKeyJobs should be switched according to redisLuaRpoplpushMultiCmd
+		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType))
 	}
 
 	conn := r.pool.Get()
