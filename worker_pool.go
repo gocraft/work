@@ -175,7 +175,7 @@ func (wp *WorkerPool) Start() {
 	wp.started = true
 
 	wp.removeStaleQueueLocks()
-	wp.writeConfigHash()
+	wp.writeConcurrencyControlsToRedis()
 	go wp.writeKnownJobsToRedis()
 
 	for _, w := range wp.workers {
@@ -266,7 +266,7 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	}
 }
 
-func (wp *WorkerPool) writeConfigHash() {
+func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 	if len(wp.jobTypes) == 0 {
 		return
 	}
@@ -274,20 +274,13 @@ func (wp *WorkerPool) writeConfigHash() {
 	conn := wp.pool.Get()
 	defer conn.Close()
 	for jobName, jobType := range wp.jobTypes {
-		configHashKey := redisKeyJobsConfig(wp.namespace, jobName)
-		if _, err := conn.Do("HSET", configHashKey, "max_concurrency", jobType.MaxConcurrency); err != nil {
-			logError("write_config_hash_max_concurrency", err)
+		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
+			logError("write_concurrency_controls_max_concurrency", err)
 		}
-		if _, err := conn.Do("HSET", configHashKey, "pause_key", redisKeyJobsPaused(wp.namespace, jobName)); err != nil {
-			logError("write_config_hash_pause_key", err)
-		}
-		if _, err := conn.Do("HSET", configHashKey, "lock_key", redisKeyJobsLocked(wp.namespace, jobName)); err != nil {
-			logError("write_config_hash_lock_key", err)
-		}
-		// init job queue lock, technically shouldn't be necessary since Lua fetch fxn will handled this case too
+		// this shouldn't be necessary since Lua fetch fxn will handled this case too, but it doesn't hurt
 		if jobType.MaxConcurrency > 0 {
 			if _, err := conn.Do("SET", redisKeyJobsLocked(wp.namespace, jobName), 0); err != nil {
-				logError("write_config_hash_init_lock_key", err)
+				logError("write_concurrency_controls_init_lock_key", err)
 			}
 		}
 	}
@@ -300,9 +293,9 @@ func (wp *WorkerPool) removeStaleQueueLocks() {
 
 	conn := wp.pool.Get()
 	defer conn.Close()
-	staleLockScript := redis.NewScript(2, redisLuaCheckStaleQueueLocks)
+	staleLockScript := redis.NewScript(1, redisLuaCheckStaleQueueLocks)
 	for k := range wp.jobTypes {
-		if staleQueueLocks, err := redis.Bool(staleLockScript.Do(conn, redisKeyJobs(wp.namespace, k), redisKeyJobsLocked(wp.namespace, k))); err != nil {
+		if staleQueueLocks, err := redis.Bool(staleLockScript.Do(conn, redisKeyJobs(wp.namespace, k))); err != nil {
 			logError("check_stale_queue_locks", err)
 		} else if staleQueueLocks {
 			if _, err := conn.Do("DEL", redisKeyJobsLocked(wp.namespace, k)); err != nil {
