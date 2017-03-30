@@ -171,6 +171,21 @@ end
 return nil
 `, redisLuaJobsPausedKey, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
 
+// Used to safely decrement the lock for actively running jobs until the lock gets to 0
+// This allows us to change concurrency dynamically at runtime
+//
+// KEYS[1] = the jobQueue
+var redisLuaDecrLock = fmt.Sprintf(`
+-- getLockKey will be inserted below
+%s
+
+local lockKey = getLockKey(KEYS[1])
+local curCount = redis.call('get', lockKey)
+if curCount and tonumber(curCount) > 0 then
+  redis.call('decr', lockKey)
+end
+`, redisLuaJobsLockedKey)
+
 // Used by the reaper to re-enqueue jobs that were in progress
 //
 // KEYS[1] = the 1st job's queue we're popping from

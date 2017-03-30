@@ -193,9 +193,8 @@ func (w *worker) processJob(job *Job) {
 		} else {
 			w.removeJobFromInProgress(job)
 		}
-		if jt.MaxConcurrency > 0 {
-			w.decrLockCount(job.Name)
-		}
+		// unconditionally decr the lock
+		w.decrLockCount(job.Name)
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
@@ -243,8 +242,8 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 func (w *worker) decrLockCount(jobName string) {
 	conn := w.pool.Get()
 	defer conn.Close()
-
-	if _, err := conn.Do("DECR", redisKeyJobsLocked(w.namespace, jobName)); err != nil {
+	decrScript := redis.NewScript(1, redisLuaDecrLock)
+	if _, err := decrScript.Do(conn, redisKeyJobs(w.namespace, jobName)); err != nil {
 		logError("worker.decr_run_queue.del", err)
 	}
 }
