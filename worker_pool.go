@@ -277,11 +277,9 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
 			logError("write_concurrency_controls_max_concurrency", err)
 		}
-		// this shouldn't be necessary since Lua fetch fxn will handled this case too, but it doesn't hurt
-		if jobType.MaxConcurrency > 0 {
-			if _, err := conn.Do("SET", redisKeyJobsLocked(wp.namespace, jobName), 0); err != nil {
-				logError("write_concurrency_controls_init_lock_key", err)
-			}
+		// Need to set up the lock in case concurrency is throttled at runtime
+		if _, err := conn.Do("SET", redisKeyJobsLocked(wp.namespace, jobName), 0); err != nil {
+			logError("write_concurrency_controls_init_lock_key", err)
 		}
 	}
 }
