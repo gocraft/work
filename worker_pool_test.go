@@ -201,7 +201,7 @@ func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// make sure stale lock is deleted
-	wp.removeStaleQueueLocks()
+	wp.removeStaleKeys()
 	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
 	assert.NoError(t, err)
 	assert.Nil(t, lockedKey)
@@ -223,7 +223,7 @@ func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
 	assert.NoError(t, err)
 
 	// make sure active queue locks are not deleted
-	wp.removeStaleQueueLocks()
+	wp.removeStaleKeys()
 	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
 	assert.NoError(t, err)
 	assert.NotNil(t, lockedKey)
