@@ -109,14 +109,19 @@ local function getConcurrencyKey(jobQueue)
   return string.format("%s:max_concurrency", jobQueue)
 end
 `
-var redisDecrQueueLocks = fmt.Sprintf(`
+
+// Used to safely decrement the lock for actively running jobs until the lock gets to 0
+// This allows us to change concurrency dynamically at runtime
+var redisLuaDecrLockFunction = fmt.Sprintf(`
 -- getLockKey will be inserted below
 %s
-local activeJobs = redis.call('get', getLockKey(jobQueue))
-if activeJobs and tonumber(activeJobs) > 0 then
-  redis.call('decr', getLockKey(jobQueue))
-end
-`, redisLuaJobsLockedKey)
+
+local function decrLock(jobQueue)
+  local activeJobs = redis.call('get', getLockKey(jobQueue))
+  if activeJobs and tonumber(activeJobs) > 0 then
+    redis.call('decr', getLockKey(jobQueue))
+  end
+end`, redisLuaJobsLockedKey)
 
 // Used to fetch the next job to run
 //
@@ -172,18 +177,15 @@ for i=1,keylen,2 do
     return {res, jobQueue, inProgQueue}
   end
 end
-return nil
-`, redisLuaJobsPausedKey, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
+return nil`, redisLuaJobsPausedKey, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
 
-// Used to safely decrement the lock for actively running jobs until the lock gets to 0
-// This allows us to change concurrency dynamically at runtime
+
 //
 // KEYS[1] = the jobQueue
-// TODO: re-purpose to also remove job from inprogress queue
 var redisLuaDecrLock = fmt.Sprintf(`
 local jobQueue = KEYS[1]
 %s
-`, redisDecrQueueLocks)
+decrLock(jobQueue)`, redisLuaDecrLockFunction)
 
 // Used by the reaper to re-enqueue jobs that were in progress
 //
@@ -194,23 +196,22 @@ local jobQueue = KEYS[1]
 // ...
 // KEYS[N] = the last job's in progress queue
 // KEYS[N+1] = the last job's job queue
-//
-// TODO: fix this!
 var redisLuaReenqueueJob = fmt.Sprintf(`
+%s
+
 local res
 local keylen = #KEYS
 local jobQueue, inProgQueue
 for i=1,keylen,2 do
   inProgQueue = KEYS[i]
   jobQueue = KEYS[i+1]
-  -- insert decr queue locks function below
-  %s
   res = redis.call('rpoplpush', inProgQueue, jobQueue)
+  if res then
+    decrLock(jobQueue)
     return {res, inProgQueue, jobQueue}
   end
 end
-return nil
-`, redisDecrQueueLocks)
+return nil`, redisLuaDecrLockFunction)
 
 // KEYS[1] = zset of jobs (retry or scheduled), eg work:retry
 // KEYS[2] = zset of dead, eg work:dead. If we don't know the jobName of a job, we'll put it in dead.
@@ -378,5 +379,4 @@ if next(isInProgress(jobQueue)) == nil then
   redis.call('del', getLockKey(jobQueue))
   redis.call('del', getConcurrencyKey(jobQueue))
 end
-return 0
-`, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
+return 0`, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
