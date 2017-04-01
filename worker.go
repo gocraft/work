@@ -193,14 +193,13 @@ func (w *worker) processJob(job *Job) {
 		} else {
 			w.removeJobFromInProgress(job)
 		}
-		// unconditionally decr the lock
-		w.decrLockCount(job.Name)
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
 		job.failed(runErr)
-		w.addToDead(job, runErr)
+		// never actually enqueued anything, so don't decr the non-existent job lock
+		w.addToDead(job, runErr, false)
 	}
 }
 
@@ -222,8 +221,11 @@ func (w *worker) removeJobFromInProgress(job *Job) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("LREM", job.inProgQueue, 1, job.rawJSON)
-	if err != nil {
+	// remove job from in progress and decr the lock in one transaction
+	conn.Send("MULTI")
+	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
+	if _, err := conn.Do("EXEC"); err != nil {
 		logError("worker.remove_job_from_in_progress.lrem", err)
 	}
 }
@@ -234,17 +236,8 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 		w.addToRetry(job, runErr)
 	} else {
 		if !jt.SkipDead {
-			w.addToDead(job, runErr)
+			w.addToDead(job, runErr, true)
 		}
-	}
-}
-
-func (w *worker) decrLockCount(jobName string) {
-	conn := w.pool.Get()
-	defer conn.Close()
-	decrScript := redis.NewScript(1, redisLuaDecrLock)
-	if _, err := decrScript.Do(conn, redisKeyJobs(w.namespace, jobName)); err != nil {
-		logError("worker.decr_run_queue.del", err)
 	}
 }
 
@@ -261,7 +254,8 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	var backoff BackoffCalculator
 
 	// Choose the backoff provider
-	jt, ok := w.jobTypes[job.Name]; if ok {
+	jt, ok := w.jobTypes[job.Name]
+	if ok {
 		backoff = jt.Backoff
 	}
 
@@ -271,14 +265,14 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
 	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
-	_, err = conn.Do("EXEC")
-	if err != nil {
+	if _, err = conn.Do("EXEC"); err != nil {
 		logError("worker.add_to_retry.exec", err)
 	}
 }
 
-func (w *worker) addToDead(job *Job, runErr error) {
+func (w *worker) addToDead(job *Job, runErr error, decrLock bool) {
 	rawJSON, err := job.serialize()
 
 	if err != nil {
@@ -296,6 +290,9 @@ func (w *worker) addToDead(job *Job, runErr error) {
 
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	if decrLock {
+		conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
+	}
 	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	_, err = conn.Do("EXEC")
 	if err != nil {

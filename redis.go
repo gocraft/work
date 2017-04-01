@@ -110,19 +110,6 @@ local function getConcurrencyKey(jobQueue)
 end
 `
 
-// Used to safely decrement the lock for actively running jobs until the lock gets to 0
-// This allows us to change concurrency dynamically at runtime
-var redisLuaDecrLockFunction = fmt.Sprintf(`
--- getLockKey will be inserted below
-%s
-
-local function decrLock(jobQueue)
-  local activeJobs = redis.call('get', getLockKey(jobQueue))
-  if activeJobs and tonumber(activeJobs) > 0 then
-    redis.call('decr', getLockKey(jobQueue))
-  end
-end`, redisLuaJobsLockedKey)
-
 // Used to fetch the next job to run
 //
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
@@ -179,14 +166,6 @@ for i=1,keylen,2 do
 end
 return nil`, redisLuaJobsPausedKey, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
 
-
-//
-// KEYS[1] = the jobQueue
-var redisLuaDecrLock = fmt.Sprintf(`
-local jobQueue = KEYS[1]
-%s
-decrLock(jobQueue)`, redisLuaDecrLockFunction)
-
 // Used by the reaper to re-enqueue jobs that were in progress
 //
 // KEYS[1] = the 1st job's in progress queue
@@ -197,21 +176,21 @@ decrLock(jobQueue)`, redisLuaDecrLockFunction)
 // KEYS[N] = the last job's in progress queue
 // KEYS[N+1] = the last job's job queue
 var redisLuaReenqueueJob = fmt.Sprintf(`
+-- getLockKey inserted below
 %s
 
-local res
 local keylen = #KEYS
-local jobQueue, inProgQueue
+local res, jobQueue, inProgQueue
 for i=1,keylen,2 do
   inProgQueue = KEYS[i]
   jobQueue = KEYS[i+1]
   res = redis.call('rpoplpush', inProgQueue, jobQueue)
   if res then
-    decrLock(jobQueue)
+    redis.call('decr', getLockKey(jobQueue))
     return {res, inProgQueue, jobQueue}
   end
 end
-return nil`, redisLuaDecrLockFunction)
+return nil`, redisLuaJobsLockedKey)
 
 // KEYS[1] = zset of jobs (retry or scheduled), eg work:retry
 // KEYS[2] = zset of dead, eg work:dead. If we don't know the jobName of a job, we'll put it in dead.
