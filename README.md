@@ -303,6 +303,10 @@ You'll see a view that looks like this:
 * This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit
 * A redis key (see `redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type
 * The default value is `0`, which means "no limit on job concurrency"
+* **Note:** if you want to run jobs "single threaded" then you can set the `MaxConcurrency` accordingly:
+```go
+      worker_pool.JobWithOptions(jobName, JobOptions{MaxConcurrency: 1}, (*Context).WorkFxn)
+```
 
 ### Terminology reference
 * "worker pool" - a pool of workers
