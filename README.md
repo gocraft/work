@@ -296,6 +296,14 @@ You'll see a view that looks like this:
 * You can pause jobs from being processed from a specific queue by setting a "paused" redis key (see `redisKeyJobsPaused`)
 * Conversely, jobs in the queue will resume being processed once the paused redis key is removed
 
+## Job concurrency
+
+* You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`.
+* Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance
+* This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit
+* A redis key (see `redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type
+* The default value is `0`, which means "no limit on job concurrency"
+
 ### Terminology reference
 * "worker pool" - a pool of workers
 * "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
@@ -312,7 +320,8 @@ You'll see a view that looks like this:
 * "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
 * "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
 * "paused jobs" - if paused key is present for a queue, then no jobs from that queue will be processed by any workers until that queue's paused key is removed
-* "max "
+* "job concurrency" - the number of jobs being actively processed  of a particular type across worker pool processes but within a single redis instance
+
 ## Benchmarks
 
 The benches folder contains various benchmark code. In each case, we enqueue 100k jobs across 5 queues. The jobs are almost no-op jobs: they simply increment an atomic counter. We then measure the rate of change of the counter to obtain our measurement.
