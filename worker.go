@@ -143,7 +143,7 @@ func (w *worker) fetchJob() (*Job, error) {
 
 	conn := w.pool.Get()
 	defer conn.Close()
-	// fmt.Printf("scriptArgs=%v\n", scriptArgs)
+
 	values, err := redis.Values(w.redisFetchScript.Do(conn, scriptArgs...))
 	if err == redis.ErrNil {
 		return nil, nil
