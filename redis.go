@@ -56,16 +56,19 @@ func redisKeyHeartbeat(namespace, workerPoolID string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
 }
 
+var pauseKeySuffix = "paused"
 func redisKeyJobsPaused(namespace, jobName string) string {
-	return redisKeyJobs(namespace, jobName) + ":paused"
+	return redisKeyJobs(namespace, jobName) + ":" + pauseKeySuffix
 }
 
-func redisKeyJobsLocked(namespace, jobName string) string {
-	return redisKeyJobs(namespace, jobName) + ":locked"
+var lockKeySuffix = "lock"
+func redisKeyJobsLock(namespace, jobName string) string {
+	return redisKeyJobs(namespace, jobName) + ":" + lockKeySuffix
 }
 
+var concurrencyKeySuffix = "max_concurrency"
 func redisKeyJobsConcurrency(namespace, jobName string) string {
-	return redisKeyJobs(namespace, jobName) + ":max_concurrency"
+	return redisKeyJobs(namespace, jobName) + ":" + concurrencyKeySuffix
 }
 
 func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
@@ -92,23 +95,20 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 
 // Used by Lua scripts below and needs to follow same naming convention as redisKeyJobs* functions above
 // note: all assume the local var jobQueue is present, which is the the val of redisKeyJobs()
-var redisLuaJobsPausedKey = `
+var redisLuaJobsPausedKey = fmt.Sprintf(`
 local function getPauseKey(jobQueue)
-  return string.format("%s:paused", jobQueue)
-end
-`
+  return string.format("%%s:%s", jobQueue)
+end`, pauseKeySuffix)
 
-var redisLuaJobsLockedKey = `
+var redisLuaJobsLockedKey = fmt.Sprintf(`
 local function getLockKey(jobQueue)
-  return string.format("%s:locked", jobQueue)
-end
-`
+  return string.format("%%s:%s", jobQueue)
+end`, lockKeySuffix)
 
-var redisLuaJobsConcurrencyKey = `
+var redisLuaJobsConcurrencyKey = fmt.Sprintf(`
 local function getConcurrencyKey(jobQueue)
-  return string.format("%s:max_concurrency", jobQueue)
-end
-`
+  return string.format("%%s:%s", jobQueue)
+end`, concurrencyKeySuffix)
 
 // Used to fetch the next job to run
 //

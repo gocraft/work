@@ -542,7 +542,7 @@ func deletePausedAndLockedKeys(namespace, jobName string, pool *redis.Pool) erro
 	if _, err := conn.Do("DEL", redisKeyJobsPaused(namespace, jobName)); err != nil {
 		return err
 	}
-	if _, err := conn.Do("DEL", redisKeyJobsLocked(namespace, jobName)); err != nil {
+	if _, err := conn.Do("DEL", redisKeyJobsLock(namespace, jobName)); err != nil {
 		return err
 	}
 	return nil

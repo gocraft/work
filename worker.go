@@ -224,7 +224,7 @@ func (w *worker) removeJobFromInProgress(job *Job) {
 	// remove job from in progress and decr the lock in one transaction
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
+	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	if _, err := conn.Do("EXEC"); err != nil {
 		logError("worker.remove_job_from_in_progress.lrem", err)
 	}
@@ -265,7 +265,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
+	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
 	if _, err = conn.Do("EXEC"); err != nil {
 		logError("worker.add_to_retry.exec", err)
@@ -291,7 +291,7 @@ func (w *worker) addToDead(job *Job, runErr error, decrLock bool) {
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
 	if decrLock {
-		conn.Send("DECR", redisKeyJobsLocked(w.namespace, job.Name))
+		conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	}
 	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	_, err = conn.Do("EXEC")

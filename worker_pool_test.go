@@ -189,7 +189,7 @@ func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
 }
 
-func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
+func TestWorkerPoolStartCleansStaleJobLocks(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns, job1 := "work", "job1"
 	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1, MaxConcurrency: 5})
@@ -197,14 +197,14 @@ func TestWorkerPoolStartCleansStaleQueueLocks(t *testing.T) {
 	conn := pool.Get()
 	defer conn.Close()
 	// create a stale lock (no jobs in progress)
-	_, err := conn.Do("SET", redisKeyJobsLocked(ns, job1), "1")
+	_, err := conn.Do("SET", redisKeyJobsLock(ns, job1), "1")
 	assert.NoError(t, err)
 
 	// make sure stale lock is deleted
 	wp.removeStaleKeys()
-	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
+	lockKey, err := conn.Do("GET", redisKeyJobsLock(ns, job1))
 	assert.NoError(t, err)
-	assert.Nil(t, lockedKey)
+	assert.Nil(t, lockKey)
 	wp.Stop()
 }
 
@@ -216,7 +216,7 @@ func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
 	conn := pool.Get()
 	defer conn.Close()
 	// create a queue lock
-	_, err := conn.Do("SET", redisKeyJobsLocked(ns, job1), "1")
+	_, err := conn.Do("SET", redisKeyJobsLock(ns, job1), "1")
 	assert.NoError(t, err)
 	// set jobs in progress key
 	_, err = conn.Do("SET", redisKeyJobsInProgress(ns, "1", job1), "1")
@@ -224,9 +224,9 @@ func TestWorkerPoolStartSkipsInProgressQueueLocks(t *testing.T) {
 
 	// make sure active queue locks are not deleted
 	wp.removeStaleKeys()
-	lockedKey, err := conn.Do("GET", redisKeyJobsLocked(ns, job1))
+	lockKey, err := conn.Do("GET", redisKeyJobsLock(ns, job1))
 	assert.NoError(t, err)
-	assert.NotNil(t, lockedKey)
+	assert.NotNil(t, lockKey)
 	wp.Stop()
 }
 
