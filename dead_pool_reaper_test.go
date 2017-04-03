@@ -55,6 +55,8 @@ func TestDeadPoolReaper(t *testing.T) {
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "2", "type1"), "foo")
 	assert.NoError(t, err)
+	_, err = conn.Do("incr", redisKeyJobsLock(ns, "type1"))
+	assert.NoError(t, err)
 
 	// Ensure 0 jobs in jobs queue
 	jobsCount, err := redis.Int(conn.Do("llen", redisKeyJobs(ns, "type1")))
@@ -79,6 +81,11 @@ func TestDeadPoolReaper(t *testing.T) {
 	jobsCount, err = redis.Int(conn.Do("llen", redisKeyJobsInProgress(ns, "2", "type1")))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, jobsCount)
+
+	// Lock count should get decremented
+	lockCount, err := redis.Int(conn.Do("get", redisKeyJobsLock(ns, "type1")))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, lockCount)
 }
 
 func TestDeadPoolReaperNoHeartbeat(t *testing.T) {

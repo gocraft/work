@@ -10,6 +10,7 @@ gocraft/work lets you enqueue and processes background jobs in Go. Jobs are dura
 * Enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once.
 * Web UI to manage failed jobs and observe the system.
 * Periodically enqueue jobs on a cron-like schedule.
+* Pause / unpause jobs and control concurrency within and across processes
 
 ## Enqueue new jobs
 
@@ -245,7 +246,8 @@ You'll see a view that looks like this:
 ### Processing a job
 
 * To process a job, a worker will execute a Lua script to atomically move a job its queue to an in-progress queue.
-* The worker will then run the job. The job will either finish successfully or result in an error or panic.
+  * A job is dequeued and moved to in-progress if the job queue is not paused and the number of active jobs does not exceed concurrency limit for the job type 
+* The worker will then run the job and increment the job lock. The job will either finish successfully or result in an error or panic.
   * If the process completely crashes, the reaper will eventually find it in its in-progress queue and requeue it.
 * If the job is successful, we'll simply remove the job from the in-progress queue.
 * If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue. 
@@ -294,6 +296,18 @@ You'll see a view that looks like this:
 * You can pause jobs from being processed from a specific queue by setting a "paused" redis key (see `redisKeyJobsPaused`)
 * Conversely, jobs in the queue will resume being processed once the paused redis key is removed
 
+## Job concurrency
+
+* You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`.
+* Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance
+* This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit
+* A redis key (see `redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type
+* The default value is `0`, which means "no limit on job concurrency"
+* **Note:** if you want to run jobs "single threaded" then you can set the `MaxConcurrency` accordingly:
+```go
+      worker_pool.JobWithOptions(jobName, JobOptions{MaxConcurrency: 1}, (*Context).WorkFxn)
+```
+
 ### Terminology reference
 * "worker pool" - a pool of workers
 * "worker" - an individual worker in a single goroutine. Gets a job from redis, does job, gets next job...
@@ -310,6 +324,7 @@ You'll see a view that looks like this:
 * "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
 * "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
 * "paused jobs" - if paused key is present for a queue, then no jobs from that queue will be processed by any workers until that queue's paused key is removed
+* "job concurrency" - the number of jobs being actively processed  of a particular type across worker pool processes but within a single redis instance
 
 ## Benchmarks
 

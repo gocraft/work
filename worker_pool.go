@@ -47,10 +47,11 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority uint // Priority from 1 to 10000
-	MaxFails uint // 1: send straight to dead (unless SkipDead)
-	SkipDead bool // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	Backoff  BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority       uint              // Priority from 1 to 10000
+	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
+	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
 }
 
 // GenericHandler is a job handler without any custom context.
@@ -118,7 +119,7 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 	return wp
 }
 
-// Job registers the job name to the specified handler fn. For instnace, when workers pull jobs from the name queue, they'll be processed by the specified handler function.
+// Job registers the job name to the specified handler fn. For instance, when workers pull jobs from the name queue they'll be processed by the specified handler function.
 // fn can take one of these forms:
 // (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job) error, for the generic handler format.
@@ -173,7 +174,10 @@ func (wp *WorkerPool) Start() {
 	}
 	wp.started = true
 
+	wp.removeStaleKeys()
+	wp.writeConcurrencyControlsToRedis()
 	go wp.writeKnownJobsToRedis()
+
 	for _, w := range wp.workers {
 		go w.start()
 	}
@@ -250,18 +254,44 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 
 	conn := wp.pool.Get()
 	defer conn.Close()
-
 	key := redisKeyKnownJobs(wp.namespace)
-
 	jobNames := make([]interface{}, 0, len(wp.jobTypes)+1)
 	jobNames = append(jobNames, key)
 	for k := range wp.jobTypes {
 		jobNames = append(jobNames, k)
 	}
 
-	_, err := conn.Do("SADD", jobNames...)
-	if err != nil {
+	if _, err := conn.Do("SADD", jobNames...); err != nil {
 		logError("write_known_jobs", err)
+	}
+}
+
+func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
+	if len(wp.jobTypes) == 0 {
+		return
+	}
+
+	conn := wp.pool.Get()
+	defer conn.Close()
+	for jobName, jobType := range wp.jobTypes {
+		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
+			logError("write_concurrency_controls_max_concurrency", err)
+		}
+	}
+}
+
+func (wp *WorkerPool) removeStaleKeys() {
+	if len(wp.jobTypes) == 0 {
+		return
+	}
+
+	conn := wp.pool.Get()
+	defer conn.Close()
+	staleKeysScript := redis.NewScript(1, redisRemoveStaleKeys)
+	for k := range wp.jobTypes {
+		if _, err := staleKeysScript.Do(conn, redisKeyJobs(wp.namespace, k)); err != nil {
+			logError("remove_stale_keys", err)
+		}
 	}
 }
 
