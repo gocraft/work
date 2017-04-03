@@ -10,6 +10,7 @@ gocraft/work lets you enqueue and processes background jobs in Go. Jobs are dura
 * Enqueue unique jobs so that only one job with a given name/arguments exists in the queue at once.
 * Web UI to manage failed jobs and observe the system.
 * Periodically enqueue jobs on a cron-like schedule.
+* Pause / unpause jobs and control concurrency within and across processes
 
 ## Enqueue new jobs
 
@@ -245,7 +246,8 @@ You'll see a view that looks like this:
 ### Processing a job
 
 * To process a job, a worker will execute a Lua script to atomically move a job its queue to an in-progress queue.
-* The worker will then run the job. The job will either finish successfully or result in an error or panic.
+  * A job is dequeued and moved to in-progress if the job queue is not paused and the number of active jobs does not exceed concurrency limit for the job type 
+* The worker will then run the job and increment the job lock. The job will either finish successfully or result in an error or panic.
   * If the process completely crashes, the reaper will eventually find it in its in-progress queue and requeue it.
 * If the job is successful, we'll simply remove the job from the in-progress queue.
 * If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue. 
@@ -310,7 +312,7 @@ You'll see a view that looks like this:
 * "scheduled jobs" - jobs enqueued to be run in th future will be put on a scheduled job queue.
 * "dead jobs" - if a job exceeds its MaxFails count, it will be put on the dead job queue.
 * "paused jobs" - if paused key is present for a queue, then no jobs from that queue will be processed by any workers until that queue's paused key is removed
-
+* "max "
 ## Benchmarks
 
 The benches folder contains various benchmark code. In each case, we enqueue 100k jobs across 5 queues. The jobs are almost no-op jobs: they simply increment an atomic counter. We then measure the rate of change of the counter to obtain our measurement.

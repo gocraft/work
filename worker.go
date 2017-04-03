@@ -198,8 +198,7 @@ func (w *worker) processJob(job *Job) {
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
 		job.failed(runErr)
-		// never actually enqueued anything, so don't decr the non-existent job lock
-		w.addToDead(job, runErr, false)
+		w.addToDead(job, runErr)
 	}
 }
 
@@ -236,7 +235,7 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 		w.addToRetry(job, runErr)
 	} else {
 		if !jt.SkipDead {
-			w.addToDead(job, runErr, true)
+			w.addToDead(job, runErr)
 		}
 	}
 }
@@ -272,7 +271,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	}
 }
 
-func (w *worker) addToDead(job *Job, runErr error, decrLock bool) {
+func (w *worker) addToDead(job *Job, runErr error) {
 	rawJSON, err := job.serialize()
 
 	if err != nil {
@@ -290,9 +289,7 @@ func (w *worker) addToDead(job *Job, runErr error, decrLock bool) {
 
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	if decrLock {
-		conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	}
+	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	_, err = conn.Do("EXEC")
 	if err != nil {
