@@ -174,8 +174,7 @@ func (wp *WorkerPool) Start() {
 	}
 	wp.started = true
 
-	// TODO: need to fix Lua script to remove stale keys
-	// wp.removeStaleKeys()
+	// TODO: we should cleanup stale keys on startup from previously registered jobs
 	wp.writeConcurrencyControlsToRedis()
 	go wp.writeKnownJobsToRedis()
 
@@ -277,21 +276,6 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 	for jobName, jobType := range wp.jobTypes {
 		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
 			logError("write_concurrency_controls_max_concurrency", err)
-		}
-	}
-}
-
-func (wp *WorkerPool) removeStaleKeys() {
-	if len(wp.jobTypes) == 0 {
-		return
-	}
-
-	conn := wp.pool.Get()
-	defer conn.Close()
-	staleKeysScript := redis.NewScript(1, redisRemoveStaleKeys)
-	for k := range wp.jobTypes {
-		if _, err := staleKeysScript.Do(conn, redisKeyJobs(wp.namespace, k)); err != nil {
-			logError("remove_stale_keys", err)
 		}
 	}
 }
