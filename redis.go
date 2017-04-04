@@ -341,22 +341,3 @@ if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
 end
 return 'dup'
 `
-
-// KEYS[1] = jobs run queue
-var redisRemoveStaleKeys = fmt.Sprintf(`
--- getLockKey will be inserted below
-%s
--- getConcurrencyKey will be inserted below
-%s
-
--- TODO: need something more efficient than KEYS cmd
-local function isInProgress(jobQueue)
-  return redis.call('keys', jobQueue .. ':*:inprogress')
-end
-
-local jobQueue = KEYS[1]
-if next(isInProgress(jobQueue)) == nil then
-  redis.call('del', getLockKey(jobQueue))
-  redis.call('del', getConcurrencyKey(jobQueue))
-end
-return 0`, redisLuaJobsLockedKey, redisLuaJobsConcurrencyKey)
