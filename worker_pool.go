@@ -174,7 +174,8 @@ func (wp *WorkerPool) Start() {
 	}
 	wp.started = true
 
-	wp.removeStaleKeys()
+	// TODO: need to fix Lua script to remove stale keys
+	// wp.removeStaleKeys()
 	wp.writeConcurrencyControlsToRedis()
 	go wp.writeKnownJobsToRedis()
 

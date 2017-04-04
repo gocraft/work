@@ -349,6 +349,7 @@ var redisRemoveStaleKeys = fmt.Sprintf(`
 -- getConcurrencyKey will be inserted below
 %s
 
+-- TODO: need something more efficient than KEYS cmd
 local function isInProgress(jobQueue)
   return redis.call('keys', jobQueue .. ':*:inprogress')
 end
