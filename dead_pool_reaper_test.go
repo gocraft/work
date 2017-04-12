@@ -219,3 +219,47 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, jobsCount)
 }
+
+func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	job1 := "job1"
+	stalePoolID := "aaa"
+	cleanKeyspace(ns, pool)
+	// test vars
+	expectedDeadTime := 5 * time.Millisecond
+	expiration := 2 * expectedDeadTime
+
+	// create a stale job with a heartbeat
+	conn := pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("SADD", redisKeyWorkerPools(ns), stalePoolID)
+	assert.NoError(t, err)
+	_, err = conn.Do("LPUSH", redisKeyJobsInProgress(ns, stalePoolID, job1), `{"sleep": 10}`)
+	assert.NoError(t, err)
+	jobTypes := map[string]*jobType{"job1": nil}
+	staleHeart := newWorkerPoolHeartbeater(ns, pool, stalePoolID, jobTypes, 1, []string{"id1"})
+	staleHeart.expires = expiration
+	staleHeart.start()
+
+	// sleep long enough for staleJob to be considered dead
+	time.Sleep(expectedDeadTime)
+
+	// should have 1 stale job and empty job queue
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, stalePoolID, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+
+	// setup a worker pool and start the reaper, which should restart the stale job above
+	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1})
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool)
+	wp.deadPoolReaper.deadTime = expectedDeadTime
+	wp.deadPoolReaper.start()
+	// provide some initialization time
+	time.Sleep(1 * time.Millisecond)
+
+	// now we should have 1 job in queue and no more stale jobs
+	assert.EqualValues(t, 1, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
+	staleHeart.stop()
+	wp.deadPoolReaper.stop()
+}

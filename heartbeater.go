@@ -9,18 +9,24 @@ import (
 	"time"
 )
 
+const (
+	// expire the heartbeat key after the reaper has had a chance to assess whether or not the job(s) are dead
+	heartbeatExpiration = reapPeriod + (reapJitterSecs+1)*time.Second
+	beatPeriod = 5 * time.Second
+)
+
 type workerPoolHeartbeater struct {
 	workerPoolID string
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
-
-	//
-	concurrency uint
-	jobNames    string
-	startedAt   int64
-	pid         int
-	hostname    string
-	workerIDs   string
+	expires      time.Duration
+	beatPeriod   time.Duration
+	concurrency  uint
+	jobNames     string
+	startedAt    int64
+	pid          int
+	hostname     string
+	workerIDs    string
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
@@ -28,12 +34,12 @@ type workerPoolHeartbeater struct {
 
 func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeater {
 	h := &workerPoolHeartbeater{
-		workerPoolID: workerPoolID,
-		namespace:    namespace,
-		pool:         pool,
-
-		concurrency: concurrency,
-
+		workerPoolID:     workerPoolID,
+		namespace:        namespace,
+		pool:             pool,
+		expires:          heartbeatExpiration,
+		beatPeriod:       beatPeriod,
+		concurrency:      concurrency,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -71,7 +77,7 @@ func (h *workerPoolHeartbeater) stop() {
 func (h *workerPoolHeartbeater) loop() {
 	h.startedAt = nowEpochSeconds()
 	h.heartbeat() // do it right away
-	ticker := time.Tick(5000 * time.Millisecond)
+	ticker := time.Tick(h.beatPeriod)
 	for {
 		select {
 		case <-h.stopChan:
@@ -101,7 +107,7 @@ func (h *workerPoolHeartbeater) heartbeat() {
 		"host", h.hostname,
 		"pid", h.pid,
 	)
-	conn.Send("EXPIRE", heartbeatKey, 60)
+	conn.Send("EXPIRE", heartbeatKey, h.expires.Seconds())
 
 	if err := conn.Flush(); err != nil {
 		logError("heartbeat", err)
