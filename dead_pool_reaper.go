@@ -10,13 +10,17 @@ import (
 )
 
 const (
-	deadTime   = 5 * time.Minute
-	reapPeriod = 10 * time.Minute
+	deadTime       = 5 * time.Minute
+	reapPeriod     = 10 * time.Minute
+	reapJitterSecs = 30
 )
 
 type deadPoolReaper struct {
-	namespace        string
-	pool             *redis.Pool
+	namespace  string
+	pool       *redis.Pool
+	deadTime   time.Duration
+	reapPeriod time.Duration
+
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
@@ -25,6 +29,8 @@ func newDeadPoolReaper(namespace string, pool *redis.Pool) *deadPoolReaper {
 	return &deadPoolReaper{
 		namespace:        namespace,
 		pool:             pool,
+		deadTime:         deadTime,
+		reapPeriod:       reapPeriod,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -46,7 +52,7 @@ func (r *deadPoolReaper) loop() {
 	}
 
 	// Begin reaping periodically
-	timer := time.NewTimer(reapPeriod)
+	timer := time.NewTimer(r.reapPeriod)
 	defer timer.Stop()
 
 	for {
@@ -56,7 +62,7 @@ func (r *deadPoolReaper) loop() {
 			return
 		case <-timer.C:
 			// Schedule next occurrence with jitter
-			timer.Reset(reapPeriod + time.Duration(rand.Intn(30))*time.Second)
+			timer.Reset(r.reapPeriod + time.Duration(rand.Intn(reapJitterSecs))*time.Second)
 
 			// Reap
 			if err := r.reap(); err != nil {
@@ -151,7 +157,7 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 			return nil, err
 		}
 
-		if time.Unix(heartbeatAt, 0).Add(deadTime).After(time.Now()) {
+		if time.Unix(heartbeatAt, 0).Add(r.deadTime).After(time.Now()) {
 			continue
 		}
 
