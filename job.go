@@ -40,6 +40,10 @@ func (j *Job) SetPayload(payload interface{}) error {
 }
 
 func (j *Job) UnmarshalPayload(dest interface{}) error {
+	if len(j.Payload) == 0 {
+		return nil
+	}
+
 	return json.Unmarshal(j.Payload, dest)
 }
 
