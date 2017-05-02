@@ -352,7 +352,7 @@ func TestWorkersPaused(t *testing.T) {
 func TestStop(t *testing.T) {
 	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", "notworking:6379")
+			c, err := redis.Dial("tcp", "notworking:6379", redis.DialConnectTimeout(1*time.Second))
 			if err != nil {
 				return nil, err
 			}
