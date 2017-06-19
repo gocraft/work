@@ -320,7 +320,7 @@ return requeuedCount
 `
 
 // KEYS[1] = job queue to push onto
-// KEYS[2] = Unique job's key. Test for existance and set if we push.
+// KEYS[2] = Unique job's key. Test for existence and set if we push.
 // ARGV[1] = job
 var redisLuaEnqueueUnique = `
 if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
