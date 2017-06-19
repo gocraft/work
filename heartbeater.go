@@ -81,7 +81,7 @@ func (h *workerPoolHeartbeater) loop() {
 	for {
 		select {
 		case <-h.stopChan:
-			h.removeHeartbeat() // TODO: why do we do this here?
+			h.removeHeartbeat()
 			h.doneStoppingChan <- struct{}{}
 			return
 		case <-ticker:
