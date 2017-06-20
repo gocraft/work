@@ -86,16 +86,15 @@ func (r *deadPoolReaper) reap() error {
 
 	// Cleanup all dead pools
 	for deadPoolID, jobTypes := range deadPoolIDs {
-		// Requeue all dangling jobs
-		r.requeueInProgressJobs(deadPoolID, jobTypes)
-
-		// Remove hearbeat
-		_, err = conn.Do("DEL", redisKeyHeartbeat(r.namespace, deadPoolID))
-		if err != nil {
-			return err
+		// if we found jobs from the heartbeat, requeue them and remove the heartbeat
+		if len(jobTypes) > 0 {
+			r.requeueInProgressJobs(deadPoolID, jobTypes)
+			if _, err = conn.Do("DEL", redisKeyHeartbeat(r.namespace, deadPoolID)); err != nil {
+				return err
+			}
 		}
 
-		// Remove from set
+		// Remove dead pool from worker pools set
 		_, err = conn.Do("SREM", workerPoolsKey, deadPoolID)
 		if err != nil {
 			return err
@@ -151,6 +150,8 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 		// Check that last heartbeat was long enough ago to consider the pool dead
 		heartbeatAt, err := redis.Int64(conn.Do("HGET", heartbeatKey, "heartbeat_at"))
 		if err == redis.ErrNil {
+			// dead pool with no heartbeat
+			deadPools[workerPoolID] = []string{}
 			continue
 		}
 		if err != nil {
