@@ -109,11 +109,11 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	err = conn.Flush()
 	assert.NoError(t, err)
 
-	// Test getting dead pool
+	// Test getting dead pool ids
 	reaper := newDeadPoolReaper(ns, pool)
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
-	assert.Equal(t, deadPools, map[string][]string{})
+	assert.Equal(t, deadPools, map[string][]string{"1": {}, "2": {}, "3": {}})
 
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "2", "type1"), "foo")
@@ -129,19 +129,29 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, jobsCount)
 
+	// Ensure dead worker pools still in the set
+	jobsCount, err = redis.Int(conn.Do("scard", redisKeyWorkerPools(ns)))
+	assert.NoError(t, err)
+	assert.Equal(t, 3, jobsCount)
+
 	// Reap
 	err = reaper.reap()
 	assert.NoError(t, err)
 
-	// Ensure 0 jobs in jobs queue
+	// Ensure jobs queue was not altered
 	jobsCount, err = redis.Int(conn.Do("llen", redisKeyJobs(ns, "type1")))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, jobsCount)
 
-	// Ensure 1 job in inprogress queue
+	// Ensure inprogress queue was not altered
 	jobsCount, err = redis.Int(conn.Do("llen", redisKeyJobsInProgress(ns, "2", "type1")))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, jobsCount)
+
+	// Ensure dead worker pools were removed from the set
+	jobsCount, err = redis.Int(conn.Do("scard", redisKeyWorkerPools(ns)))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, jobsCount)
 }
 
 func TestDeadPoolReaperNoJobTypes(t *testing.T) {
