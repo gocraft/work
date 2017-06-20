@@ -129,9 +129,9 @@ end
 `)
 
 var redisLuaReleaseLock = fmt.Sprintf(`
-local function releaseLock(jobQueue, workerPoolId)
+local function releaseLock(jobQueue, lockID)
   redis.call('decr', getLockKey(jobQueue))
-  redis.call('hincrby', getLockInfoKey(jobQueue), workerPoolId, -1)
+  redis.call('hincrby', getLockInfoKey(jobQueue), lockID, -1)
 end
 `)
 
@@ -167,7 +167,7 @@ local function isPaused(pauseKey)
   return redis.call('get', pauseKey)
 end
 
-local function canRun(lockKey, lockInfoKey, maxConcurrency)
+local function canRun(lockKey, maxConcurrency)
   local activeJobs = tonumber(redis.call('get', lockKey))
   if (not maxConcurrency or maxConcurrency == 0) or (not activeJobs or activeJobs < maxConcurrency) then
     -- default case: maxConcurrency not defined or set to 0 means no cap on concurrent jobs OR

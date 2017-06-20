@@ -104,7 +104,6 @@ func (w *worker) loop() {
 			timer.Reset(0)
 		case <-timer.C:
 			gotJob := true
-			jobsPerLoop := 1
 			for gotJob {
 				job, err := w.fetchJob()
 				if err != nil {
@@ -112,12 +111,6 @@ func (w *worker) loop() {
 					gotJob = false
 					timer.Reset(10 * time.Millisecond)
 				} else if job != nil {
-					fmt.Printf("worker %v Fetched job num %v -- %v\n", w.workerID, jobsPerLoop, job)
-					jobsPerLoop++
-					if jobsPerLoop > 1 {
-
-
-					}
 					w.processJob(job)
 					consequtiveNoJobs = 0
 				} else {
@@ -131,7 +124,6 @@ func (w *worker) loop() {
 					if idx >= int64(len(sleepBackoffsInMilliseconds)) {
 						idx = int64(len(sleepBackoffsInMilliseconds)) - 1
 					}
-					// fmt.Printf("Jobs per loop=%v -- worker id=%v\n", jobsPerLoop, w.workerID)
 					timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
 				}
 			}
