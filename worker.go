@@ -63,7 +63,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*2, redisLuaFetchJob)
+	w.redisFetchScript = redis.NewScript(len(jobTypes)*3, redisLuaFetchJob)
 }
 
 func (w *worker) start() {
@@ -104,6 +104,7 @@ func (w *worker) loop() {
 			timer.Reset(0)
 		case <-timer.C:
 			gotJob := true
+			jobsPerLoop := 1
 			for gotJob {
 				job, err := w.fetchJob()
 				if err != nil {
@@ -111,6 +112,12 @@ func (w *worker) loop() {
 					gotJob = false
 					timer.Reset(10 * time.Millisecond)
 				} else if job != nil {
+					fmt.Printf("worker %v Fetched job num %v -- %v\n", w.workerID, jobsPerLoop, job)
+					jobsPerLoop++
+					if jobsPerLoop > 1 {
+
+
+					}
 					w.processJob(job)
 					consequtiveNoJobs = 0
 				} else {
@@ -124,6 +131,7 @@ func (w *worker) loop() {
 					if idx >= int64(len(sleepBackoffsInMilliseconds)) {
 						idx = int64(len(sleepBackoffsInMilliseconds)) - 1
 					}
+					// fmt.Printf("Jobs per loop=%v -- worker id=%v\n", jobsPerLoop, w.workerID)
 					timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
 				}
 			}
@@ -135,10 +143,10 @@ func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*2)
+	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*3)
 
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, w.poolID)
 	}
 
 	conn := w.pool.Get()
@@ -224,6 +232,7 @@ func (w *worker) removeJobFromInProgress(job *Job) {
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
 	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
+	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
 	if _, err := conn.Do("EXEC"); err != nil {
 		logError("worker.remove_job_from_in_progress.lrem", err)
 	}
@@ -265,6 +274,7 @@ func (w *worker) addToRetry(job *Job, runErr error) {
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
 	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
+	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
 	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
 	if _, err = conn.Do("EXEC"); err != nil {
 		logError("worker.add_to_retry.exec", err)
@@ -290,6 +300,7 @@ func (w *worker) addToDead(job *Job, runErr error) {
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
 	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
+	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
 	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	_, err = conn.Do("EXEC")
 	if err != nil {

@@ -93,6 +93,7 @@ func TestWorkerInProgress(t *testing.T) {
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
+	deletePausedAndLockedKeys(ns, job1, pool)
 
 	jobTypes := make(map[string]*jobType)
 	jobTypes[job1] = &jobType{
@@ -117,6 +118,8 @@ func TestWorkerInProgress(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 1, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	assert.EqualValues(t, 1, getInt64(pool, redisKeyJobsLock(ns, job1)))
+	assert.EqualValues(t, 1, hgetInt64(pool, redisKeyJobsLockInfo(ns, job1), w.poolID))
 
 	// nothing in the worker status
 	w.observer.drain()
@@ -143,6 +146,7 @@ func TestWorkerRetry(t *testing.T) {
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
+	deletePausedAndLockedKeys(ns, job1, pool)
 
 	jobTypes := make(map[string]*jobType)
 	jobTypes[job1] = &jobType{
@@ -167,6 +171,8 @@ func TestWorkerRetry(t *testing.T) {
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	assert.EqualValues(t, 0, getInt64(pool, redisKeyJobsLock(ns, job1)))
+	assert.EqualValues(t, 0, hgetInt64(pool, redisKeyJobsLockInfo(ns, job1), w.poolID))
 
 	// Get the job on the retry queue
 	ts, job := jobOnZset(pool, redisKeyRetry(ns))
@@ -239,6 +245,7 @@ func TestWorkerDead(t *testing.T) {
 	deleteQueue(pool, ns, job1)
 	deleteQueue(pool, ns, job2)
 	deleteRetryAndDead(pool, ns)
+	deletePausedAndLockedKeys(ns, job1, pool)
 
 	jobTypes := make(map[string]*jobType)
 	jobTypes[job1] = &jobType{
@@ -273,8 +280,10 @@ func TestWorkerDead(t *testing.T) {
 	assert.EqualValues(t, 1, zsetSize(pool, redisKeyDead(ns)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
 
-	// Get the job on the retry queue
+	// Get the job on the dead queue
 	ts, job := jobOnZset(pool, redisKeyDead(ns))
 
 	assert.True(t, ts <= nowEpochSeconds())
@@ -431,7 +440,7 @@ func zsetSize(pool *redis.Pool, key string) int64 {
 
 	v, err := redis.Int64(conn.Do("ZCARD", key))
 	if err != nil {
-		panic("could not delete retry/dead queue: " + err.Error())
+		panic("could not get ZSET size: " + err.Error())
 	}
 	return v
 }
@@ -442,7 +451,29 @@ func listSize(pool *redis.Pool, key string) int64 {
 
 	v, err := redis.Int64(conn.Do("LLEN", key))
 	if err != nil {
-		panic("could not delete retry/dead queue: " + err.Error())
+		panic("could not get list length: " + err.Error())
+	}
+	return v
+}
+
+func getInt64(pool *redis.Pool, key string) int64 {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := redis.Int64(conn.Do("GET", key))
+	if err != nil {
+		panic("could not GET int64: " + err.Error())
+	}
+	return v
+}
+
+func hgetInt64(pool *redis.Pool, redisKey, hashKey string) int64 {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := redis.Int64(conn.Do("HGET", redisKey, hashKey))
+	if err != nil {
+		panic("could not HGET int64: " + err.Error())
 	}
 	return v
 }
@@ -453,7 +484,7 @@ func jobOnZset(pool *redis.Pool, key string) (int64, *Job) {
 
 	v, err := conn.Do("ZRANGE", key, 0, 0, "WITHSCORES")
 	if err != nil {
-		panic("could not delete retry/dead queue: " + err.Error())
+		panic("ZRANGE error: " + err.Error())
 	}
 
 	vv := v.([]interface{})
@@ -478,7 +509,7 @@ func jobOnQueue(pool *redis.Pool, key string) *Job {
 
 	rawJSON, err := redis.Bytes(conn.Do("RPOP", key))
 	if err != nil {
-		panic("could not delete retry/dead queue: " + err.Error())
+		panic("could RPOP from job queue: " + err.Error())
 	}
 
 	job, err := newJob(rawJSON, nil, nil)
@@ -543,6 +574,9 @@ func deletePausedAndLockedKeys(namespace, jobName string, pool *redis.Pool) erro
 		return err
 	}
 	if _, err := conn.Do("DEL", redisKeyJobsLock(namespace, jobName)); err != nil {
+		return err
+	}
+	if _, err := conn.Do("DEL", redisKeyJobsLockInfo(namespace, jobName)); err != nil {
 		return err
 	}
 	return nil
