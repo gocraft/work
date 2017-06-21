@@ -208,6 +208,7 @@ return nil`, redisLuaJobsPausedKey, redisLuaJobsLockKey, redisLuaJobsLockInfoKey
 // ...
 // KEYS[N] = the last job's in progress queue
 // KEYS[N+1] = the last job's job queue
+// ARGV[1] = workerPoolID for job queue
 var redisLuaReenqueueJob = fmt.Sprintf(`
 -- getLockKey inserted below
 %s

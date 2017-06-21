@@ -234,7 +234,7 @@ func (wp *WorkerPool) startRequeuers() {
 	}
 	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
 	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
 	wp.retrier.start()
 	wp.scheduler.start()
 	wp.deadPoolReaper.start()

@@ -47,7 +47,7 @@ func TestDeadPoolReaper(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting dead pool
-	reaper := newDeadPoolReaper(ns, pool)
+	reaper := newDeadPoolReaper(ns, pool, []string{})
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}, "3": {"type1", "type2"}}, deadPools)
@@ -108,11 +108,20 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	assert.NoError(t, err)
 	err = conn.Send("SADD", workerPoolsKey, "3")
 	assert.NoError(t, err)
+	// stale lock info
+	err = conn.Send("SET", redisKeyJobsLock(ns, "type1"), 3)
+	assert.NoError(t, err)
+	err = conn.Send("HSET", redisKeyJobsLockInfo(ns, "type1"), "1", 1)
+	assert.NoError(t, err)
+	err = conn.Send("HSET", redisKeyJobsLockInfo(ns, "type1"), "2", 1)
+	assert.NoError(t, err)
+	err = conn.Send("HSET", redisKeyJobsLockInfo(ns, "type1"), "3", 1)
+	assert.NoError(t, err)
 	err = conn.Flush()
 	assert.NoError(t, err)
 
 	// Test getting dead pool ids
-	reaper := newDeadPoolReaper(ns, pool)
+	reaper := newDeadPoolReaper(ns, pool, []string{"type1"})
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, deadPools, map[string][]string{"1": {}, "2": {}, "3": {}})
@@ -154,6 +163,13 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	jobsCount, err = redis.Int(conn.Do("scard", redisKeyWorkerPools(ns)))
 	assert.NoError(t, err)
 	assert.Equal(t, 0, jobsCount)
+
+	// Stale lock info was cleaned up using reap.curJobTypes
+	assert.EqualValues(t, 0, getInt64(pool, redisKeyJobsLock(ns, "type1")))
+	for _, poolID := range []string{"1", "2", "3"} {
+		v, _ := conn.Do("HGET", redisKeyJobsLockInfo(ns, "type1"), poolID)
+		assert.Nil(t, v)
+	}
 }
 
 func TestDeadPoolReaperNoJobTypes(t *testing.T) {
@@ -188,7 +204,7 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting dead pool
-	reaper := newDeadPoolReaper(ns, pool)
+	reaper := newDeadPoolReaper(ns, pool, []string{})
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}}, deadPools)
@@ -263,7 +279,7 @@ func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 
 	// setup a worker pool and start the reaper, which should restart the stale job above
 	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1})
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, []string{"job1"})
 	wp.deadPoolReaper.deadTime = expectedDeadTime
 	wp.deadPoolReaper.start()
 	// provide some initialization time
@@ -284,6 +300,7 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	conn := pool.Get()
 	defer conn.Close()
 	job1, job2 := "type1", "type2"
+	jobNames := []string{job1, job2}
 	workerPoolID1, workerPoolID2 := "1", "2"
 	lock1 := redisKeyJobsLock(ns, job1)
 	lock2 := redisKeyJobsLock(ns, job2)
@@ -305,9 +322,9 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	err = conn.Flush()
 	assert.NoError(t, err)
 
-	reaper := newDeadPoolReaper(ns, pool)
+	reaper := newDeadPoolReaper(ns, pool, jobNames)
 	// clean lock info for workerPoolID1
-	reaper.cleanStaleLockInfo(workerPoolID1, []string{job1, job2})
+	reaper.cleanStaleLockInfo(workerPoolID1, jobNames)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 2, getInt64(pool, lock1)) // job1 lock should be decr by 1
 	assert.EqualValues(t, 1, getInt64(pool, lock2)) // job2 lock is unchanged
@@ -315,7 +332,7 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	assert.Nil(t, v)
 
 	// now clean lock info for workerPoolID2
-	reaper.cleanStaleLockInfo(workerPoolID2, []string{job1, job2})
+	reaper.cleanStaleLockInfo(workerPoolID2, jobNames)
 	assert.NoError(t, err)
 	// both locks should be at 0
 	assert.EqualValues(t, 0, getInt64(pool, lock1))

@@ -16,21 +16,23 @@ const (
 )
 
 type deadPoolReaper struct {
-	namespace  string
-	pool       *redis.Pool
-	deadTime   time.Duration
-	reapPeriod time.Duration
+	namespace   string
+	pool        *redis.Pool
+	deadTime    time.Duration
+	reapPeriod  time.Duration
+	curJobTypes []string
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
 
-func newDeadPoolReaper(namespace string, pool *redis.Pool) *deadPoolReaper {
+func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string) *deadPoolReaper {
 	return &deadPoolReaper{
 		namespace:        namespace,
 		pool:             pool,
 		deadTime:         deadTime,
 		reapPeriod:       reapPeriod,
+		curJobTypes:      curJobTypes,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -86,19 +88,23 @@ func (r *deadPoolReaper) reap() error {
 
 	// Cleanup all dead pools
 	for deadPoolID, jobTypes := range deadPoolIDs {
+		lockJobTypes := jobTypes
 		// if we found jobs from the heartbeat, requeue them and remove the heartbeat
 		if len(jobTypes) > 0 {
 			r.requeueInProgressJobs(deadPoolID, jobTypes)
 			if _, err = conn.Do("DEL", redisKeyHeartbeat(r.namespace, deadPoolID)); err != nil {
 				return err
 			}
+		} else {
+			// try to clean up locks for the current set of jobs if heartbeat was not found
+			lockJobTypes = r.curJobTypes
 		}
 		// Remove dead pool from worker pools set
 		if _, err = conn.Do("SREM", workerPoolsKey, deadPoolID); err != nil {
 			return err
 		}
 		// Cleanup any stale lock info
-		if err = r.cleanStaleLockInfo(deadPoolID, jobTypes); err != nil {
+		if err = r.cleanStaleLockInfo(deadPoolID, lockJobTypes); err != nil {
 			return err
 		}
 	}
