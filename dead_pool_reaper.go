@@ -10,9 +10,10 @@ import (
 )
 
 const (
-	deadTime       = 5 * time.Minute
-	reapPeriod     = 10 * time.Minute
-	reapJitterSecs = 30
+	deadTime          = 5 * time.Minute
+	reapPeriod        = 10 * time.Minute
+	reapJitterSecs    = 30
+	requeueKeysPerJob = 4
 )
 
 type deadPoolReaper struct {
@@ -120,7 +121,7 @@ func (r *deadPoolReaper) cleanStaleLockInfo(poolID string, jobTypes []string) er
 	for _, jobType := range jobTypes {
 		scriptArgs = append(scriptArgs, redisKeyJobsLock(r.namespace, jobType), redisKeyJobsLockInfo(r.namespace, jobType))
 	}
-	scriptArgs = append(scriptArgs, poolID)  // ARGV[1]
+	scriptArgs = append(scriptArgs, poolID) // ARGV[1]
 
 	conn := r.pool.Get()
 	defer conn.Close()
@@ -132,13 +133,13 @@ func (r *deadPoolReaper) cleanStaleLockInfo(poolID string, jobTypes []string) er
 }
 
 func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string) error {
-	numKeys := len(jobTypes) * 2
+	numKeys := len(jobTypes) * requeueKeysPerJob
 	redisRequeueScript := redis.NewScript(numKeys, redisLuaReenqueueJob)
 	var scriptArgs = make([]interface{}, 0, numKeys+1)
 
 	for _, jobType := range jobTypes {
 		// pops from in progress, push into job queue and decrement the queue lock
-		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType)) // KEYS[1...]
+		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), redisKeyJobsLock(r.namespace, jobType), redisKeyJobsLockInfo(r.namespace, jobType)) // KEYS[1-4 * N]
 	}
 	scriptArgs = append(scriptArgs, poolID) // ARGV[1]
 

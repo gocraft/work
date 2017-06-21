@@ -134,7 +134,7 @@ func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 
 	// now make sure the during the duration of job execution there is never > 1 job in flight
 	start := time.Now()
-	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	totalRuntime := time.Duration(sleepTime*numJobs) * time.Millisecond
 	time.Sleep(10 * time.Millisecond)
 	for time.Since(start) < totalRuntime {
 		// jobs in progress, lock count for the job and lock info for the pool should never exceed 1
@@ -183,7 +183,7 @@ func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
 
 	// now make sure no jobs get started until we unpause
 	start := time.Now()
-	totalRuntime := time.Duration(sleepTime * numJobs) * time.Millisecond
+	totalRuntime := time.Duration(sleepTime*numJobs) * time.Millisecond
 	for time.Since(start) < totalRuntime {
 		assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, job1)))
 		// lock count for the job and lock info for the pool should both be at 1 while job is running

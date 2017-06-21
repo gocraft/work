@@ -326,8 +326,8 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	// clean lock info for workerPoolID1
 	reaper.cleanStaleLockInfo(workerPoolID1, jobNames)
 	assert.NoError(t, err)
-	assert.EqualValues(t, 2, getInt64(pool, lock1)) // job1 lock should be decr by 1
-	assert.EqualValues(t, 1, getInt64(pool, lock2)) // job2 lock is unchanged
+	assert.EqualValues(t, 2, getInt64(pool, lock1))   // job1 lock should be decr by 1
+	assert.EqualValues(t, 1, getInt64(pool, lock2))   // job2 lock is unchanged
 	v, _ := conn.Do("HGET", lockInfo1, workerPoolID1) // workerPoolID1 removed from job1's lock info
 	assert.Nil(t, v)
 
