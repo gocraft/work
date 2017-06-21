@@ -232,6 +232,38 @@ for i=1,keylen,3 do
 end
 return nil`, redisLuaJobsLockKey, redisLuaJobsLockInfoKey, redisLuaReleaseLock)
 
+// Used by the reaper to clean up stale locks
+//
+// KEYS[1] = the 1st job's lock
+// KEYS[2] = the 1st job's lock info hash
+// KEYS[3] = the 2nd job's lock
+// KEYS[4] = the 2nd job's lock info hash
+// ...
+// KEYS[N] = the last job's lock
+// KEYS[N+1] = the last job's lock info haash
+// ARGV[1] = the dead worker pool id
+var redisLuaReapStaleLocks =  `
+local keylen = #KEYS
+local lock, lockInfo, deadLockCount
+local deadPoolID = ARGV[1]
+
+for i=1,keylen,2 do
+  lock = KEYS[i]
+  lockInfo = KEYS[i+1]
+  deadLockCount = tonumber(redis.call('hget', lockInfo, deadPoolID))
+
+  if deadLockCount then
+    redis.call('decrby', lock, deadLockCount)
+    redis.call('hdel', lockInfo, deadPoolID)
+
+    if tonumber(redis.call('get', lock)) < 0 then
+      redis.call('set', lock, 0)
+    end
+  end
+end
+return nil
+`
+
 // KEYS[1] = zset of jobs (retry or scheduled), eg work:retry
 // KEYS[2] = zset of dead, eg work:dead. If we don't know the jobName of a job, we'll put it in dead.
 // KEYS[3...] = known job queues, eg ["work:jobs:create_watch", "work:jobs:send_email", ...]
@@ -275,8 +307,8 @@ for i=1,jobCount do
   j = cjson.decode(jobs[i])
   if j['id'] == ARGV[2] then
     redis.call('zrem', KEYS[1], jobs[i])
-	deletedCount = deletedCount + 1
-	jobBytes = jobs[i]
+    deletedCount = deletedCount + 1
+    jobBytes = jobs[i]
   end
 end
 return {deletedCount, jobBytes}
