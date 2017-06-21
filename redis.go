@@ -146,11 +146,9 @@ for i=1,keylen,%d do
   maxConcurrency = tonumber(redis.call('get', concurrencyKey))
 
   if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, maxConcurrency) then
+    acquireLock(lockKey, lockInfoKey, workerPoolID)
     res = redis.call('rpoplpush', jobQueue, inProgQueue)
-    if res then
-      acquireLock(lockKey, lockInfoKey, workerPoolID)
-      return {res, jobQueue, inProgQueue}
-    end
+    return {res, jobQueue, inProgQueue}
   end
 end
 return nil`, fetchKeysPerJobType)
