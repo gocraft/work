@@ -126,14 +126,15 @@ func (r *deadPoolReaper) cleanStaleLockInfo(poolID string, jobTypes []string) er
 }
 
 func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string) error {
-	numArgs := len(jobTypes) * 3
-	redisRequeueScript := redis.NewScript(numArgs, redisLuaReenqueueJob)
-	var scriptArgs = make([]interface{}, 0, numArgs)
+	numKeys := len(jobTypes) * 2
+	redisRequeueScript := redis.NewScript(numKeys, redisLuaReenqueueJob)
+	var scriptArgs = make([]interface{}, 0, numKeys+1)
 
 	for _, jobType := range jobTypes {
 		// pops from in progress, push into job queue and decrement the queue lock
-		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType), poolID)
+		scriptArgs = append(scriptArgs, redisKeyJobsInProgress(r.namespace, poolID, jobType), redisKeyJobs(r.namespace, jobType)) // KEYS[1...]
 	}
+	scriptArgs = append(scriptArgs, poolID) // ARGV[1]
 
 	conn := r.pool.Get()
 	defer conn.Close()

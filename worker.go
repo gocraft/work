@@ -63,7 +63,7 @@ func (w *worker) updateMiddlewareAndJobTypes(middleware []*middlewareHandler, jo
 	}
 	w.sampler = sampler
 	w.jobTypes = jobTypes
-	w.redisFetchScript = redis.NewScript(len(jobTypes)*3, redisLuaFetchJob)
+	w.redisFetchScript = redis.NewScript(len(jobTypes)*2, redisLuaFetchJob)
 }
 
 func (w *worker) start() {
@@ -135,12 +135,13 @@ func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.
 	w.sampler.sample()
-	var scriptArgs = make([]interface{}, 0, len(w.sampler.samples)*3)
+	numKeys := len(w.sampler.samples)*2
+	var scriptArgs = make([]interface{}, 0, numKeys+1)
 
 	for _, s := range w.sampler.samples {
-		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg, w.poolID)
+		scriptArgs = append(scriptArgs, s.redisJobs, s.redisJobsInProg) // KEYS[1...]
 	}
-
+	scriptArgs = append(scriptArgs, w.poolID) // ARGV[1]
 	conn := w.pool.Get()
 	defer conn.Close()
 

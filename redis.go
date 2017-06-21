@@ -122,16 +122,16 @@ local function getConcurrencyKey(jobQueue)
 end`, concurrencyKeySuffix)
 
 var redisLuaAcquireLock = fmt.Sprintf(`
-local function acquireLock(jobQueue, lockID)
+local function acquireLock(jobQueue, workerPoolID)
   redis.call('incr', getLockKey(jobQueue))
-  redis.call('hincrby', getLockInfoKey(jobQueue), lockID, 1)
+  redis.call('hincrby', getLockInfoKey(jobQueue), workerPoolID, 1)
 end
 `)
 
 var redisLuaReleaseLock = fmt.Sprintf(`
-local function releaseLock(jobQueue, lockID)
+local function releaseLock(jobQueue, workerPoolID)
   redis.call('decr', getLockKey(jobQueue))
-  redis.call('hincrby', getLockInfoKey(jobQueue), lockID, -1)
+  redis.call('hincrby', getLockInfoKey(jobQueue), workerPoolID, -1)
 end
 `)
 
@@ -139,14 +139,12 @@ end
 //
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
 // KEYS[2] = the 1st job queue's in prog queue, eg, "work:jobs:emails:97c84119d13cb54119a38743:inprogress"
-// KEYS[3] = the 1st job queue's lockId, currently worker pool Id eg, "97c84119d13cb54119a38743"
-// KEYS[4] = the 2nd job queue...
-// KEYS[5] = the 2nd job queue's in prog queue...
-// KEYS[6] = the 2nd job queue's lockId...
+// KEYS[3] = the 2nd job queue...
+// KEYS[4] = the 2nd job queue's in prog queue...
 // ...
 // KEYS[N] = the last job queue...
 // KEYS[N+1] = the last job queue's in prog queue...
-// KEYS[N+2] = the last job queue's lockId...
+// ARGV[1] = job queue's workerPoolID
 var redisLuaFetchJob = fmt.Sprintf(`
 -- getPauseKey will be inserted below
 %s
@@ -180,13 +178,13 @@ local function canRun(lockKey, maxConcurrency)
   end
 end
 
-local res, jobQueue, inProgQueue, pauseKey, lockKey, maxConcurrency, lockID
+local res, jobQueue, inProgQueue, pauseKey, lockKey, maxConcurrency, workerPoolID
 local keylen = #KEYS
+workerPoolID = ARGV[1]
 
-for i=1,keylen,3 do
+for i=1,keylen,2 do
   jobQueue = KEYS[i]
   inProgQueue = KEYS[i+1]
-  lockID = KEYS[i+2]
   pauseKey = getPauseKey(jobQueue)
   lockKey = getLockKey(jobQueue)
   maxConcurrency = tonumber(redis.call('get', getConcurrencyKey(jobQueue)))
@@ -194,7 +192,7 @@ for i=1,keylen,3 do
   if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, maxConcurrency) then
     res = redis.call('rpoplpush', jobQueue, inProgQueue)
     if res then
-      acquireLock(jobQueue, lockID)
+      acquireLock(jobQueue, workerPoolID)
       return {res, jobQueue, inProgQueue}
     end
   end
@@ -219,14 +217,14 @@ var redisLuaReenqueueJob = fmt.Sprintf(`
 %s
 
 local keylen = #KEYS
-local res, jobQueue, inProgQueue, lockID
-for i=1,keylen,3 do
+local res, jobQueue, inProgQueue, workerPoolID
+workerPoolID = ARGV[1]
+for i=1,keylen,2 do
   inProgQueue = KEYS[i]
   jobQueue = KEYS[i+1]
-  lockID = KEYS[i+2]
   res = redis.call('rpoplpush', inProgQueue, jobQueue)
   if res then
-    releaseLock(jobQueue, lockID)
+    releaseLock(jobQueue, workerPoolID)
     return {res, inProgQueue, jobQueue}
   end
 end
