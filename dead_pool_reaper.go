@@ -174,11 +174,9 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 	deadPools := map[string][]string{}
 	for _, workerPoolID := range workerPoolIDs {
 		heartbeatKey := redisKeyHeartbeat(r.namespace, workerPoolID)
-
-		// Check that last heartbeat was long enough ago to consider the pool dead
 		heartbeatAt, err := redis.Int64(conn.Do("HGET", heartbeatKey, "heartbeat_at"))
 		if err == redis.ErrNil {
-			// dead pool with no heartbeat
+			// heartbeat expired, save dead pool and use cur set of jobs from reaper
 			deadPools[workerPoolID] = []string{}
 			continue
 		}
@@ -186,6 +184,7 @@ func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 			return nil, err
 		}
 
+		// Check that last heartbeat was long enough ago to consider the pool dead
 		if time.Unix(heartbeatAt, 0).Add(r.deadTime).After(time.Now()) {
 			continue
 		}
