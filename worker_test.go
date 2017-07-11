@@ -3,10 +3,12 @@ package work
 import (
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/gocraft/work"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -361,7 +363,7 @@ func TestWorkersPaused(t *testing.T) {
 func TestStop(t *testing.T) {
 	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", "notworking:6379")
+			c, err := redis.Dial("tcp", "notworking:6379", redis.DialConnectTimeout(1*time.Second))
 			if err != nil {
 				return nil, err
 			}
@@ -580,4 +582,47 @@ func deletePausedAndLockedKeys(namespace, jobName string, pool *redis.Pool) erro
 		return err
 	}
 	return nil
+}
+
+type emptyCtx struct{}
+
+// Starts up a pool with two workers emptying it as fast as they can
+// The pool is Stop()ped while jobs are still going on.  Tests that the
+// pool processing is really stopped and that it's not first completely
+// drained before returning.
+// https://github.com/gocraft/work/issues/24
+func TestWorkerPoolStop(t *testing.T) {
+	ns := "will_it_end"
+	pool := newTestPool(":6379")
+	var started, stopped int32
+	num_iters := 30
+
+	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool)
+
+	wp.Job("sample_job", func(c *emptyCtx, job *Job) error {
+		atomic.AddInt32(&started, 1)
+		time.Sleep(1 * time.Second)
+		atomic.AddInt32(&stopped, 1)
+		return nil
+	})
+
+	var enqueuer = work.NewEnqueuer(ns, pool)
+
+	for i := 0; i <= num_iters; i++ {
+		enqueuer.Enqueue("sample_job", work.Q{})
+	}
+
+	// Start the pool and quit before it has had a chance to complete
+	// all the jobs.
+	wp.Start()
+	time.Sleep(5 * time.Second)
+	wp.Stop()
+
+	if started != stopped {
+		t.Errorf("Expected that jobs were finished and not killed while processing (started=%d, stopped=%d)", started, stopped)
+	}
+
+	if started >= int32(num_iters) {
+		t.Errorf("Expected that jobs queue was not completely emptied.")
+	}
 }
