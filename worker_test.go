@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -606,10 +605,10 @@ func TestWorkerPoolStop(t *testing.T) {
 		return nil
 	})
 
-	var enqueuer = work.NewEnqueuer(ns, pool)
+	var enqueuer = NewEnqueuer(ns, pool)
 
 	for i := 0; i <= num_iters; i++ {
-		enqueuer.Enqueue("sample_job", work.Q{})
+		enqueuer.Enqueue("sample_job", Q{})
 	}
 
 	// Start the pool and quit before it has had a chance to complete
