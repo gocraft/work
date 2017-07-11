@@ -69,7 +69,8 @@ type middlewareHandler struct {
 	GenericMiddlewareHandler GenericMiddlewareHandler
 }
 
-// NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers. concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
+// NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
+// concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
 	if pool == nil {
 		panic("NewWorkerPool needs a non-nil *redis.Pool")
@@ -127,7 +128,8 @@ func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
 	return wp.JobWithOptions(name, JobOptions{}, fn)
 }
 
-// JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
+// JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
+// such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
 	jobOpts = applyDefaultsAndValidate(jobOpts)
 
@@ -232,7 +234,7 @@ func (wp *WorkerPool) startRequeuers() {
 	}
 	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
 	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
 	wp.retrier.start()
 	wp.scheduler.start()
 	wp.deadPoolReaper.start()
@@ -277,15 +279,6 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
 			logError("write_concurrency_controls_max_concurrency", err)
 		}
-	}
-}
-
-func newJobTypeGeneric(name string, opts JobOptions, handler GenericHandler) *jobType {
-	return &jobType{
-		Name:           name,
-		JobOptions:     opts,
-		IsGeneric:      true,
-		GenericHandler: handler,
 	}
 }
 
