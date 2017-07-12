@@ -120,6 +120,11 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	err = conn.Flush()
 	assert.NoError(t, err)
 
+	// make sure test data was created
+	numPools, err := redis.Int(conn.Do("scard", workerPoolsKey))
+	assert.NoError(t, err)
+	assert.EqualValues(t, 3, numPools)
+
 	// Test getting dead pool ids
 	reaper := newDeadPoolReaper(ns, pool, []string{"type1"})
 	deadPools, err := reaper.findDeadPools()

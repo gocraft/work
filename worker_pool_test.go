@@ -130,7 +130,7 @@ func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 
 	// make sure we've enough jobs queued up to make an interesting test
 	jobsQueued := listSize(pool, redisKeyJobs(ns, job1))
-	assert.True(t, jobsQueued > 3, "should be at least 3 jobs queued up, but only found %v", jobsQueued)
+	assert.True(t, jobsQueued >= 3, "should be at least 3 jobs queued up, but only found %v", jobsQueued)
 
 	// now make sure the during the duration of job execution there is never > 1 job in flight
 	start := time.Now()
