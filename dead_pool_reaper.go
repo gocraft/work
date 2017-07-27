@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	deadTime          = 5 * time.Minute
+	deadTime          = 10 * time.Second // 2 x heartbeat
 	reapPeriod        = 10 * time.Minute
 	reapJitterSecs    = 30
 	requeueKeysPerJob = 4
@@ -49,13 +49,8 @@ func (r *deadPoolReaper) stop() {
 }
 
 func (r *deadPoolReaper) loop() {
-	// Reap
-	if err := r.reap(); err != nil {
-		logError("dead_pool_reaper.reap", err)
-	}
-
-	// Begin reaping periodically
-	timer := time.NewTimer(r.reapPeriod)
+	// Reap immediately after we provide some time for initialization
+	timer := time.NewTimer(r.deadTime)
 	defer timer.Stop()
 
 	for {
@@ -64,7 +59,7 @@ func (r *deadPoolReaper) loop() {
 			r.doneStoppingChan <- struct{}{}
 			return
 		case <-timer.C:
-			// Schedule next occurrence with jitter
+			// Schedule next occurrence periodically with jitter
 			timer.Reset(r.reapPeriod + time.Duration(rand.Intn(reapJitterSecs))*time.Second)
 
 			// Reap
