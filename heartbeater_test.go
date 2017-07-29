@@ -8,13 +8,6 @@ import (
 	"time"
 )
 
-func TestHeartBeatExpiration(t *testing.T) {
-	// just to make sure -- heartbeats should not expire before the reaper has had a chance to assess whether or
-	// not jobs are dead (in the event of a dirty shutdown, for example)
-	assert.True(t, heartbeatExpiration > deadTime)
-	assert.True(t, heartbeatExpiration > reapPeriod + reapJitterSecs * time.Second)
-}
-
 func TestHeartbeater(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"

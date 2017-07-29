@@ -10,8 +10,6 @@ import (
 )
 
 const (
-	// expire the heartbeat key after the reaper has had a chance to assess whether or not the job(s) are dead
-	heartbeatExpiration = reapPeriod + (reapJitterSecs+1)*time.Second
 	beatPeriod = 5 * time.Second
 )
 
@@ -19,7 +17,6 @@ type workerPoolHeartbeater struct {
 	workerPoolID string
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
-	expires      time.Duration
 	beatPeriod   time.Duration
 	concurrency  uint
 	jobNames     string
@@ -37,7 +34,6 @@ func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID s
 		workerPoolID:     workerPoolID,
 		namespace:        namespace,
 		pool:             pool,
-		expires:          heartbeatExpiration,
 		beatPeriod:       beatPeriod,
 		concurrency:      concurrency,
 		stopChan:         make(chan struct{}),
@@ -107,7 +103,6 @@ func (h *workerPoolHeartbeater) heartbeat() {
 		"host", h.hostname,
 		"pid", h.pid,
 	)
-	conn.Send("EXPIRE", heartbeatKey, h.expires.Seconds())
 
 	if err := conn.Flush(); err != nil {
 		logError("heartbeat", err)
