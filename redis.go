@@ -110,6 +110,31 @@ local function acquireLock(lockKey, lockInfoKey, workerPoolID)
   redis.call('hincrby', lockInfoKey, workerPoolID, 1)
 end
 
+local function validateLock(activeJobs, maxConcurrency, lockKey, lockInfoKey)
+  if (not activeJobs) then
+    return activeJobs
+  end
+  if (activeJobs < 0 or activeJobs > maxConcurrency) then
+    -- a negative value for activeJobs is not valid. reset.
+    -- OR
+    -- activeJobs cannot exceed the maximum requested concurrency.
+    -- we cannot know, reliably, at this point, if there are workers in flight.
+    -- the service may have been restarted with invalid lock values already
+    -- set, for example. This would cause no jobs to be queued, thus
+    -- the lock value would never be decremented. As a safety measure,
+    -- reset the lock system.
+    if lockKey then
+      redis.call('del', lockKey)
+    end
+    if lockInfoKey then
+      redis.call('del', lockInfoKey)
+    end
+    return 0
+  end
+  return activeJobs
+end
+
+
 local function haveJobs(jobQueue)
   return redis.call('llen', jobQueue) > 0
 end
@@ -118,10 +143,14 @@ local function isPaused(pauseKey)
   return redis.call('get', pauseKey)
 end
 
-local function canRun(lockKey, maxConcurrency)
+local function canRun(lockKey, lockInfoKey, maxConcurrency)
+  if (not maxConcurrency or maxConcurrency == 0) then
+    -- maxConcurrency not defined or set to 0 means no cap on concurrent jobs
+    return true
+  end
   local activeJobs = tonumber(redis.call('get', lockKey))
-  if (not maxConcurrency or maxConcurrency == 0) or (not activeJobs or activeJobs < maxConcurrency) then
-    -- default case: maxConcurrency not defined or set to 0 means no cap on concurrent jobs OR
+  activeJobs = validateLock(activeJobs, maxConcurrency, lockKey, lockInfoKey)
+  if (not activeJobs or activeJobs < maxConcurrency) then
     -- maxConcurrency set, but lock does not yet exist OR
     -- maxConcurrency set, lock is set, but not yet at max concurrency
     return true
@@ -145,8 +174,10 @@ for i=1,keylen,%d do
 
   maxConcurrency = tonumber(redis.call('get', concurrencyKey))
 
-  if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, maxConcurrency) then
-    acquireLock(lockKey, lockInfoKey, workerPoolID)
+  if haveJobs(jobQueue) and not isPaused(pauseKey) and canRun(lockKey, lockInfoKey, maxConcurrency) then
+    if (maxConcurrency > 0) then
+      acquireLock(lockKey, lockInfoKey, workerPoolID)
+    end
     res = redis.call('rpoplpush', jobQueue, inProgQueue)
     return {res, jobQueue, inProgQueue}
   end
