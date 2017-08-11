@@ -1,6 +1,7 @@
 package work
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -178,6 +179,17 @@ func (w *worker) fetchJob() (*Job, error) {
 	job, err := newJob(rawJSON, dequeuedFrom, inProgQueue)
 	if err != nil {
 		return nil, err
+	}
+
+	// In case of job chain add next job saved in OnSuccess to queue.
+	if job.OnSuccess != nil {
+		rawJSON, err = json.Marshal(job.OnSuccess)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := conn.Do("LPUSH", redisKeyJobsPrefix(w.namespace)+job.OnSuccess.Name, rawJSON); err != nil {
+			return nil, err
+		}
 	}
 
 	return job, nil
