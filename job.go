@@ -26,11 +26,21 @@ type Job struct {
 	inProgQueue  []byte
 	argError     error
 	observer     *observer
+
+	OnSuccess *Job `json:"on_success,omitempy"`
 }
 
 // Q is a shortcut to easily specify arguments for jobs when enqueueing them.
 // Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com", "track": true})
 type Q map[string]interface{}
+
+// T is a shortcut to easily specify tasks along with their arguments.
+// Example: T{"job": Q{"arg": "foo"}}
+type T map[string]Q
+
+// C is a shortcut to easily specify chains of tasks along with their arguments.
+// Example: e.EnqueueChain(work.C{"job1": work.Q{"arg": "foo"}, "job2": work.Q{"arg": "bar"}})
+type C []map[string]Q
 
 func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	var job Job
