@@ -212,4 +212,6 @@ func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 	}
 
 	return nil
+	
+	
 }
