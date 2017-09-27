@@ -133,7 +133,7 @@ func (pe *periodicEnqueuer) shouldEnqueue() bool {
 		return true
 	}
 
-	return lastEnqueue < (nowEpochSeconds() - int64(periodicEnqueuerSleep/time.Minute))
+	return lastEnqueue < (nowEpochSeconds() - int64(periodicEnqueuerSleep/time.Second))
 }
 
 func makeUniquePeriodicID(name, spec string, epoch int64) string {
