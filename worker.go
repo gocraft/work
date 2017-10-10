@@ -92,7 +92,7 @@ func (w *worker) drain() {
 	w.observer.drain()
 }
 
-var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000, 5000}
+var sleepBackoffsInMilliseconds = []int64{0, 10, 100, 1000}
 
 func (w *worker) loop() {
 	var drained bool
