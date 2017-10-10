@@ -91,7 +91,7 @@ func TestPeriodicEnqueuer(t *testing.T) {
 
 	assert.False(t, pe.shouldEnqueue())
 
-	setNowEpochSecondsMock(1468359454 + int64(periodicEnqueuerSleep/time.Minute) + 10)
+	setNowEpochSecondsMock(1468359454 + int64(periodicEnqueuerSleep/time.Second) + 10)
 
 	assert.True(t, pe.shouldEnqueue())
 }
