@@ -47,11 +47,12 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority       uint              // Priority from 1 to 10000
-	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
-	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
-	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority         uint              // Priority from 1 to 10000
+	MaxFails         uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead         bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	MaxConcurrency   uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
+	Backoff          BackoffCalculator // If not set, uses the default backoff algorithm
+	StartingDeadline int64             // UTC time in seconds(time.Now().Unix()), the deadline for starting the job if it misses its scheduled time for any reason
 }
 
 // GenericHandler is a job handler without any custom context.
