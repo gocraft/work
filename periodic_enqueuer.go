@@ -100,8 +100,9 @@ func (pe *periodicEnqueuer) enqueue() error {
 				ID:   id,
 
 				// This is technically wrong, but this lets the bytes be identical for the same periodic job instance. If we don't do this, we'd need to use a different approach -- probably giving each periodic job its own history of the past 100 periodic jobs, and only scheduling a job if it's not in the history.
-				EnqueuedAt: epoch,
-				Args:       nil,
+				EnqueuedAt:  epoch,
+				Args:        nil,
+				ScheduledAt: epoch,
 			}
 
 			rawJSON, err := job.serialize()

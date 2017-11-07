@@ -188,10 +188,16 @@ func (w *worker) processJob(job *Job) {
 		w.deleteUniqueJob(job)
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
+		if jt.StartingDeadline > 0 && job.ScheduledAt > 0 && job.ScheduledAt < jt.StartingDeadline {
+			logInfo("Outdated! StartingDeadline: %d, ScheduledAt: %d, Job: %s\n", jt.StartingDeadline, job.ScheduledAt, job)
+			w.removeJobFromInProgress(job)
+			return
+		}
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
+
 		if runErr != nil {
 			job.failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
