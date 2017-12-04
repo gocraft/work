@@ -285,9 +285,13 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 
 // validateContextType will panic if context is invalid
 func validateContextType(ctxType reflect.Type) {
-	if ctxType.Kind() != reflect.Struct {
-		panic("work: Context needs to be a struct type")
+	if ctxType.Kind() == reflect.Ptr && ctxType.Elem().Kind() == reflect.Struct  {
+	//if ctxType.Kind() != reflect.Struct {
+		return
+	} else if ctxType.Kind() != reflect.Struct {
+		return
 	}
+	panic("work: Context needs to be a struct type")
 }
 
 func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {
