@@ -288,7 +288,7 @@ func validateContextType(ctxType reflect.Type) {
 	if ctxType.Kind() == reflect.Ptr && ctxType.Elem().Kind() == reflect.Struct  {
 	//if ctxType.Kind() != reflect.Struct {
 		return
-	} else if ctxType.Kind() != reflect.Struct {
+	} else if ctxType.Kind() == reflect.Struct {
 		return
 	}
 	panic("work: Context needs to be a struct type")
