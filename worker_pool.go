@@ -37,6 +37,7 @@ type jobType struct {
 	IsGeneric      bool
 	GenericHandler GenericHandler
 	DynamicHandler reflect.Value
+	middleware     []*middlewareHandler
 }
 
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.
@@ -91,6 +92,32 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)
 	}
+
+	return wp
+}
+
+// JobMiddleware appends the specified function to the Job specified middleware chain. The fn can take one of these forms:
+// (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
+// func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
+func (wp *WorkerPool) JobMiddleware(jobName string, fn interface{}) *WorkerPool {
+	jt := wp.jobTypes[jobName]
+	if jt == nil {
+		return wp
+	}
+
+	vfn := reflect.ValueOf(fn)
+	validateMiddlewareType(wp.contextType, vfn)
+
+	jmw := &middlewareHandler{
+		DynamicMiddleware: vfn,
+	}
+
+	if gmh, ok := fn.(func(*Job, NextMiddlewareFunc) error); ok {
+		jmw.IsGeneric = true
+		jmw.GenericMiddlewareHandler = gmh
+	}
+
+	jt.middleware = append(jt.middleware, jmw)
 
 	return wp
 }
