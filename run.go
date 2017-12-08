@@ -19,7 +19,6 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 
 	var next NextMiddlewareFunc
 	next = func() error {
-
 		if currentMiddleware < maxMiddleware {
 			mw := middleware[currentMiddleware]
 			currentMiddleware++
