@@ -116,7 +116,7 @@ func TestWorkerPoolValidations(t *testing.T) {
 	func() {
 		defer func() {
 			if panicErr := recover(); panicErr != nil {
-				assert.Regexp(t, "Your job middleware function can have one of these signatures", fmt.Sprintf("%v", panicErr))
+				assert.Regexp(t, "Your middleware function can have one of these signatures", fmt.Sprintf("%v", panicErr))
 			} else {
 				t.Errorf("expected a panic when using a bad job middleware")
 			}

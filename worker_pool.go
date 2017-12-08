@@ -100,13 +100,13 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 // (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
 func (wp *WorkerPool) JobMiddleware(jobName string, fn interface{}) *WorkerPool {
+	vfn := reflect.ValueOf(fn)
+	validateMiddlewareType(wp.contextType, vfn)
+
 	jt := wp.jobTypes[jobName]
 	if jt == nil {
 		return wp
 	}
-
-	vfn := reflect.ValueOf(fn)
-	validateMiddlewareType(wp.contextType, vfn)
 
 	jmw := &middlewareHandler{
 		DynamicMiddleware: vfn,
