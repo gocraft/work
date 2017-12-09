@@ -204,6 +204,10 @@ func (w *worker) processJob(job *Job) {
 		} else {
 			w.removeJobFromInProgress(job)
 		}
+
+		if jt.PostHandler != nil {
+			jt.PostHandler(job)
+		}
 	} else {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
