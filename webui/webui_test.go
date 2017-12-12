@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/gocraft/work"
+	"github.com/dexcodeinc/work"
 	"github.com/stretchr/testify/assert"
 )
 

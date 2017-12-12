@@ -1,11 +1,11 @@
 import expect from 'expect';
 import UnixTime from './UnixTime';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 
 describe('UnixTime', () => {
   it('formats human-readable time string', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<UnixTime ts={1467753603} />);
     let output = r.getRenderOutput();
 

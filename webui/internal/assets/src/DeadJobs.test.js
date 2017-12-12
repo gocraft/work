@@ -1,12 +1,12 @@
 import expect from 'expect';
 import DeadJobs from './DeadJobs';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 import { findAllByTag } from './TestUtils';
 
 describe('DeadJobs', () => {
   it('shows dead jobs', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<DeadJobs />);
     let deadJobs = r.getMountedInstance();
 
@@ -76,7 +76,7 @@ describe('DeadJobs', () => {
   });
 
   it('has pages', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<DeadJobs />);
     let deadJobs = r.getMountedInstance();
 

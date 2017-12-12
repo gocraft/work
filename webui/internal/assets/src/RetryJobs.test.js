@@ -1,12 +1,12 @@
 import expect from 'expect';
 import RetryJobs from './RetryJobs';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 import { findAllByTag } from './TestUtils';
 
 describe('RetryJobs', () => {
   it('shows jobs', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<RetryJobs />);
     let retryJobs = r.getMountedInstance();
 
@@ -24,7 +24,7 @@ describe('RetryJobs', () => {
   });
 
   it('has pages', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<RetryJobs />);
     let retryJobs = r.getMountedInstance();
 

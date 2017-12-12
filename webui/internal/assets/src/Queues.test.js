@@ -1,11 +1,11 @@
 import expect from 'expect';
 import Queues from './Queues';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 
 describe('Queues', () => {
   it('gets queued count', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<Queues />);
     let queues = r.getMountedInstance();
     expect(queues.state.queues.length).toEqual(0);

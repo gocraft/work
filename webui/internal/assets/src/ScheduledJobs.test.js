@@ -1,12 +1,12 @@
 import expect from 'expect';
 import ScheduledJobs from './ScheduledJobs';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 import { findAllByTag } from './TestUtils';
 
 describe('ScheduledJobs', () => {
   it('shows jobs', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<ScheduledJobs />);
     let scheduledJobs = r.getMountedInstance();
 
@@ -24,7 +24,7 @@ describe('ScheduledJobs', () => {
   });
 
   it('has pages', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<ScheduledJobs />);
     let scheduledJobs = r.getMountedInstance();
 

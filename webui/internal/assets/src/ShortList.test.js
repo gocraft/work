@@ -1,11 +1,11 @@
 import expect from 'expect';
 import ShortList from './ShortList';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 
 describe('ShortList', () => {
   it('lists items', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<ShortList item={['1', '2', '3', '4']} />);
     let output = r.getRenderOutput();
 

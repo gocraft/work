@@ -1,12 +1,12 @@
 import expect from 'expect';
 import Processes from './Processes';
 import React from 'react';
-import ReactTestUtils from 'react-addons-test-utils';
+import { createRenderer } from 'react-shallow-renderer-helpers';
 import { findAllByTag } from './TestUtils';
 
 describe('Processes', () => {
   it('shows workers', () => {
-    let r = ReactTestUtils.createRenderer();
+    let r = createRenderer();
     r.render(<Processes />);
     let processes = r.getMountedInstance();
 
