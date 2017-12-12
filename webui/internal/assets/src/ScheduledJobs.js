@@ -62,7 +62,7 @@ export default class ScheduledJobs extends React.Component {
                       <td>{JSON.stringify(job.args)}</td>
                       <td><UnixTime ts={job.run_at} /></td>
                     </tr>
-                    );
+                  );
                 })
               }
             </tbody>

@@ -148,7 +148,7 @@ export default class DeadJobs extends React.Component {
                         <td>{job.err}</td>
                         <td><UnixTime ts={job.t} /></td>
                       </tr>
-                      );
+                    );
                   })
                 }
               </tbody>

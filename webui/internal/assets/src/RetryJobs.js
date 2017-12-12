@@ -64,7 +64,7 @@ export default class RetryJobs extends React.Component {
                       <td>{job.err}</td>
                       <td><UnixTime ts={job.t} /></td>
                     </tr>
-                    );
+                  );
                 })
               }
             </tbody>

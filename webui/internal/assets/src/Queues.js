@@ -54,7 +54,7 @@ export default class Queues extends React.Component {
                       <td>{queue.count}</td>
                       <td>{queue.latency}</td>
                     </tr>
-                    );
+                  );
                 })
               }
             </tbody>
