@@ -189,7 +189,6 @@ func (w *worker) processJob(job *Job) {
 	}
 	if jt, ok := w.jobTypes[job.Name]; ok {
 		if jt.StartingDeadline > 0 && job.ScheduledAt > 0 && job.ScheduledAt < jt.StartingDeadline {
-			logInfo("Outdated! StartingDeadline: %d, ScheduledAt: %d, Job: %s\n", jt.StartingDeadline, job.ScheduledAt, job)
 			w.removeJobFromInProgress(job)
 			return
 		}
