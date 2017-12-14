@@ -112,18 +112,6 @@ func TestWorkerPoolValidations(t *testing.T) {
 
 		wp.Job("wat", TestWorkerPoolValidations)
 	}()
-
-	func() {
-		defer func() {
-			if panicErr := recover(); panicErr != nil {
-				assert.Regexp(t, "Your middleware function can have one of these signatures", fmt.Sprintf("%v", panicErr))
-			} else {
-				t.Errorf("expected a panic when using a bad job middleware")
-			}
-		}()
-
-		wp.JobMiddleware("wat", TestWorkerPoolValidations)
-	}()
 }
 
 func TestWorkersPoolRunSingleThreaded(t *testing.T) {
