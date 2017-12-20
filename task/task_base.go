@@ -14,7 +14,7 @@ import (
 type Task interface {
 
 	// Setup the task including task specific config settings & resources, and schedule the jobs
-	Setup()
+	Setup() error
 
 	// Exec job worker function, you must schedule it in the Setup() function
 	Exec(job *work.Job) error

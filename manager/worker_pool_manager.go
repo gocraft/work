@@ -117,14 +117,18 @@ func (wpm *WorkerPoolManager) Stop() {
 }
 
 //RegisterPeriodicTask register cron job to the worker pool, will create the pool if not exist
-func (wpm *WorkerPoolManager) RegisterPeriodicTask(it interface{}) error {
+func (wpm *WorkerPoolManager) RegisterPeriodicTask(it interface{}) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
-			fmt.Println(e)
+			err = errors.New(fmt.Sprintf("Register Task error:%v", e))
 		}
 	}()
 	t := it.(task.Task)
-	t.Setup()
+	err = t.Setup()
+	if err != nil {
+		return err
+	}
+
 	taskName := structs.Name(t)
 	if t.GetProductionOnly() && wpm.isProd {
 		fmt.Println(taskName, " not in production,  skipped ")

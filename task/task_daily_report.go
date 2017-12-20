@@ -37,12 +37,12 @@ type TasksDailyReport struct {
 var regexMail = regexp.MustCompile(`^[A-Za-zd]+([-_.][A-Za-zd]+)*@([A-Za-zd]+[-.])+[A-Za-zd]{2,5}$`)
 
 // Setup init func
-func (t *TasksDailyReport) Setup() {
+func (t *TasksDailyReport) Setup() error {
 	t.SetMetaData(t, ns, "panxiaohuai@guazi.com", "每日脚本执行报告", false)
 
 	ts := work.NewSpec()
 	ts.Daily(DailyReportTime)
-	t.AddCronTask("", ts, t.Exec)
+	return t.AddCronTask("", ts, t.Exec)
 }
 
 // Exec worker func
