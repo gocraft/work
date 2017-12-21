@@ -37,6 +37,13 @@ type jobMetrics struct {
 	desc     string
 }
 
+func saveMetaInfo(t *TaskBase, jobName string) {
+	ns := t.GetNamespace()
+	_ = redis.HSet(keyTask(), fieldKeyByName(ns, jobName, hashKeyOwner), t.Owner)
+	_ = redis.HSet(keyTask(), fieldKeyByName(ns, jobName, hashKeyDesc), t.GetDesc())
+	_ = redis.HSet(keyTask(), fieldKeyByName(ns, jobName, hashKeySchedule), t.GetSpecStr(jobName))
+}
+
 // saveMetrics called after exec the job whenever fail or success
 func saveMetrics(t *TaskBase, j *work.Job, elapsed time.Duration, runErr error) {
 	if redis == nil {
@@ -48,11 +55,6 @@ func saveMetrics(t *TaskBase, j *work.Job, elapsed time.Duration, runErr error) 
 			fmt.Println("[go-work error] saver Metrics err: ", err)
 		}
 	}()
-
-	if ok, _ := redis.HSetNX(keyTask(), fieldKey(t, j, hashKeyOwner), t.Owner); ok {
-		_ = redis.HSet(keyTask(), fieldKey(t, j, hashKeyDesc), t.GetDesc())
-		_ = redis.HSet(keyTask(), fieldKey(t, j, hashKeySchedule), t.GetSpecStr(j.Name))
-	}
 
 	if runErr == nil {
 		_, _ = redis.HIncrBy(keyTask(), fieldKey(t, j, hashKeyElapsed), elapsed.Nanoseconds()/int64(time.Millisecond))
@@ -129,8 +131,12 @@ func truncateString(str string, num int) string {
 	return bnoden
 }
 
+func fieldKeyByName(ns, jobName, field string) string {
+	return fmt.Sprintf("%s:%s:%s", ns, jobName, field)
+}
+
 func fieldKey(t *TaskBase, j *work.Job, field string) string {
-	return fmt.Sprintf("%s:%s:%s", t.GetNamespace(), j.Name, field)
+	return fieldKeyByName(t.GetNamespace(), j.Name, field)
 }
 
 func keyTask() string {

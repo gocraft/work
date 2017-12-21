@@ -30,6 +30,7 @@ type Task interface {
 	GetOwner() string
 	Log(job *work.Job, next work.NextMiddlewareFunc) error
 	Metrics(job *work.Job, next work.NextMiddlewareFunc) error
+	SaveInfo(jobName string)
 }
 
 // MultiJobs the struct for individual job of the task
@@ -56,6 +57,10 @@ func (t *TaskBase) SetMetaData(self Task, ns, owner, desc string, prodOnly bool)
 	t.Namespace = ns
 	t.Description = desc
 	t.ProductionOnly = prodOnly
+}
+
+func (t *TaskBase) SaveInfo(jobName string) {
+	saveMetaInfo(t, jobName)
 }
 
 // GetOwner get the owner of the job

@@ -130,7 +130,7 @@ func (wpm *WorkerPoolManager) RegisterPeriodicTask(it interface{}) (err error) {
 	}
 
 	taskName := structs.Name(t)
-	if t.GetProductionOnly() && wpm.isProd {
+	if t.GetProductionOnly() && !wpm.isProd {
 		fmt.Println(taskName, " not in production,  skipped ")
 	}
 
@@ -154,6 +154,7 @@ func (wpm *WorkerPoolManager) RegisterPeriodicTask(it interface{}) (err error) {
 		}
 		pool.JobWithOptions(jobName, opts, job.Fun)
 		pool.PeriodicallyEnqueue(cronStr, jobName)
+		t.SaveInfo(jobName)
 	}
 
 	task.AddMailReceiver(t.GetOwner())
