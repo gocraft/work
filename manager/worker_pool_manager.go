@@ -9,6 +9,8 @@ import (
 
 	"strings"
 
+	"regexp"
+
 	"github.com/Guazi-inc/go-work"
 	"github.com/Guazi-inc/go-work/task"
 	"github.com/fatih/structs"
@@ -75,6 +77,21 @@ func (wpm *WorkerPoolManager) SetMailGroup(l []string) {
 	for _, receiver := range l {
 		task.AddMailReceiver(receiver)
 	}
+}
+
+// SetDailyReportTime 设置每天日报时间，格式为 "hh:mm:ss"
+func (wpm *WorkerPoolManager) SetDailyReportTime(t string) error {
+	f := `^(20|21|22|23|[0-1]\d):[0-5]\d:[0-5]\d$`
+	r := regexp.MustCompile(f)
+	if !r.Match([]byte(t)) {
+		return errors.New("[go-work error] invalid DailyReportTime format, should be hh:mm:ss")
+	}
+	task.DailyReportTime = t
+	return nil
+}
+
+func (wpm *WorkerPoolManager) SetDailyReportTitle(t string) {
+	task.Title = t
 }
 
 //GetPool retrieve pool instance, create if not exist

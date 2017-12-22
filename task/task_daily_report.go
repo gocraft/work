@@ -25,6 +25,7 @@ const (
 
 // DailyReportTime Global variable, can be modified by application
 var DailyReportTime = "08:00:00"
+var Title = "Go服务后台任务执行情况报表"
 var mailGroup map[string]bool
 var redis CronCache
 var staffHTTP *staff.HTTP
@@ -59,7 +60,7 @@ func (t *TasksDailyReport) Exec(_ *work.Job) error {
 }
 
 func (t *TasksDailyReport) sendMail(jobs map[string]*jobMetrics) error {
-	body1 := `<h3>智能客服后台Go脚本执行情况报表</h3>
+	body1 := fmt.Sprintf(`<h3>%s/h3>
 				<table border="1" cellspacing="0">
 					<tr height=30 bgColor=#00CD66>
 						<td>脚本</td>
@@ -71,7 +72,7 @@ func (t *TasksDailyReport) sendMail(jobs map[string]*jobMetrics) error {
 						<td>失败次数</td>
 						<td>平均耗时(秒)</td>
 						<td>最后报错信息</td>
-					</tr>`
+					</tr>`, Title)
 	for _, v := range jobs {
 		elapsed := 0
 		succ, _ := strconv.Atoi(v.succ)
