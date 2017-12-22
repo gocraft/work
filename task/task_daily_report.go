@@ -103,7 +103,7 @@ func (t *TasksDailyReport) sendMail(jobs map[string]*jobMetrics) error {
 		"</body></html>"
 
 	url := "contact/sendMail"
-	subject := fmt.Sprintf("智能客服脚本日报 %d-%d-%d", timeNow.Year(), timeNow.Month(), timeNow.Day())
+	subject := fmt.Sprintf("%s %d-%d-%d", Title, timeNow.Year(), timeNow.Month(), timeNow.Day())
 	var receivers string
 	for r := range mailGroup {
 		receivers += "," + r
