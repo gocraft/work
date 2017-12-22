@@ -49,6 +49,9 @@ func main() {
 	wkPoolMgr.SetMailGroup(configs.DailyReportMailGroup)
   
 	
+	wkPoolMgr.SetDailyReportTime("07:00:00")  // customize daily report send time
+	wkPoolMgr.SetDailyReportTitle("xx部门Go任务执行日报")   // customize daily report mail title
+	
 	// register tasks
 	registerTasks()
   
