@@ -155,6 +155,7 @@ func TestWorkerRetry(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
+			job.Failed(fmt.Errorf("sorry kid"))
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -207,6 +208,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1, MaxFails: 3, Backoff: custombo},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
+			job.Failed(fmt.Errorf("sorry kid"))
 			return fmt.Errorf("sorry kid")
 		},
 	}
@@ -254,6 +256,7 @@ func TestWorkerDead(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
+			job.Failed(fmt.Errorf("sorry kid1"))
 			return fmt.Errorf("sorry kid1")
 		},
 	}
@@ -262,6 +265,7 @@ func TestWorkerDead(t *testing.T) {
 		JobOptions: JobOptions{Priority: 1, MaxFails: 0, SkipDead: true},
 		IsGeneric:  true,
 		GenericHandler: func(job *Job) error {
+			job.Failed(fmt.Errorf("sorry kid2"))
 			return fmt.Errorf("sorry kid2")
 		},
 	}

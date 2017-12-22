@@ -193,7 +193,8 @@ func (w *worker) processJob(job *Job) {
 		_, runErr := runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 		if runErr != nil {
-			job.failed(runErr)
+			// NOTE: set job failed in middleware, comment this line
+			// job.Failed(runErr)
 			w.addToRetryOrDead(jt, job, runErr)
 		} else {
 			w.removeJobFromInProgress(job)
@@ -202,7 +203,7 @@ func (w *worker) processJob(job *Job) {
 		// NOTE: since we don't have a jobType, we don't know max retries
 		runErr := fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
-		job.failed(runErr)
+		job.Failed(runErr)
 		w.addToDead(job, runErr)
 	}
 }

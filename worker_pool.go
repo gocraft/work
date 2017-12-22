@@ -37,6 +37,7 @@ type jobType struct {
 	IsGeneric      bool
 	GenericHandler GenericHandler
 	DynamicHandler reflect.Value
+	middleware     []*middlewareHandler
 }
 
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.
@@ -99,19 +100,14 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 // (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
 func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
-	vfn := reflect.ValueOf(fn)
-	validateMiddlewareType(wp.contextType, vfn)
+	return wp.Middlewares([]interface{}{fn})
+}
 
-	mw := &middlewareHandler{
-		DynamicMiddleware: vfn,
-	}
-
-	if gmh, ok := fn.(func(*Job, NextMiddlewareFunc) error); ok {
-		mw.IsGeneric = true
-		mw.GenericMiddlewareHandler = gmh
-	}
-
-	wp.middleware = append(wp.middleware, mw)
+// Middlewares appends the specified functions to the middleware chain. The fn in fns can take one of these forms:
+// (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
+// func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
+func (wp *WorkerPool) Middlewares(fns []interface{}) *WorkerPool {
+	wp.middleware = funcToMiddleware(fns, wp.contextType)
 
 	for _, w := range wp.workers {
 		w.updateMiddlewareAndJobTypes(wp.middleware, wp.jobTypes)
@@ -125,20 +121,35 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 // (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job) error, for the generic handler format.
 func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
-	return wp.JobWithOptions(name, JobOptions{}, fn)
+	return wp.JobWithOptionsAndMiddlewares(name, JobOptions{}, fn, []interface{}{})
 }
 
 // JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
 func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
+	return wp.JobWithOptionsAndMiddlewares(name, jobOpts, fn, []interface{}{})
+}
+
+// JobWithMiddlewares adds middlewares for 'name' jobs as per the Job specified middlware chain
+func (wp *WorkerPool) JobWithMiddlewares(name string, fn interface{}, fns []interface{}) *WorkerPool {
+	return wp.JobWithOptionsAndMiddlewares(name, JobOptions{}, fn, fns)
+}
+
+// JobWithOptionsAndMiddlewares adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
+// such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
+// And adds middlewares for 'name' jobs as per the Job specified middlware chain
+func (wp *WorkerPool) JobWithOptionsAndMiddlewares(name string, jobOpts JobOptions, fn interface{}, fns []interface{}) *WorkerPool {
 	jobOpts = applyDefaultsAndValidate(jobOpts)
 
 	vfn := reflect.ValueOf(fn)
 	validateHandlerType(wp.contextType, vfn)
+	jobMiddleware := funcToMiddleware(fns, wp.contextType)
+
 	jt := &jobType{
 		Name:           name,
 		DynamicHandler: vfn,
 		JobOptions:     jobOpts,
+		middleware:     jobMiddleware,
 	}
 	if gh, ok := fn.(func(*Job) error); ok {
 		jt.IsGeneric = true
@@ -280,6 +291,27 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 			logError("write_concurrency_controls_max_concurrency", err)
 		}
 	}
+}
+
+func funcToMiddleware(fns []interface{}, ctxType reflect.Type) []*middlewareHandler {
+	var middleware []*middlewareHandler
+	for _, fn := range fns {
+		vfn := reflect.ValueOf(fn)
+		validateMiddlewareType(ctxType, vfn)
+
+		mw := &middlewareHandler{
+			DynamicMiddleware: vfn,
+		}
+
+		if gmh, ok := fn.(func(*Job, NextMiddlewareFunc) error); ok {
+			mw.IsGeneric = true
+			mw.GenericMiddlewareHandler = gmh
+		}
+
+		middleware = append(middleware, mw)
+	}
+
+	return middleware
 }
 
 // validateContextType will panic if context is invalid

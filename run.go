@@ -9,6 +9,11 @@ import (
 // if we return an error, it signals we want the job to be retried.
 func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt *jobType) (returnCtx reflect.Value, returnError error) {
 	returnCtx = reflect.New(ctxType)
+	isJobStarted := false
+	if len(middleware) == 0 {
+		middleware = jt.middleware
+		isJobStarted = true
+	}
 	currentMiddleware := 0
 	maxMiddleware := len(middleware)
 
@@ -17,6 +22,13 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 		if currentMiddleware < maxMiddleware {
 			mw := middleware[currentMiddleware]
 			currentMiddleware++
+			if !isJobStarted && currentMiddleware == maxMiddleware {
+				currentMiddleware = 0
+				maxMiddleware = len(jt.middleware)
+				middleware = jt.middleware
+				isJobStarted = true
+			}
+
 			if mw.IsGeneric {
 				return mw.GenericMiddlewareHandler(job, next)
 			}

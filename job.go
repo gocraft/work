@@ -12,9 +12,19 @@ type Job struct {
 	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
 	ID         string                 `json:"id"`
-	EnqueuedAt int64                  `json:"t"`
+	EnqueuedAt int64                  `json:"enqueued_at"`
 	Args       map[string]interface{} `json:"args"`
 	Unique     bool                   `json:"unique,omitempty"`
+
+	// Update when starting/finished/retrying
+	Status   string `json:"status"`
+
+	// Inputs when starting
+	StartedAt    int64   `json:"started_at,omitempty"`
+
+	// Inputs when finished
+	FinishedAt   int64   `json:"finished_at,omitempty"`
+	Duration     int64   `json:"duration,omitempty"`
 
 	// Inputs when retrying
 	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed
@@ -56,7 +66,30 @@ func (j *Job) setArg(key string, val interface{}) {
 	j.Args[key] = val
 }
 
-func (j *Job) failed(err error) {
+// setArgs sets multiple named arguments on the job.
+func (j *Job) SetArgs(args map[string]interface{}) {
+	for key, val:= range args {
+		j.setArg(key, val)
+	}
+}
+
+func (j *Job) Started() {
+	if j.Fails > 0 {
+		j.Status = "restart"
+	} else {
+		j.Status = "start"
+	}
+	j.StartedAt = nowEpochSeconds()
+}
+
+func (j *Job) Finished() {
+	j.Status = "success"
+	j.FinishedAt = nowEpochSeconds()
+	j.Duration = j.FinishedAt - j.StartedAt
+}
+
+func (j *Job) Failed(err error) {
+	j.Status = "fail"
 	j.Fails++
 	j.LastErr = err.Error()
 	j.FailedAt = nowEpochSeconds()
