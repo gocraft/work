@@ -232,7 +232,7 @@ if #res > 0 then
   queue = ARGV[1] .. j['name']
   for _,v in pairs(KEYS) do
     if v == queue then
-      j['t'] = tonumber(ARGV[2])
+      j['enqueued_at'] = tonumber(ARGV[2])
       redis.call('lpush', queue, cjson.encode(j))
       return 'ok'
     end
@@ -288,7 +288,7 @@ for i=1,jobCount do
     found = false
     for _,v in pairs(KEYS) do
       if v == queue then
-        j['t'] = tonumber(ARGV[2])
+        j['enqueued_at'] = tonumber(ARGV[2])
         j['fails'] = nil
         j['failed_at'] = nil
         j['err'] = nil
@@ -326,7 +326,7 @@ for i=1,jobCount do
   found = false
   for _,v in pairs(KEYS) do
     if v == queue then
-      j['t'] = tonumber(ARGV[2])
+      j['enqueued_at'] = tonumber(ARGV[2])
       j['fails'] = nil
       j['failed_at'] = nil
       j['err'] = nil

@@ -246,6 +246,7 @@ func TestClientRetryJobs(t *testing.T) {
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 	wp.Job("wat", func(job *Job) error {
+		job.Failed(fmt.Errorf("ohno"))
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
@@ -285,6 +286,7 @@ func TestClientDeadJobs(t *testing.T) {
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
+		job.Failed(fmt.Errorf("ohno"))
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
@@ -664,6 +666,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 	wp.Job("wat", func(job *Job) error {
+		job.Failed(fmt.Errorf("ohno"))
 		return fmt.Errorf("ohno")
 	})
 	wp.Start()
