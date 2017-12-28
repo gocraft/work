@@ -60,7 +60,7 @@ func (t *TasksDailyReport) Exec(_ *work.Job) error {
 }
 
 func (t *TasksDailyReport) sendMail(jobs map[string]*jobMetrics) error {
-	body1 := fmt.Sprintf(`<h3>%s/h3>
+	body1 := fmt.Sprintf(`<h3>%s</h3>
 				<table border="1" cellspacing="0">
 					<tr height=30 bgColor=#00CD66>
 						<td>脚本</td>
