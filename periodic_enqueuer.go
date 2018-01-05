@@ -72,7 +72,7 @@ func (pe *periodicEnqueuer) loop() {
 			return
 		case <-timer.C:
 			timer.Reset(periodicEnqueuerSleep + time.Duration(rand.Intn(30))*time.Second)
-			logInfo("[go-work] periodic_enqueue:",pe.namespace)
+			logInfo("[go-work] check periodic_enqueue:",pe.namespace)
 			if pe.shouldEnqueue() {
 				err := pe.enqueue()
 				if err != nil {
@@ -87,7 +87,7 @@ func (pe *periodicEnqueuer) enqueue() error {
 	now := nowEpochSeconds()
 	nowTime := time.Unix(now, 0)
 	horizon := nowTime.Add(periodicEnqueuerHorizon)
-
+	logInfo("[go-work] start periodic_enqueue:", pe.namespace, " ", now)
 	conn := pe.pool.Get()
 	defer conn.Close()
 
@@ -117,7 +117,7 @@ func (pe *periodicEnqueuer) enqueue() error {
 			}
 		}
 	}
-
+	logInfo("[go-work] end periodic_enqueue:", pe.namespace, " ", now)
 	_, err := conn.Do("SET", redisKeyLastPeriodicEnqueue(pe.namespace), now)
 
 	return err
@@ -134,7 +134,7 @@ func (pe *periodicEnqueuer) shouldEnqueue() bool {
 		logError("periodic_enqueuer.should_enqueue", err)
 		return true
 	}
-
+	logInfo("[go-work] should_enqueue:", pe.namespace)
 	return lastEnqueue < (nowEpochSeconds() - int64(periodicEnqueuerSleep/time.Minute))
 }
 
