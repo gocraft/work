@@ -72,6 +72,7 @@ func (pe *periodicEnqueuer) loop() {
 			return
 		case <-timer.C:
 			timer.Reset(periodicEnqueuerSleep + time.Duration(rand.Intn(30))*time.Second)
+			logInfo("[go-work] periodic_enqueue:",pe.namespace)
 			if pe.shouldEnqueue() {
 				err := pe.enqueue()
 				if err != nil {

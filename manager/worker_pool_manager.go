@@ -128,6 +128,7 @@ func (wpm *WorkerPoolManager) Start() {
 
 // Stop stop the pool
 func (wpm *WorkerPoolManager) Stop() {
+	fmt.Println("[go-work] graceful shutdown........")
 	for _, pool := range wpm.pools {
 		pool.Stop()
 	}
