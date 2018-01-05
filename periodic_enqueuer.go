@@ -124,7 +124,7 @@ func (pe *periodicEnqueuer) enqueue() error {
 }
 
 func (pe *periodicEnqueuer) shouldEnqueue() bool {
-	logInfo("[go-work] shouldEnqueue====>get redis")
+	logInfo("[go-work] shouldEnqueue====>get redis pool: active:%d, idle:%d", pe.pool.ActiveCount(), pe.pool.IdleCount())
 	conn := pe.pool.Get()
 	logInfo("[go-work] shouldEnqueue====>get redis ok")
 	defer conn.Close()

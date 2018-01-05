@@ -39,8 +39,8 @@ func NewWorkerPoolManager(prefix, redisEndpoint string, isProd bool, cache task.
 	}
 
 	redisPool := &redis.Pool{
-		MaxActive: 10,
-		MaxIdle:   10,
+		MaxActive: 100,
+		MaxIdle:   20,
 
 		Wait: true,
 		Dial: func() (redis.Conn, error) {
