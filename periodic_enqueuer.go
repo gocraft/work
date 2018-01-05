@@ -128,13 +128,18 @@ func (pe *periodicEnqueuer) shouldEnqueue() bool {
 	defer conn.Close()
 
 	lastEnqueue, err := redis.Int64(conn.Do("GET", redisKeyLastPeriodicEnqueue(pe.namespace)))
+	debugStr := fmt.Sprintf("[go-work] shouldEnqueue %s" , redisKeyLastPeriodicEnqueue(pe.namespace))
+	if err != nil {
+		debugStr = debugStr + "  err:" + err.Error()
+	}
+	logInfo(debugStr)
 	if err == redis.ErrNil {
 		return true
 	} else if err != nil {
 		logError("periodic_enqueuer.should_enqueue", err)
 		return true
 	}
-	logInfo("[go-work] should_enqueue:", pe.namespace)
+	logInfo("[go-work] end  should_enqueue:", pe.namespace)
 	return lastEnqueue < (nowEpochSeconds() - int64(periodicEnqueuerSleep/time.Minute))
 }
 
