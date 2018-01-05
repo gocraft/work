@@ -124,7 +124,9 @@ func (pe *periodicEnqueuer) enqueue() error {
 }
 
 func (pe *periodicEnqueuer) shouldEnqueue() bool {
+	logInfo("[go-work] shouldEnqueue====>get redis")
 	conn := pe.pool.Get()
+	logInfo("[go-work] shouldEnqueue====>get redis ok")
 	defer conn.Close()
 
 	lastEnqueue, err := redis.Int64(conn.Do("GET", redisKeyLastPeriodicEnqueue(pe.namespace)))
