@@ -72,6 +72,7 @@ func (pe *periodicEnqueuer) loop() {
 			return
 		case <-timer.C:
 			timer.Reset(periodicEnqueuerSleep + time.Duration(rand.Intn(30))*time.Second)
+			logInfo("[go-work] check periodic_enqueue:",pe.namespace)
 			if pe.shouldEnqueue() {
 				err := pe.enqueue()
 				if err != nil {
@@ -86,7 +87,7 @@ func (pe *periodicEnqueuer) enqueue() error {
 	now := nowEpochSeconds()
 	nowTime := time.Unix(now, 0)
 	horizon := nowTime.Add(periodicEnqueuerHorizon)
-
+	logInfo("[go-work] start periodic_enqueue:", pe.namespace, " ", now)
 	conn := pe.pool.Get()
 	defer conn.Close()
 
@@ -100,8 +101,9 @@ func (pe *periodicEnqueuer) enqueue() error {
 				ID:   id,
 
 				// This is technically wrong, but this lets the bytes be identical for the same periodic job instance. If we don't do this, we'd need to use a different approach -- probably giving each periodic job its own history of the past 100 periodic jobs, and only scheduling a job if it's not in the history.
-				EnqueuedAt: epoch,
-				Args:       nil,
+				EnqueuedAt:  epoch,
+				Args:        nil,
+				ScheduledAt: epoch,
 			}
 
 			rawJSON, err := job.serialize()
@@ -115,24 +117,31 @@ func (pe *periodicEnqueuer) enqueue() error {
 			}
 		}
 	}
-
+	logInfo("[go-work] end periodic_enqueue:", pe.namespace, " ", now)
 	_, err := conn.Do("SET", redisKeyLastPeriodicEnqueue(pe.namespace), now)
 
 	return err
 }
 
 func (pe *periodicEnqueuer) shouldEnqueue() bool {
+	logInfo("[go-work] shouldEnqueue====>get redis pool: active:%d, idle:%d", pe.pool.ActiveCount(), pe.pool.IdleCount())
 	conn := pe.pool.Get()
+	logInfo("[go-work] shouldEnqueue====>get redis ok")
 	defer conn.Close()
 
 	lastEnqueue, err := redis.Int64(conn.Do("GET", redisKeyLastPeriodicEnqueue(pe.namespace)))
+	debugStr := fmt.Sprintf("[go-work] shouldEnqueue %s" , redisKeyLastPeriodicEnqueue(pe.namespace))
+	if err != nil {
+		debugStr = debugStr + "  err:" + err.Error()
+	}
+	logInfo(debugStr)
 	if err == redis.ErrNil {
 		return true
 	} else if err != nil {
 		logError("periodic_enqueuer.should_enqueue", err)
 		return true
 	}
-
+	logInfo("[go-work] end  should_enqueue:", pe.namespace)
 	return lastEnqueue < (nowEpochSeconds() - int64(periodicEnqueuerSleep/time.Minute))
 }
 

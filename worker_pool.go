@@ -47,11 +47,15 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority       uint              // Priority from 1 to 10000
-	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
-	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
-	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority         uint              // Priority from 1 to 10000
+	MaxFails         uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead         bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	MaxConcurrency   uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
+	Backoff          BackoffCalculator // If not set, uses the default backoff algorithm
+	StartingDeadline int64             // UTC time in seconds(time.Now().Unix()), the deadline for starting the job if it misses its scheduled time for any reason
+
+	PostHandler      func(job *Job)    // post process handler
+	Spec             string            // schedule spec string
 }
 
 // GenericHandler is a job handler without any custom context.
@@ -284,9 +288,13 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 
 // validateContextType will panic if context is invalid
 func validateContextType(ctxType reflect.Type) {
-	if ctxType.Kind() != reflect.Struct {
-		panic("work: Context needs to be a struct type")
+	if ctxType.Kind() == reflect.Ptr && ctxType.Elem().Kind() == reflect.Struct  {
+	//if ctxType.Kind() != reflect.Struct {
+		return
+	} else if ctxType.Kind() == reflect.Struct {
+		return
 	}
+	panic("work: Context needs to be a struct type")
 }
 
 func validateHandlerType(ctxType reflect.Type, vfn reflect.Value) {

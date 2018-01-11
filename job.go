@@ -10,11 +10,12 @@ import (
 // Job represents a job.
 type Job struct {
 	// Inputs when making a new job
-	Name       string                 `json:"name,omitempty"`
-	ID         string                 `json:"id"`
-	EnqueuedAt int64                  `json:"t"`
-	Args       map[string]interface{} `json:"args"`
-	Unique     bool                   `json:"unique,omitempty"`
+	Name        string                 `json:"name,omitempty"`
+	ID          string                 `json:"id"`
+	EnqueuedAt  int64                  `json:"t"`
+	Args        map[string]interface{} `json:"args"`
+	Unique      bool                   `json:"unique,omitempty"`
+	ScheduledAt int64                  `json:"s"`
 
 	// Inputs when retrying
 	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed
