@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/dexcodeinc/work/webui"
+	"github.com/gocraft/work/webui"
 )
 
 var (
