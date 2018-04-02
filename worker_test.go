@@ -279,10 +279,16 @@ func TestWorkerDead(t *testing.T) {
 	// Ensure the right stuff is in our queues:
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
 	assert.EqualValues(t, 1, zsetSize(pool, redisKeyDead(ns)))
+
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
 	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job1)))
-	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job1)))
+	assert.EqualValues(t, 0, getInt64(pool, redisKeyJobsLock(ns, job1)))
+	assert.EqualValues(t, 0, hgetInt64(pool, redisKeyJobsLockInfo(ns, job1), w.poolID))
+
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, job2)))
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, "1", job2)))
+	assert.EqualValues(t, 0, getInt64(pool, redisKeyJobsLock(ns, job2)))
+	assert.EqualValues(t, 0, hgetInt64(pool, redisKeyJobsLockInfo(ns, job2), w.poolID))
 
 	// Get the job on the dead queue
 	ts, job := jobOnZset(pool, redisKeyDead(ns))

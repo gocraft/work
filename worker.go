@@ -240,7 +240,9 @@ func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
 	if failsRemaining > 0 {
 		w.addToRetry(job, runErr)
 	} else {
-		if !jt.SkipDead {
+		if jt.SkipDead {
+			w.removeJobFromInProgress(job)
+		} else {
 			w.addToDead(job, runErr)
 		}
 	}
