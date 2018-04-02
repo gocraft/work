@@ -187,24 +187,24 @@ func (w *worker) processJob(job *Job) {
 	if job.Unique {
 		w.deleteUniqueJob(job)
 	}
-	if jt, ok := w.jobTypes[job.Name]; ok {
+	var runErr error
+	jt := w.jobTypes[job.Name]
+	if jt == nil {
+		runErr = fmt.Errorf("stray job: no handler")
+		logError("process_job.stray", runErr)
+	} else {
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
-		_, runErr := runJob(job, w.contextType, w.middleware, jt)
+		_, runErr = runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
-		if runErr != nil {
-			job.failed(runErr)
-			w.addToRetryOrDead(jt, job, runErr)
-		} else {
-			w.removeJobFromInProgress(job)
-		}
-	} else {
-		// NOTE: since we don't have a jobType, we don't know max retries
-		runErr := fmt.Errorf("stray job: no handler")
-		logError("process_job.stray", runErr)
-		job.failed(runErr)
-		w.addToDead(job, runErr)
 	}
+
+	fate := terminateOnly
+	if runErr != nil {
+		job.failed(runErr)
+		fate = w.jobFate(jt, job)
+	}
+	w.removeJobFromInProgress(job, fate)
 }
 
 func (w *worker) deleteUniqueJob(job *Job) {
@@ -221,90 +221,60 @@ func (w *worker) deleteUniqueJob(job *Job) {
 	}
 }
 
-func (w *worker) removeJobFromInProgress(job *Job) {
+func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	// remove job from in progress and decr the lock in one transaction
 	conn.Send("MULTI")
 	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
 	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
+	fate(conn)
 	if _, err := conn.Do("EXEC"); err != nil {
 		logError("worker.remove_job_from_in_progress.lrem", err)
 	}
 }
 
-func (w *worker) addToRetryOrDead(jt *jobType, job *Job, runErr error) {
-	failsRemaining := int64(jt.MaxFails) - job.Fails
-	if failsRemaining > 0 {
-		w.addToRetry(job, runErr)
-	} else {
-		if jt.SkipDead {
-			w.removeJobFromInProgress(job)
-		} else {
-			w.addToDead(job, runErr)
-		}
-	}
-}
+type terminateOp func(conn redis.Conn)
 
-func (w *worker) addToRetry(job *Job, runErr error) {
+func terminateOnly(_ redis.Conn) { return }
+func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
 		logError("worker.add_to_retry", err)
-		return
+		return terminateOnly
 	}
-
-	conn := w.pool.Get()
-	defer conn.Close()
-
-	var backoff BackoffCalculator
-
-	// Choose the backoff provider
-	jt, ok := w.jobTypes[job.Name]
-	if ok {
-		backoff = jt.Backoff
+	return func(conn redis.Conn) {
+		conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+jt.calcBackoff(job), rawJSON)
 	}
-
-	if backoff == nil {
-		backoff = defaultBackoffCalculator
+}
+func terminateAndDead(w *worker, job *Job) terminateOp {
+	rawJSON, err := job.serialize()
+	if err != nil {
+		logError("worker.add_to_dead.serialize", err)
+		return terminateOnly
 	}
+	return func(conn redis.Conn) {
+		// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
+		// The max # of jobs seems really horrible. Seems like operations should be on top of it.
+		// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
+		// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
 
-	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
-	conn.Send("ZADD", redisKeyRetry(w.namespace), nowEpochSeconds()+backoff(job), rawJSON)
-	if _, err = conn.Do("EXEC"); err != nil {
-		logError("worker.add_to_retry.exec", err)
+		conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
 	}
 }
 
-func (w *worker) addToDead(job *Job, runErr error) {
-	rawJSON, err := job.serialize()
-
-	if err != nil {
-		logError("worker.add_to_dead.serialize", err)
-		return
+func (w *worker) jobFate(jt *jobType, job *Job) terminateOp {
+	if jt != nil {
+		failsRemaining := int64(jt.MaxFails) - job.Fails
+		if failsRemaining > 0 {
+			return terminateAndRetry(w, jt, job)
+		}
+		if jt.SkipDead {
+			return terminateOnly
+		}
 	}
-
-	conn := w.pool.Get()
-	defer conn.Close()
-
-	// NOTE: sidekiq limits the # of jobs: only keep jobs for 6 months, and only keep a max # of jobs
-	// The max # of jobs seems really horrible. Seems like operations should be on top of it.
-	// conn.Send("ZREMRANGEBYSCORE", redisKeyDead(w.namespace), "-inf", now - keepInterval)
-	// conn.Send("ZREMRANGEBYRANK", redisKeyDead(w.namespace), 0, -maxJobs)
-
-	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
-	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
-	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
-	conn.Send("ZADD", redisKeyDead(w.namespace), nowEpochSeconds(), rawJSON)
-	_, err = conn.Do("EXEC")
-	if err != nil {
-		logError("worker.add_to_dead.exec", err)
-	}
+	return terminateAndDead(w, job)
 }
 
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
