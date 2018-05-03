@@ -1,12 +1,13 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
-	"github.com/robfig/cron"
 	"reflect"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/garyburd/redigo/redis"
+	"github.com/robfig/cron"
 )
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
@@ -37,6 +38,13 @@ type jobType struct {
 	IsGeneric      bool
 	GenericHandler GenericHandler
 	DynamicHandler reflect.Value
+}
+
+func (jt *jobType) calcBackoff(j *Job) int64 {
+	if jt.Backoff == nil {
+		return defaultBackoffCalculator(j)
+	}
+	return jt.Backoff(j)
 }
 
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.
