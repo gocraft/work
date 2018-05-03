@@ -241,7 +241,7 @@ func terminateOnly(_ redis.Conn) { return }
 func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
-		logError("worker.add_to_retry", err)
+		logError("worker.terminate_and_retry.serialize", err)
 		return terminateOnly
 	}
 	return func(conn redis.Conn) {
@@ -251,7 +251,7 @@ func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 func terminateAndDead(w *worker, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
-		logError("worker.add_to_dead.serialize", err)
+		logError("worker.terminate_and_dead.serialize", err)
 		return terminateOnly
 	}
 	return func(conn redis.Conn) {
