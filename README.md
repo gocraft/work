@@ -20,7 +20,7 @@ To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redig
 package main
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gocraft/work"
 )
 
@@ -56,7 +56,7 @@ In order to process jobs, you'll need to make a WorkerPool. Add middleware and j
 package main
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gocraft/work"
 	"os"
 	"os/signal"
@@ -246,11 +246,11 @@ You'll see a view that looks like this:
 ### Processing a job
 
 * To process a job, a worker will execute a Lua script to atomically move a job its queue to an in-progress queue.
-  * A job is dequeued and moved to in-progress if the job queue is not paused and the number of active jobs does not exceed concurrency limit for the job type 
+  * A job is dequeued and moved to in-progress if the job queue is not paused and the number of active jobs does not exceed concurrency limit for the job type
 * The worker will then run the job and increment the job lock. The job will either finish successfully or result in an error or panic.
   * If the process completely crashes, the reaper will eventually find it in its in-progress queue and requeue it.
 * If the job is successful, we'll simply remove the job from the in-progress queue.
-* If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue. 
+* If the job returns an error or panic, we'll see how many retries a job has left. If it doesn't have any, we'll move it to the dead queue. If it has retries left, we'll consume a retry and add the job to the retry queue.
 
 ### Workers and WorkerPools
 
