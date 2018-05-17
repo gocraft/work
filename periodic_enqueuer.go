@@ -2,7 +2,7 @@ package work
 
 import (
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron"
 	"math/rand"
 	"time"

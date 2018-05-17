@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/albrow/jobs"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gocraft/health"
 	"os"
 	"sync/atomic"
