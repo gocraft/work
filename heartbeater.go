@@ -1,12 +1,12 @@
 package work
 
 import (
-	// "fmt"
-	"github.com/garyburd/redigo/redis"
 	"os"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 const (
