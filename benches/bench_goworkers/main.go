@@ -8,6 +8,7 @@ import (
 
 	"github.com/gocraft/health"
 	"github.com/gomodule/redigo/redis"
+	"github.com/jrallison/go-workers"
 )
 
 func myJob(m *workers.Msg) {
