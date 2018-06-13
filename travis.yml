@@ -1,0 +1,16 @@
+language: go
+
+services:
+  - redis-server
+
+go:
+  - 1.7.x
+  - 1.8.x
+  - 1.9.x
+  - tip
+
+install:
+  - go get github.com/gomodule/redigo/redis
+  - go get github.com/stretchr/testify/assert
+  - go get github.com/robfig/cron
+  

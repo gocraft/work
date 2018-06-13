@@ -60,8 +60,7 @@ func (pe *periodicEnqueuer) loop() {
 	defer timer.Stop()
 
 	if pe.shouldEnqueue() {
-		err := pe.enqueue()
-		if err != nil {
+		if err := pe.enqueue(); err != nil {
 			logError("periodic_enqueuer.loop.enqueue", err)
 		}
 	}
