@@ -14,3 +14,5 @@ install:
   - go get github.com/stretchr/testify/assert
   - go get github.com/robfig/cron
   
+script:
+  - go test -v
