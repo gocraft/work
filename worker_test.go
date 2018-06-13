@@ -600,7 +600,7 @@ func TestWorkerPoolStop(t *testing.T) {
 	ns := "will_it_end"
 	pool := newTestPool(":6379")
 	var started, stopped int32
-	num_iters := 30
+	numIters := 30
 
 	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool)
 
@@ -613,7 +613,7 @@ func TestWorkerPoolStop(t *testing.T) {
 
 	var enqueuer = NewEnqueuer(ns, pool)
 
-	for i := 0; i <= num_iters; i++ {
+	for i := 0; i <= numIters; i++ {
 		enqueuer.Enqueue("sample_job", Q{})
 	}
 
@@ -627,7 +627,7 @@ func TestWorkerPoolStop(t *testing.T) {
 		t.Errorf("Expected that jobs were finished and not killed while processing (started=%d, stopped=%d)", started, stopped)
 	}
 
-	if started >= int32(num_iters) {
+	if started >= int32(numIters) {
 		t.Errorf("Expected that jobs queue was not completely emptied.")
 	}
 }

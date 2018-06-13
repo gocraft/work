@@ -340,8 +340,8 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	assert.EqualValues(t, 0, getInt64(pool, lock1))
 	assert.EqualValues(t, 0, getInt64(pool, lock2))
 	// worker pool ID 2 removed from both lock info hashes
-	v, err = conn.Do("HGET", lockInfo1, workerPoolID2)
+	v, _ = conn.Do("HGET", lockInfo1, workerPoolID2)
 	assert.Nil(t, v)
-	v, err = conn.Do("HGET", lockInfo2, workerPoolID2)
+	v, _ = conn.Do("HGET", lockInfo2, workerPoolID2)
 	assert.Nil(t, v)
 }
