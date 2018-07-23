@@ -3,8 +3,9 @@ package work
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
 	"time"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 // An observer observes a single worker. Each worker has its own observer.
