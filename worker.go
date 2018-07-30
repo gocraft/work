@@ -12,13 +12,14 @@ import (
 const fetchKeysPerJobType = 6
 
 type worker struct {
-	workerID    string
-	poolID      string
-	namespace   string
-	pool        *redis.Pool
-	jobTypes    map[string]*jobType
-	middleware  []*middlewareHandler
-	contextType reflect.Type
+	workerID      string
+	poolID        string
+	namespace     string
+	pool          *redis.Pool
+	jobTypes      map[string]*jobType
+	sleepBackoffs []int64
+	middleware    []*middlewareHandler
+	contextType   reflect.Type
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
@@ -31,16 +32,21 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, sleepBackoffs []int64) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
+	if len(sleepBackoffs) == 0 {
+		sleepBackoffs = sleepBackoffsInMilliseconds
+	}
+
 	w := &worker{
-		workerID:    workerID,
-		poolID:      poolID,
-		namespace:   namespace,
-		pool:        pool,
-		contextType: contextType,
+		workerID:      workerID,
+		poolID:        poolID,
+		namespace:     namespace,
+		pool:          pool,
+		contextType:   contextType,
+		sleepBackoffs: sleepBackoffs,
 
 		observer: ob,
 
@@ -126,10 +132,10 @@ func (w *worker) loop() {
 				}
 				consequtiveNoJobs++
 				idx := consequtiveNoJobs
-				if idx >= int64(len(sleepBackoffsInMilliseconds)) {
-					idx = int64(len(sleepBackoffsInMilliseconds)) - 1
+				if idx >= int64(len(w.sleepBackoffs)) {
+					idx = int64(len(w.sleepBackoffs)) - 1
 				}
-				timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
+				timer.Reset(time.Duration(w.sleepBackoffs[idx]) * time.Millisecond)
 			}
 		}
 	}
