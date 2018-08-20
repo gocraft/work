@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron"
@@ -17,6 +18,7 @@ type WorkerPool struct {
 	namespace     string // eg, "myapp-work"
 	pool          *redis.Pool
 	sleepBackoffs []int64
+	reapPeriod    time.Duration
 
 	contextType  reflect.Type
 	jobTypes     map[string]*jobType
@@ -106,6 +108,7 @@ func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace strin
 		sleepBackoffs: workerPoolOpts.SleepBackoffs,
 		contextType:   ctxType,
 		jobTypes:      make(map[string]*jobType),
+		reapPeriod:    reapPeriod,
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
@@ -113,6 +116,12 @@ func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace strin
 		wp.workers = append(wp.workers, w)
 	}
 
+	return wp
+}
+
+// WithReapPeriod configures the period the reaper will wait between runs
+func (wp *WorkerPool) WithReapPeriod(period time.Duration) *WorkerPool {
+	wp.reapPeriod = period
 	return wp
 }
 
@@ -255,7 +264,7 @@ func (wp *WorkerPool) startRequeuers() {
 	}
 	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
 	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames, wp.reapPeriod)
 	wp.retrier.start()
 	wp.scheduler.start()
 	wp.deadPoolReaper.start()

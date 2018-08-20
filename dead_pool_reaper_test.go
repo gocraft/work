@@ -48,7 +48,7 @@ func TestDeadPoolReaper(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting dead pool
-	reaper := newDeadPoolReaper(ns, pool, []string{})
+	reaper := newDeadPoolReaper(ns, pool, []string{}, reapPeriod)
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}, "3": {"type1", "type2"}}, deadPools)
@@ -127,7 +127,7 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 	assert.EqualValues(t, 3, numPools)
 
 	// Test getting dead pool ids
-	reaper := newDeadPoolReaper(ns, pool, []string{"type1"})
+	reaper := newDeadPoolReaper(ns, pool, []string{"type1"}, reapPeriod)
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"1": {}, "2": {}, "3": {}}, deadPools)
@@ -210,7 +210,7 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test getting dead pool
-	reaper := newDeadPoolReaper(ns, pool, []string{})
+	reaper := newDeadPoolReaper(ns, pool, []string{}, reapPeriod)
 	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}}, deadPools)
@@ -280,7 +280,7 @@ func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 
 	// setup a worker pool and start the reaper, which should restart the stale job above
 	wp := setupTestWorkerPool(pool, ns, job1, 1, JobOptions{Priority: 1})
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, []string{"job1"})
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, []string{"job1"}, reapPeriod)
 	wp.deadPoolReaper.deadTime = expectedDeadTime
 	wp.deadPoolReaper.start()
 
@@ -324,7 +324,7 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	err = conn.Flush()
 	assert.NoError(t, err)
 
-	reaper := newDeadPoolReaper(ns, pool, jobNames)
+	reaper := newDeadPoolReaper(ns, pool, jobNames, reapPeriod)
 	// clean lock info for workerPoolID1
 	reaper.cleanStaleLockInfo(workerPoolID1, jobNames)
 	assert.NoError(t, err)

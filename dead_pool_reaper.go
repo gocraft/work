@@ -27,7 +27,7 @@ type deadPoolReaper struct {
 	doneStoppingChan chan struct{}
 }
 
-func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string) *deadPoolReaper {
+func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string, reapPeriod time.Duration) *deadPoolReaper {
 	return &deadPoolReaper{
 		namespace:        namespace,
 		pool:             pool,
