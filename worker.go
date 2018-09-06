@@ -1,7 +1,6 @@
 package work
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -223,23 +222,21 @@ func (w *worker) deleteUniqueJob(job *Job) *Job {
 		logError("worker.delete_unique_job.key", err)
 		return nil
 	}
+	if job.UniqueKey != "" {
+		uniqueKey = job.UniqueKey
+	}
 	conn := w.pool.Get()
 	defer conn.Close()
 
-	values, err := redis.Values(conn.Do("DEL", uniqueKey))
+	rawJSON, err := redis.Bytes(conn.Do("GET", uniqueKey))
+	if err != nil {
+		logError("worker.delete_unique_job.get", err)
+		return nil
+	}
+
+	_, err = conn.Do("DEL", uniqueKey)
 	if err != nil {
 		logError("worker.delete_unique_job.del", err)
-		return nil
-	}
-
-	if len(values) != 1 {
-		logError("worker.delete_unique_job.updated_job", errors.New("need 1 element back"))
-		return nil
-	}
-
-	rawJSON, ok := values[0].([]byte)
-	if !ok {
-		logError("worker.delete_unique_job.updated_job", errors.New("response msg not bytes"))
 		return nil
 	}
 

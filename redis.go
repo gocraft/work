@@ -368,6 +368,19 @@ end
 return 'dup'
 `
 
+// KEYS[1] = job queue to push onto
+// KEYS[2] = Unique job's key. Test for existence and set if we push.
+// ARGV[1] = job
+var redisLuaEnqueueUniqueByKey = `
+if redis.call('set', KEYS[2], ARGV[1], 'NX', 'EX', '86400') then
+  redis.call('lpush', KEYS[1], ARGV[1])
+  return 'ok'
+else
+  redis.call('set', KEYS[2], ARGV[1], 'EX', '86400')
+end
+return 'dup'
+`
+
 // KEYS[1] = scheduled job queue
 // KEYS[2] = Unique job's key. Test for existence and set if we push.
 // ARGV[1] = job
@@ -376,6 +389,8 @@ var redisLuaEnqueueUniqueByKeyIn = `
 if redis.call('set', KEYS[2], ARGV[1], 'NX', 'EX', '86400') then
   redis.call('zadd', KEYS[1], ARGV[2], ARGV[1])
   return 'ok'
+else
+  redis.call('set', KEYS[2], ARGV[1], 'EX', '86400')
 end
 return 'dup'
 `
