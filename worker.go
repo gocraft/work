@@ -191,7 +191,10 @@ func (w *worker) fetchJob() (*Job, error) {
 
 func (w *worker) processJob(job *Job) {
 	if job.Unique {
-		w.deleteUniqueJob(job)
+		updatedJob := w.deleteUniqueJob(job)
+		if updatedJob != nil {
+			job = updatedJob
+		}
 	}
 	var runErr error
 	jt := w.jobTypes[job.Name]
@@ -213,18 +216,42 @@ func (w *worker) processJob(job *Job) {
 	w.removeJobFromInProgress(job, fate)
 }
 
-func (w *worker) deleteUniqueJob(job *Job) {
+func (w *worker) deleteUniqueJob(job *Job) *Job {
 	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
 	if err != nil {
 		logError("worker.delete_unique_job.key", err)
+		return nil
+	}
+	if job.UniqueKey != "" {
+		uniqueKey = job.UniqueKey
 	}
 	conn := w.pool.Get()
 	defer conn.Close()
 
+	rawJSON, err := redis.Bytes(conn.Do("GET", uniqueKey))
+	if err != nil {
+		logError("worker.delete_unique_job.get", err)
+		return nil
+	}
+
 	_, err = conn.Do("DEL", uniqueKey)
 	if err != nil {
 		logError("worker.delete_unique_job.del", err)
+		return nil
 	}
+
+	// Previous versions did not support updated arguments and just set key to 1, so in these cases we should do nothing
+	if string(rawJSON) == "1" {
+		return nil
+	}
+
+	updatedJob, err := newJob(rawJSON, job.dequeuedFrom, job.inProgQueue)
+	if err != nil {
+		logError("worker.delete_unique_job.updated_job", err)
+		return nil
+	}
+
+	return updatedJob
 }
 
 func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
