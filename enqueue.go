@@ -12,13 +12,11 @@ type Enqueuer struct {
 	Namespace string // eg, "myapp-work"
 	Pool      *redis.Pool
 
-	queuePrefix                string // eg, "myapp-work:jobs:"
-	knownJobs                  map[string]int64
-	enqueueUniqueScript        *redis.Script
-	enqueueUniqueInScript      *redis.Script
-	enqueueUniqueByKeyScript   *redis.Script
-	enqueueUniqueByKeyInScript *redis.Script
-	mtx                        sync.RWMutex
+	queuePrefix           string // eg, "myapp-work:jobs:"
+	knownJobs             map[string]int64
+	enqueueUniqueScript   *redis.Script
+	enqueueUniqueInScript *redis.Script
+	mtx                   sync.RWMutex
 }
 
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
@@ -28,14 +26,12 @@ func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 	}
 
 	return &Enqueuer{
-		Namespace:                  namespace,
-		Pool:                       pool,
-		queuePrefix:                redisKeyJobsPrefix(namespace),
-		knownJobs:                  make(map[string]int64),
-		enqueueUniqueScript:        redis.NewScript(2, redisLuaEnqueueUnique),
-		enqueueUniqueInScript:      redis.NewScript(2, redisLuaEnqueueUniqueIn),
-		enqueueUniqueByKeyScript:   redis.NewScript(2, redisLuaEnqueueUniqueByKey),
-		enqueueUniqueByKeyInScript: redis.NewScript(2, redisLuaEnqueueUniqueByKeyIn),
+		Namespace:             namespace,
+		Pool:                  pool,
+		queuePrefix:           redisKeyJobsPrefix(namespace),
+		knownJobs:             make(map[string]int64),
+		enqueueUniqueScript:   redis.NewScript(2, redisLuaEnqueueUnique),
+		enqueueUniqueInScript: redis.NewScript(2, redisLuaEnqueueUniqueIn),
 	}
 }
 
@@ -117,12 +113,12 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 	return e.EnqueueUniqueByKeyIn(jobName, secondsFromNow, args, nil)
 }
 
-// EnqueueUniqueByKey enqueues a job unless a job is already enqueued with the same name and arguments.
+// EnqueueUniqueByKey enqueues a job unless a job is already enqueued with the same name and key, updating arguments.
 // The already-enqueued job can be in the normal work queue or in the scheduled job queue.
-// Once a worker begins processing a job, another job with the same name and arguments can be enqueued again.
+// Once a worker begins processing a job, another job with the same name and key can be enqueued again.
 // Any failed jobs in the retry queue or dead queue don't count against the uniqueness -- so if a job fails and is retried, two unique jobs with the same name and arguments can be enqueued at once.
 // In order to add robustness to the system, jobs are only unique for 24 hours after they're enqueued. This is mostly relevant for scheduled jobs.
-// EnqueueUnique returns the job if it was enqueued and nil if it wasn't
+// EnqueueUniqueByKey returns the job if it was enqueued and nil if it wasn't
 func (e *Enqueuer) EnqueueUniqueByKey(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (*Job, error) {
 	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap)
 	if err != nil {
@@ -220,24 +216,26 @@ func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, 
 		}
 
 		scriptArgs := []interface{}{}
-		script := e.enqueueUniqueByKeyScript
+		script := e.enqueueUniqueScript
 
 		scriptArgs = append(scriptArgs, e.queuePrefix+jobName) // KEY[1]
 		scriptArgs = append(scriptArgs, uniqueKey)             // KEY[2]
 		scriptArgs = append(scriptArgs, rawJSON)               // ARGV[1]
 		if useDefaultKeys {
 			// keying on arguments so arguments can't be updated
-			// we'll just get them off the original job
+			// we'll just get them off the original job so to save space, make this "1"
 			scriptArgs = append(scriptArgs, "1") // ARGV[2]
 		} else {
+			// we'll use this for updated arguments since the job on the queue
+			// doesn't get updated
 			scriptArgs = append(scriptArgs, rawJSON) // ARGV[2]
 		}
 
-		if runAt != nil { // Scheduled job so different job with different args
+		if runAt != nil { // Scheduled job so different job queue with additional arg
 			scriptArgs[0] = redisKeyScheduled(e.Namespace) // KEY[1]
 			scriptArgs = append(scriptArgs, *runAt)        // ARGV[3]
 
-			script = e.enqueueUniqueByKeyInScript
+			script = e.enqueueUniqueInScript
 		}
 
 		return redis.String(script.Do(conn, scriptArgs...))
