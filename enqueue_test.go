@@ -240,7 +240,7 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	var mutex = &sync.Mutex{}
-	job, err := enqueuer.EnqueueUniqueByKey("wat", Q{"a": 3, "b": "foo"}, "123")
+	job, err := enqueuer.EnqueueUniqueByKey("wat", Q{"a": 3, "b": "foo"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
@@ -252,15 +252,15 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 		assert.NoError(t, job.ArgError())
 	}
 
-	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 3, "b": "bar"}, "123")
+	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 3, "b": "bar"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.Nil(t, job)
 
-	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 4, "b": "baz"}, "124")
+	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 4, "b": "baz"}, Q{"key": "124"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
-	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, "125")
+	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, Q{"key": "125"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
@@ -300,17 +300,57 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	assert.EqualValues(t, "baz", arg4)
 
 	// Enqueue again. Ensure we can.
-	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 1, "b": "cool"}, "123")
+	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 1, "b": "cool"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
-	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 1, "b": "coolio"}, "124")
+	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 1, "b": "coolio"}, Q{"key": "124"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
 
 	// Even though taw resulted in an error, we should still be able to re-queue it.
 	// This could result in multiple taws enqueued at the same time in a production system.
-	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, "123")
+	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
+}
+
+func EnqueueUniqueByKeyIn(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+	enqueuer := NewEnqueuer(ns, pool)
+
+	// Enqueue two unique jobs -- ensure one job sticks.
+	job, err := enqueuer.EnqueueUniqueByKeyIn("wat", 300, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	assert.NoError(t, err)
+	if assert.NotNil(t, job) {
+		assert.Equal(t, "wat", job.Name)
+		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+		assert.Equal(t, "cool", job.ArgString("b"))
+		assert.EqualValues(t, 1, job.ArgInt64("a"))
+		assert.NoError(t, job.ArgError())
+		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
+	}
+
+	job, err = enqueuer.EnqueueUniqueByKeyIn("wat", 10, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	assert.NoError(t, err)
+	assert.Nil(t, job)
+
+	// Get the job
+	score, j := jobOnZset(pool, redisKeyScheduled(ns))
+
+	assert.True(t, score > time.Now().Unix()+290) // We don't want to overwrite the time
+	assert.True(t, score <= time.Now().Unix()+300)
+
+	assert.Equal(t, "wat", j.Name)
+	assert.True(t, len(j.ID) > 10)                        // Something is in it
+	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
+	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
+	assert.Equal(t, "cool", j.ArgString("b"))
+	assert.EqualValues(t, 1, j.ArgInt64("a"))
+	assert.NoError(t, j.ArgError())
+	assert.True(t, j.Unique)
 }
