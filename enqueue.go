@@ -105,67 +105,39 @@ func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[stri
 // In order to add robustness to the system, jobs are only unique for 24 hours after they're enqueued. This is mostly relevant for scheduled jobs.
 // EnqueueUnique returns the job if it was enqueued and nil if it wasn't
 func (e *Enqueuer) EnqueueUnique(jobName string, args map[string]interface{}) (*Job, error) {
-	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, args)
+	return e.EnqueueUniqueByKey(jobName, args, nil)
+}
+
+// EnqueueUniqueIn enqueues a unique job in the scheduled job queue for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
+func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
+	return e.EnqueueUniqueByKeyIn(jobName, secondsFromNow, args, nil)
+}
+
+// EnqueueUniqueByKey enqueues a job unless a job is already enqueued with the same name and key, updating arguments.
+// The already-enqueued job can be in the normal work queue or in the scheduled job queue.
+// Once a worker begins processing a job, another job with the same name and key can be enqueued again.
+// Any failed jobs in the retry queue or dead queue don't count against the uniqueness -- so if a job fails and is retried, two unique jobs with the same name and arguments can be enqueued at once.
+// In order to add robustness to the system, jobs are only unique for 24 hours after they're enqueued. This is mostly relevant for scheduled jobs.
+// EnqueueUniqueByKey returns the job if it was enqueued and nil if it wasn't
+func (e *Enqueuer) EnqueueUniqueByKey(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (*Job, error) {
+	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap)
 	if err != nil {
 		return nil, err
 	}
 
-	job := &Job{
-		Name:       jobName,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
-		Unique:     true,
-	}
+	res, err := enqueue(nil)
 
-	rawJSON, err := job.serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	conn := e.Pool.Get()
-	defer conn.Close()
-
-	if err := e.addToKnownJobs(conn, jobName); err != nil {
-		return nil, err
-	}
-
-	scriptArgs := make([]interface{}, 0, 3)
-	scriptArgs = append(scriptArgs, e.queuePrefix+jobName) // KEY[1]
-	scriptArgs = append(scriptArgs, uniqueKey)             // KEY[2]
-	scriptArgs = append(scriptArgs, rawJSON)               // ARGV[1]
-
-	res, err := redis.String(e.enqueueUniqueScript.Do(conn, scriptArgs...))
 	if res == "ok" && err == nil {
 		return job, nil
 	}
 	return nil, err
 }
 
-// EnqueueUniqueIn enqueues a unique job in the scheduled job queue for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
-func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
-	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, args)
+// EnqueueUniqueByKeyIn enqueues a job in the scheduled job queue that is unique on specified key for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
+// Subsequent calls with same key will update arguments
+func (e *Enqueuer) EnqueueUniqueByKeyIn(jobName string, secondsFromNow int64, args map[string]interface{}, keyMap map[string]interface{}) (*ScheduledJob, error) {
+	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap)
 	if err != nil {
-		return nil, err
-	}
-
-	job := &Job{
-		Name:       jobName,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
-		Unique:     true,
-	}
-
-	rawJSON, err := job.serialize()
-	if err != nil {
-		return nil, err
-	}
-
-	conn := e.Pool.Get()
-	defer conn.Close()
-
-	if err := e.addToKnownJobs(conn, jobName); err != nil {
 		return nil, err
 	}
 
@@ -174,14 +146,7 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 		Job:   job,
 	}
 
-	scriptArgs := make([]interface{}, 0, 4)
-	scriptArgs = append(scriptArgs, redisKeyScheduled(e.Namespace)) // KEY[1]
-	scriptArgs = append(scriptArgs, uniqueKey)                      // KEY[2]
-	scriptArgs = append(scriptArgs, rawJSON)                        // ARGV[1]
-	scriptArgs = append(scriptArgs, scheduledJob.RunAt)             // ARGV[2]
-
-	res, err := redis.String(e.enqueueUniqueInScript.Do(conn, scriptArgs...))
-
+	res, err := enqueue(&scheduledJob.RunAt)
 	if res == "ok" && err == nil {
 		return scheduledJob, nil
 	}
@@ -212,4 +177,69 @@ func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 	}
 
 	return nil
+}
+
+type enqueueFnType func(*int64) (string, error)
+
+func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (enqueueFnType, *Job, error) {
+	useDefaultKeys := false
+	if keyMap == nil {
+		useDefaultKeys = true
+		keyMap = args
+	}
+
+	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, keyMap)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	job := &Job{
+		Name:       jobName,
+		ID:         makeIdentifier(),
+		EnqueuedAt: nowEpochSeconds(),
+		Args:       args,
+		Unique:     true,
+		UniqueKey:  uniqueKey,
+	}
+
+	rawJSON, err := job.serialize()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	enqueueFn := func(runAt *int64) (string, error) {
+		conn := e.Pool.Get()
+		defer conn.Close()
+
+		if err := e.addToKnownJobs(conn, jobName); err != nil {
+			return "", err
+		}
+
+		scriptArgs := []interface{}{}
+		script := e.enqueueUniqueScript
+
+		scriptArgs = append(scriptArgs, e.queuePrefix+jobName) // KEY[1]
+		scriptArgs = append(scriptArgs, uniqueKey)             // KEY[2]
+		scriptArgs = append(scriptArgs, rawJSON)               // ARGV[1]
+		if useDefaultKeys {
+			// keying on arguments so arguments can't be updated
+			// we'll just get them off the original job so to save space, make this "1"
+			scriptArgs = append(scriptArgs, "1") // ARGV[2]
+		} else {
+			// we'll use this for updated arguments since the job on the queue
+			// doesn't get updated
+			scriptArgs = append(scriptArgs, rawJSON) // ARGV[2]
+		}
+
+		if runAt != nil { // Scheduled job so different job queue with additional arg
+			scriptArgs[0] = redisKeyScheduled(e.Namespace) // KEY[1]
+			scriptArgs = append(scriptArgs, *runAt)        // ARGV[3]
+
+			script = e.enqueueUniqueInScript
+		}
+
+		return redis.String(script.Do(conn, scriptArgs...))
+	}
+
+	return enqueueFn, job, nil
 }
