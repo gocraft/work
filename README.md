@@ -215,8 +215,9 @@ Alternatively, you can provide your own key for making a job unique. When anothe
 ```go
 enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
 job, err := enqueuer.EnqueueUniqueByKey("clear_cache", work.Q{"object_id_": "123"}, map[string]interface{}{"my_key": "586"})
-job, err = enqueuer.EnqueueUniqueByKeyIn("clear_cache", 300, work.Q{"object_id_": "789"}, map[string]interface{}{"my_key": "586"})
+job, err = enqueuer.EnqueueUniqueInByKey("clear_cache", 300, work.Q{"object_id_": "789"}, map[string]interface{}{"my_key": "586"})
 ```
+For information on how this map will be serialized to form a unique key, see (https://golang.org/pkg/encoding/json/#Marshal).
 
 ### Periodic Enqueueing (Cron)
 

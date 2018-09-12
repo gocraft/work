@@ -295,7 +295,7 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	assert.EqualValues(t, 2, wats)
 	assert.EqualValues(t, 1, taws)
 
-	// Chewck that arguments got updated to new value
+	// Check that arguments got updated to new value
 	assert.EqualValues(t, "bar", arg3)
 	assert.EqualValues(t, "baz", arg4)
 
@@ -315,14 +315,14 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	assert.NotNil(t, job)
 }
 
-func EnqueueUniqueByKeyIn(t *testing.T) {
+func EnqueueUniqueInByKey(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
 	// Enqueue two unique jobs -- ensure one job sticks.
-	job, err := enqueuer.EnqueueUniqueByKeyIn("wat", 300, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	job, err := enqueuer.EnqueueUniqueInByKey("wat", 300, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
@@ -335,7 +335,7 @@ func EnqueueUniqueByKeyIn(t *testing.T) {
 		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
 	}
 
-	job, err = enqueuer.EnqueueUniqueByKeyIn("wat", 10, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	job, err = enqueuer.EnqueueUniqueInByKey("wat", 10, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.Nil(t, job)
 
