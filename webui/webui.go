@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/braintree/manners"
 	"github.com/gocraft/web"
@@ -49,6 +50,7 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
 		rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 		next(rw, r)
 	})
+	router.Get("/ping", (*context).ping)
 	router.Get("/queues", (*context).queues)
 	router.Get("/worker_pools", (*context).workerPools)
 	router.Get("/busy_workers", (*context).busyWorkers)
@@ -89,6 +91,10 @@ func (w *Server) Start() {
 func (w *Server) Stop() {
 	w.server.Close()
 	w.wg.Wait()
+}
+
+func (c *context) ping(rw web.ResponseWriter, r *web.Request) {
+	render(rw, map[string]string{"ping": "pong", "current_time": time.Now().Format(time.RFC3339)}, nil)
 }
 
 func (c *context) queues(rw web.ResponseWriter, r *web.Request) {
