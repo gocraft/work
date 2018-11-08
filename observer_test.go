@@ -3,7 +3,7 @@ package work
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	// "time"

@@ -13,6 +13,10 @@ DispatchMe/go-work lets you enqueue and processes background jobs in Go. Jobs ar
 * Web UI to manage failed jobs and observe the system.
 * Periodically enqueue jobs on a cron-like schedule.
 
+## Run tests
+
+Redis must be installed to avoid a panic when running tests.
+
 ## Enqueue new jobs
 
 To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redigo pool. Each enqueued job has a name and can take optional arguments. Arguments are k/v pairs (serialized as JSON internally).
@@ -21,7 +25,7 @@ To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redig
 package main
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/DispatchMe/go-work"
 )
 
@@ -63,7 +67,7 @@ In order to process jobs, you'll need to make a WorkerPool. Add middleware and j
 package main
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/DispatchMe/go-work"
 	"os"
 	"os/signal"
@@ -154,9 +158,11 @@ func ExportHandler(ctx *work.Context) error {
 
 Then in the web UI, you'll see the status of the worker:
 
+```
 | Name | Arguments | Started At | Check-in At | Check-in |
 | --- | --- | --- | --- | --- |
 | export | {"account_id": 123} | 2016/07/09 04:16:51 | 2016/07/09 05:03:13 | i=335000 |
+```
 
 ### Scheduled Jobs
 
@@ -282,7 +288,7 @@ You'll see a view that looks like this:
 * "worker observation" - A snapshot made by an observer of what a worker is working on.
 * "periodic enqueuer" - A process that runs with a worker pool that periodically enqueues new jobs based on cron schedules.
 * "job" - the actual bundle of data that constitutes one job
-* "job name" - each job has a name, like "create_watch"
+* "job name" - each job has a name, like `create_watch`
 * "job type" - backend/private nomenclature for the handler+options for processing a job
 * "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
 * "retry jobs" - If a job fails and needs to be retried, it will be put on this queue.
@@ -292,7 +298,7 @@ You'll see a view that looks like this:
 
 ## Benchmarks
 
-The benches folder contains various benchmark code. In each case, we enqueue 100k jobs across 5 queues. The jobs are almost no-op jobs: they simply increment an atomic counter. We then measure the rate of change of the counter to obtain our measurement.
+The benches folder used to contain various benchmark code. In each case, we enqueued 100k jobs across 5 queues. The jobs were almost no-op jobs: they simply incremented an atomic counter. We then measured the rate of change of the counter to obtain our measurement. These were some test results:
 
 | Library | Speed |
 | --- | --- |
@@ -300,6 +306,10 @@ The benches folder contains various benchmark code. In each case, we enqueue 100
 | [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
 | [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
 | [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
+
+The comparison benchmarks were run against repositories that were stale and unmaintained by fall of 2018. Invalid
+import paths were causing tests to fail in go-lib, which has background and indexer packages that rely on this
+repository.  As the benchmarks were not currently needed, they were removed.
 
 ## Authors
 

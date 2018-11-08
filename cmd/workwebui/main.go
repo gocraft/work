@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gocraft/work/webui"
 )
 
