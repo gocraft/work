@@ -1,7 +1,7 @@
 package work
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/gomodule/redigo/redis"
 	"sync"
 	"time"
 )
