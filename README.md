@@ -158,9 +158,11 @@ func ExportHandler(ctx *work.Context) error {
 
 Then in the web UI, you'll see the status of the worker:
 
+```
 | Name | Arguments | Started At | Check-in At | Check-in |
 | --- | --- | --- | --- | --- |
 | export | {"account_id": 123} | 2016/07/09 04:16:51 | 2016/07/09 05:03:13 | i=335000 |
+```
 
 ### Scheduled Jobs
 
@@ -286,7 +288,7 @@ You'll see a view that looks like this:
 * "worker observation" - A snapshot made by an observer of what a worker is working on.
 * "periodic enqueuer" - A process that runs with a worker pool that periodically enqueues new jobs based on cron schedules.
 * "job" - the actual bundle of data that constitutes one job
-* "job name" - each job has a name, like "create_watch"
+* "job name" - each job has a name, like `create_watch`
 * "job type" - backend/private nomenclature for the handler+options for processing a job
 * "queue" - each job creates a queue with the same name as the job. only jobs named X go into the X queue.
 * "retry jobs" - If a job fails and needs to be retried, it will be put on this queue.
@@ -307,7 +309,7 @@ The benches folder used to contain various benchmark code. In each case, we enqu
 
 The comparison benchmarks were run against repositories that were stale and unmaintained by fall of 2018. Invalid
 import paths were causing tests to fail in go-lib, which has background and indexer packages that rely on this
-repository.  As the benchmarks were no longer needed, they were removed.
+repository.  As the benchmarks were not currently needed, they were removed.
 
 ## Authors
 
