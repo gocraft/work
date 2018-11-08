@@ -13,6 +13,10 @@ DispatchMe/go-work lets you enqueue and processes background jobs in Go. Jobs ar
 * Web UI to manage failed jobs and observe the system.
 * Periodically enqueue jobs on a cron-like schedule.
 
+## Run tests
+
+Redis must be installed to avoid a panic when running tests.
+
 ## Enqueue new jobs
 
 To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redigo pool. Each enqueued job has a name and can take optional arguments. Arguments are k/v pairs (serialized as JSON internally).
@@ -292,7 +296,7 @@ You'll see a view that looks like this:
 
 ## Benchmarks
 
-The benches folder contains various benchmark code. In each case, we enqueue 100k jobs across 5 queues. The jobs are almost no-op jobs: they simply increment an atomic counter. We then measure the rate of change of the counter to obtain our measurement.
+The benches folder used to contain various benchmark code. In each case, we enqueued 100k jobs across 5 queues. The jobs were almost no-op jobs: they simply incremented an atomic counter. We then measured the rate of change of the counter to obtain our measurement. These were some test results:
 
 | Library | Speed |
 | --- | --- |
@@ -300,6 +304,10 @@ The benches folder contains various benchmark code. In each case, we enqueue 100
 | [jrallison/go-workers](https://www.github.com/jrallison/go-workers) | 19945 jobs/s |
 | [benmanns/goworker](https://www.github.com/benmanns/goworker) | 10328.5 jobs/s |
 | [albrow/jobs](https://www.github.com/albrow/jobs) | 40 jobs/s |
+
+The comparison benchmarks were run against repositories that were stale and unmaintained by fall of 2018. Invalid
+import paths were causing tests to fail in go-lib, which has background and indexer packages that rely on this
+repository.  As the benchmarks were no longer needed, they were removed.
 
 ## Authors
 
