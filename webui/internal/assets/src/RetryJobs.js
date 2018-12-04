@@ -20,7 +20,7 @@ export default class RetryJobs extends React.Component {
     if (!this.props.url) {
       return;
     }
-    fetch(`${this.props.url}?page=${this.state.page}`).
+    fetch(`${this.props.url}?page=${this.state.page}`, {credentials: 'include'}).
       then((resp) => resp.json()).
       then((data) => {
         this.setState({

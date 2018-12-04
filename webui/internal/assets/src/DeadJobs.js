@@ -25,7 +25,7 @@ export default class DeadJobs extends React.Component {
     if (!this.props.fetchURL) {
       return;
     }
-    fetch(`${this.props.fetchURL}?page=${this.state.page}`).
+    fetch(`${this.props.fetchURL}?page=${this.state.page}`, {credentials: 'include'}).
       then((resp) => resp.json()).
       then((data) => {
         this.setState({
@@ -77,7 +77,7 @@ export default class DeadJobs extends React.Component {
     if (!this.props.deleteAllURL) {
       return;
     }
-    fetch(this.props.deleteAllURL, {method: 'post'}).then(() => {
+    fetch(this.props.deleteAllURL, {method: 'post', credentials: 'include'}).then(() => {
       this.updatePage(1);
     });
   }
@@ -88,7 +88,7 @@ export default class DeadJobs extends React.Component {
       if (!this.props.deleteURL) {
         return;
       }
-      p.push(fetch(`${this.props.deleteURL}/${job.died_at}/${job.id}`, {method: 'post'}));
+      p.push(fetch(`${this.props.deleteURL}/${job.died_at}/${job.id}`, {method: 'post', credentials: 'include'}));
     });
 
     Promise.all(p).then(() => {
@@ -100,7 +100,7 @@ export default class DeadJobs extends React.Component {
     if (!this.props.retryAllURL) {
       return;
     }
-    fetch(this.props.retryAllURL, {method: 'post'}).then(() => {
+    fetch(this.props.retryAllURL, {method: 'post', credentials: 'include'}).then(() => {
       this.updatePage(1);
     });
   }
@@ -111,7 +111,7 @@ export default class DeadJobs extends React.Component {
       if (!this.props.retryURL) {
         return;
       }
-      p.push(fetch(`${this.props.retryURL}/${job.died_at}/${job.id}`, {method: 'post'}));
+      p.push(fetch(`${this.props.retryURL}/${job.died_at}/${job.id}`, {method: 'post', credentials: 'include'}));
     });
 
     Promise.all(p).then(() => {
