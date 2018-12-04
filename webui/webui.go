@@ -29,6 +29,15 @@ type context struct {
 	*Server
 }
 
+// NewWrappedServer creates and returns a new server (like NewServer), but takes
+// a wapper function which will be passed the server's http.Handler, and uses the result
+// as the new server's handler.
+func NewWrappedServer(namespace string, pool *redis.Pool, hostPort string, wrapHandler func(http.Handler) http.Handler) *Server {
+	server := NewServer(namespace, pool, hostPort)
+	server.server.Handler = wrapHandler(server.router)
+	return server
+}
+
 // NewServer creates and returns a new server. The 'namespace' param is the redis namespace to use. The hostPort param is the address to bind on to expose the API.
 func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
 	router := web.New(context{})
