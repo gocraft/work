@@ -175,19 +175,27 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	return wp
 }
 
-// PeriodicallyEnqueue will periodically enqueue jobName according to the cron-based spec.
+// PeriodicallyEnqueueWithArgs will periodically enqueue jobName according to the cron-based spec.
 // The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
 // Note that the first value is the seconds!
 // If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
-func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
+func (wp *WorkerPool) PeriodicallyEnqueueWithArgs(spec string, jobName string, args map[string]interface{}) *WorkerPool {
 	schedule, err := cron.Parse(spec)
 	if err != nil {
 		panic(err)
 	}
 
-	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{jobName: jobName, spec: spec, schedule: schedule})
+	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{jobName: jobName, spec: spec, schedule: schedule, args: args})
 
 	return wp
+}
+
+// PeriodicallyEnqueue will periodically enqueue jobName according to the cron-based spec.
+// The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
+// Note that the first value is the seconds!
+// If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
+func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
+	return wp.PeriodicallyEnqueueWithArgs(spec, jobName, Q{})
 }
 
 // Start starts the workers and associated processes.
