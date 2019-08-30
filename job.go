@@ -1,6 +1,7 @@
 package work
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -9,6 +10,8 @@ import (
 
 // Job represents a job.
 type Job struct {
+	Context context.Context
+
 	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
 	ID         string                 `json:"id"`
@@ -42,6 +45,7 @@ func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	job.rawJSON = rawJSON
 	job.dequeuedFrom = dequeuedFrom
 	job.inProgQueue = inProgQueue
+	job.Context = context.Background()
 	return &job, nil
 }
 
