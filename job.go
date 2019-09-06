@@ -10,7 +10,7 @@ import (
 
 // Job represents a job.
 type Job struct {
-	Context context.Context
+	Context context.Context `json:"-"`
 
 	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
