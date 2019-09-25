@@ -182,11 +182,11 @@ func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 type enqueueFnType func(*int64) (string, error)
 
 func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (enqueueFnType, *Job, error) {
-	useDefaultKeys := false
-	if keyMap == nil {
-		useDefaultKeys = true
-		keyMap = args
-	}
+	// useDefaultKeys := false
+	// if keyMap == nil {
+	// 	useDefaultKeys = true
+	// 	keyMap = args
+	// }
 
 	uniqueKey, err := redisKeyUniqueJob(e.Namespace, jobName, keyMap)
 	if err != nil {
@@ -221,15 +221,16 @@ func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, 
 		scriptArgs = append(scriptArgs, e.queuePrefix+jobName) // KEY[1]
 		scriptArgs = append(scriptArgs, uniqueKey)             // KEY[2]
 		scriptArgs = append(scriptArgs, rawJSON)               // ARGV[1]
-		if useDefaultKeys {
-			// keying on arguments so arguments can't be updated
-			// we'll just get them off the original job so to save space, make this "1"
-			scriptArgs = append(scriptArgs, "1") // ARGV[2]
-		} else {
-			// we'll use this for updated arguments since the job on the queue
-			// doesn't get updated
-			scriptArgs = append(scriptArgs, rawJSON) // ARGV[2]
-		}
+		scriptArgs = append(scriptArgs, "1")                   // ARGV[2]
+		// if useDefaultKeys {
+		// 	// keying on arguments so arguments can't be updated
+		// 	// we'll just get them off the original job so to save space, make this "1"
+		// 	scriptArgs = append(scriptArgs, "1") // ARGV[2]
+		// } else {
+		// 	// we'll use this for updated arguments since the job on the queue
+		// 	// doesn't get updated
+		// 	scriptArgs = append(scriptArgs, rawJSON) // ARGV[2]
+		// }
 
 		if runAt != nil { // Scheduled job so different job queue with additional arg
 			scriptArgs[0] = redisKeyScheduled(e.Namespace) // KEY[1]
