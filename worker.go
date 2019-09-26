@@ -254,6 +254,10 @@ func (w *worker) getAndDeleteUniqueJob(job *Job) *Job {
 		return nil
 	}
 
+	// JSON processing in Go differs from what Redis does (the order of values will be altered)
+	// we will use old JSON (not changing it), because the new JSON will have its data order altered
+	// for now we will stay using the old JSON, as we yet to have the solution to uniform the JSON
+	rawJSON = job.rawJSON
 	// The job pulled off the queue was just a placeholder with no args, so replace it
 	jobWithArgs, err := newJob(rawJSON, job.dequeuedFrom, job.inProgQueue)
 	if err != nil {
