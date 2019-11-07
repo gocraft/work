@@ -20,6 +20,7 @@ To enqueue jobs, you need to make an Enqueuer with a redis namespace and a redig
 package main
 
 import (
+	"log"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gocraft/work"
 )
@@ -56,10 +57,11 @@ In order to process jobs, you'll need to make a WorkerPool. Add middleware and j
 package main
 
 import (
-	"github.com/gomodule/redigo/redis"
-	"github.com/gocraft/work"
 	"os"
 	"os/signal"
+	"syscall"
+	"github.com/gomodule/redigo/redis"
+	"github.com/gocraft/work"
 )
 
 // Make a redis pool
@@ -99,7 +101,7 @@ func main() {
 
 	// Wait for a signal to quit:
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, os.Kill)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	<-signalChan
 
 	// Stop the pool
