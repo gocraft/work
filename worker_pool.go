@@ -10,6 +10,16 @@ import (
 	"github.com/robfig/cron"
 )
 
+type Worker interface {
+	Middleware(fn interface{}) Worker
+	Job(name string, fn interface{}) Worker
+	JobWithOptions(name string, jobOpts JobOptions, fn interface{}) Worker
+	PeriodicallyEnqueue(spec string, jobName string) Worker
+	Start()
+	Stop()
+	Drain()
+}
+
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
 type WorkerPool struct {
 	workerPoolID  string
@@ -31,6 +41,8 @@ type WorkerPool struct {
 	deadPoolReaper   *deadPoolReaper
 	periodicEnqueuer *periodicEnqueuer
 }
+
+var _ Worker = (*WorkerPool)(nil)
 
 type jobType struct {
 	Name string
@@ -85,13 +97,13 @@ type middlewareHandler struct {
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) Worker {
 	return NewWorkerPoolWithOptions(ctx, concurrency, namespace, pool, WorkerPoolOptions{})
 }
 
 // NewWorkerPoolWithOptions creates a new worker pool as per the NewWorkerPool function, but permits you to specify
 // additional options such as sleep backoffs.
-func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool, workerPoolOpts WorkerPoolOptions) *WorkerPool {
+func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool, workerPoolOpts WorkerPoolOptions) Worker {
 	if pool == nil {
 		panic("NewWorkerPool needs a non-nil *redis.Pool")
 	}
@@ -119,7 +131,7 @@ func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace strin
 // Middleware appends the specified function to the middleware chain. The fn can take one of these forms:
 // (*ContextType).func(*Job, NextMiddlewareFunc) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job, NextMiddlewareFunc) error, for the generic middleware format.
-func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
+func (wp *WorkerPool) Middleware(fn interface{}) Worker {
 	vfn := reflect.ValueOf(fn)
 	validateMiddlewareType(wp.contextType, vfn)
 
@@ -145,13 +157,13 @@ func (wp *WorkerPool) Middleware(fn interface{}) *WorkerPool {
 // fn can take one of these forms:
 // (*ContextType).func(*Job) error, (ContextType matches the type of ctx specified when creating a pool)
 // func(*Job) error, for the generic handler format.
-func (wp *WorkerPool) Job(name string, fn interface{}) *WorkerPool {
+func (wp *WorkerPool) Job(name string, fn interface{}) Worker {
 	return wp.JobWithOptions(name, JobOptions{}, fn)
 }
 
 // JobWithOptions adds a handler for 'name' jobs as per the Job function, but permits you specify additional options
 // such as a job's priority, retry count, and whether to send dead jobs to the dead job queue or trash them.
-func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) *WorkerPool {
+func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interface{}) Worker {
 	jobOpts = applyDefaultsAndValidate(jobOpts)
 
 	vfn := reflect.ValueOf(fn)
@@ -179,7 +191,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 // The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
 // Note that the first value is the seconds!
 // If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
-func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
+func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) Worker {
 	schedule, err := cron.Parse(spec)
 	if err != nil {
 		panic(err)
