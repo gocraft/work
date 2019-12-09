@@ -108,10 +108,13 @@ func TestPeriodicEnqueuerSpawn(t *testing.T) {
 }
 
 func appendPeriodicJob(pjs []*periodicJob, spec, jobName string) []*periodicJob {
-	sched, err := cron.Parse(spec)
+	p := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+
+	sched, err := p.Parse(spec)
 	if err != nil {
 		panic(err)
 	}
+
 	pj := &periodicJob{jobName: jobName, spec: spec, schedule: sched}
 	return append(pjs, pj)
 }
