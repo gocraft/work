@@ -180,7 +180,9 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 // Note that the first value is the seconds!
 // If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
 func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
-	schedule, err := cron.Parse(spec)
+	p := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+
+	schedule, err := p.Parse(spec)
 	if err != nil {
 		panic(err)
 	}
