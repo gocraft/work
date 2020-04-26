@@ -21,7 +21,8 @@ require (
 	github.com/jrallison/go-workers v0.0.0-20180112190529-dbf81d0b75bb
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/orfjackal/nanospec.go v0.0.0-20120727230329-de4694c1d701 // indirect
-	github.com/robfig/cron v1.2.0
+	github.com/robfig/cron v1.2.0 // indirect
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/stretchr/testify v1.5.1
 	github.com/youtube/vitess v2.1.1+incompatible // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
