@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 )
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
