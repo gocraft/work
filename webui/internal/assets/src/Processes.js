@@ -55,7 +55,7 @@ export default class Processes extends React.Component {
 
   componentWillMount() {
     if (this.props.busyWorkerURL) {
-      fetch(this.props.busyWorkerURL).
+      fetch(this.props.busyWorkerURL, {credentials: 'include'}).
         then((resp) => resp.json()).
         then((data) => {
           if (data) {
@@ -66,7 +66,7 @@ export default class Processes extends React.Component {
         });
     }
     if (this.props.workerPoolURL) {
-      fetch(this.props.workerPoolURL).
+      fetch(this.props.workerPoolURL, {credentials: 'include'}).
         then((resp) => resp.json()).
         then((data) => {
           let workers = [];

@@ -16,7 +16,7 @@ export default class Queues extends React.Component {
     if (!this.props.url) {
       return;
     }
-    fetch(this.props.url).
+    fetch(this.props.url, {credentials: 'include'}).
       then((resp) => resp.json()).
       then((data) => {
         this.setState({queues: data});
