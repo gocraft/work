@@ -26,6 +26,18 @@ func TestWebUIStartStop(t *testing.T) {
 
 type TestContext struct{}
 
+func TestWebUIPing(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+	s := NewServer(ns, pool, ":6666")
+
+	recorder := httptest.NewRecorder()
+	request, _ := http.NewRequest("GET", "/ping", nil)
+	s.router.ServeHTTP(recorder, request)
+	assert.Equal(t, 200, recorder.Code)
+}
+
 func TestWebUIQueues(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
