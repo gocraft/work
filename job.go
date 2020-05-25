@@ -70,6 +70,23 @@ func (j *Job) Checkin(msg string) {
 	}
 }
 
+// ArgInterface returns a interface, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
+func (j *Job) ArgInterface(key string) interface{} {
+	v, ok := j.Args[key]
+	if ok {
+		typedV, ok := v.(interface{})
+		if ok {
+			return typedV
+		}
+		j.argError = typecastError("interface", key, v)
+	} else {
+		j.argError = missingKeyError("interface", key)
+	}
+	return nil
+}
+
 // ArgString returns j.Args[key] typed to a string. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
