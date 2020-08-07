@@ -251,8 +251,12 @@ go install github.com/gocraft/work/cmd/workwebui
 
 Then, you can run it:
 ```bash
-workwebui -redis="redis:6379" -ns="work" -listen=":5040"
+workwebui -redis="redis://127.0.0.1:6379" -ns="work" -listen=":5040"
 ```
+
+For the `-redis` parameter, any Redis URI conforming to the
+[specification](https://www.iana.org/assignments/uri-schemes/prov/redis) is
+allowed - see its ABNF notation or example section for further details.
 
 Navigate to ```http://localhost:5040/```.
 
