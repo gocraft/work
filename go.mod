@@ -1,4 +1,4 @@
-module github.com/gocraft/work
+module github.com/mrNobody95/redisGoWork
 
 go 1.14
 
