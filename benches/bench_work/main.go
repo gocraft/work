@@ -63,23 +63,21 @@ func monitor() {
 	prev := int64(0)
 
 DALOOP:
-	for {
-		select {
-		case <-t:
-			curT++
-			v := atomic.AddInt64(&totcount, 0)
-			fmt.Printf("after %d seconds, count is %d\n", curT, v)
-			if curT == 1 {
-				c1 = v
-			} else if curT == 3 {
-				c2 = v
-			}
-			if v == prev {
-				break DALOOP
-			}
-			prev = v
+	for range t {
+		curT++
+		v := atomic.AddInt64(&totcount, 0)
+		fmt.Printf("after %d seconds, count is %d\n", curT, v)
+		if curT == 1 {
+			c1 = v
+		} else if curT == 3 {
+			c2 = v
 		}
+		if v == prev {
+			break DALOOP
+		}
+		prev = v
 	}
+
 	fmt.Println("Jobs/sec: ", float64(c2-c1)/2.0)
 	os.Exit(0)
 }

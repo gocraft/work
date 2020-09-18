@@ -12,8 +12,8 @@ import (
 type TestContext struct{}
 
 func TestClientWorkerPoolHeartbeats(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := "TestClientWorkerPoolHeartbeats"
 	cleanKeyspace(ns, pool)
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
@@ -64,8 +64,8 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 }
 
 func TestClientWorkerObservations(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := "TestClientWorkerObservations"
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
@@ -133,14 +133,17 @@ func TestClientWorkerObservations(t *testing.T) {
 }
 
 func TestClientQueues(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := "TestClientQueues"
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue("wat", nil)
+	assert.NoError(t, err)
 	_, err = enqueuer.Enqueue("foo", nil)
+	assert.NoError(t, err)
 	_, err = enqueuer.Enqueue("zaz", nil)
+	assert.NoError(t, err)
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
@@ -184,8 +187,8 @@ func TestClientQueues(t *testing.T) {
 }
 
 func TestClientScheduledJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := "TestClientScheduledJobs"
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
@@ -193,8 +196,11 @@ func TestClientScheduledJobs(t *testing.T) {
 	setNowEpochSecondsMock(1425263409)
 	defer resetNowEpochSecondsMock()
 	_, err := enqueuer.EnqueueIn("wat", 0, Q{"a": 1, "b": 2})
+	assert.NoError(t, err)
 	_, err = enqueuer.EnqueueIn("zaz", 4, Q{"a": 3, "b": 4})
+	assert.NoError(t, err)
 	_, err = enqueuer.EnqueueIn("foo", 2, Q{"a": 3, "b": 4})
+	assert.NoError(t, err)
 
 	client := NewClient(ns, pool)
 	jobs, count, err := client.ScheduledJobs(1)
@@ -232,8 +238,8 @@ func TestClientScheduledJobs(t *testing.T) {
 }
 
 func TestClientRetryJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := "TestClientRetryJobs"
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -271,8 +277,8 @@ func TestClientRetryJobs(t *testing.T) {
 }
 
 func TestClientDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	pool := newTestPool()
+	ns := "TestClientDeadJobs"
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -326,8 +332,8 @@ func TestClientDeadJobs(t *testing.T) {
 }
 
 func TestClientDeleteDeadJob(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	pool := newTestPool()
+	ns := "TestClientDeleteDeadJob"
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
@@ -355,8 +361,8 @@ func TestClientDeleteDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJob(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	pool := newTestPool()
+	ns := "TestClientRetryDeadJob"
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
@@ -411,7 +417,7 @@ func TestClientRetryDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJobWithArgs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -455,15 +461,15 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 }
 
 func TestClientDeleteAllDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
-	insertDeadJob(ns, pool, "wat", 12345, 12347)
-	insertDeadJob(ns, pool, "wat", 12345, 12347)
-	insertDeadJob(ns, pool, "wat", 12345, 12349)
-	insertDeadJob(ns, pool, "wat", 12345, 12350)
+	insertDeadJob(ns, pool, "wat", 12344, 12347)
+	insertDeadJob(ns, pool, "wat", 12344, 12347)
+	insertDeadJob(ns, pool, "wat", 12344, 12349)
+	insertDeadJob(ns, pool, "wat", 12344, 12350)
 
 	client := NewClient(ns, pool)
 	jobs, count, err := client.DeadJobs(1)
@@ -481,7 +487,7 @@ func TestClientDeleteAllDeadJobs(t *testing.T) {
 }
 
 func TestClientRetryAllDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -539,7 +545,7 @@ func TestClientRetryAllDeadJobs(t *testing.T) {
 }
 
 func TestClientRetryAllDeadJobsBig(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -608,7 +614,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 }
 
 func TestClientDeleteScheduledJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -629,7 +635,7 @@ func TestClientDeleteScheduledJob(t *testing.T) {
 }
 
 func TestClientDeleteScheduledUniqueJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -650,7 +656,7 @@ func TestClientDeleteScheduledUniqueJob(t *testing.T) {
 }
 
 func TestClientDeleteRetryJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -683,7 +689,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 	}
 }
 
-func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {
+func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) {
 	job := &Job{
 		Name:       name,
 		ID:         makeIdentifier(),
@@ -707,7 +713,6 @@ func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64
 		panic(err)
 	}
 
-	return job
 }
 
 func getQueuedJob(ns string, pool *redis.Pool, name string) *Job {

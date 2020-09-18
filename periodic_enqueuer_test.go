@@ -10,7 +10,7 @@ import (
 )
 
 func TestPeriodicEnqueuer(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -98,7 +98,7 @@ func TestPeriodicEnqueuer(t *testing.T) {
 }
 
 func TestPeriodicEnqueuerSpawn(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 

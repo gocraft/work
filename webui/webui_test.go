@@ -15,7 +15,7 @@ import (
 )
 
 func TestWebUIStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -27,7 +27,7 @@ func TestWebUIStartStop(t *testing.T) {
 type TestContext struct{}
 
 func TestWebUIQueues(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -83,7 +83,7 @@ func TestWebUIQueues(t *testing.T) {
 }
 
 func TestWebUIWorkerPools(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -121,7 +121,7 @@ func TestWebUIWorkerPools(t *testing.T) {
 }
 
 func TestWebUIBusyWorkers(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -183,7 +183,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 }
 
 func TestWebUIRetryJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -226,7 +226,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 }
 
 func TestWebUIScheduledJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -259,12 +259,13 @@ func TestWebUIScheduledJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue("wat", nil)
+	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
@@ -347,12 +348,13 @@ func TestWebUIDeadJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue("wat", nil)
+	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
@@ -448,14 +450,14 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 }
 
 func TestWebUIAssets(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "testwork"
 	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/", nil)
 	s.router.ServeHTTP(recorder, request)
-	body := string(recorder.Body.Bytes())
+	body := recorder.Body.String()
 	assert.Regexp(t, "html", body)
 
 	recorder = httptest.NewRecorder()
@@ -463,13 +465,13 @@ func TestWebUIAssets(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 }
 
-func newTestPool(addr string) *redis.Pool {
+func newTestPool() *redis.Pool {
 	return &redis.Pool{
 		MaxActive:   3,
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", addr)
+			return redis.Dial("tcp", ":6379")
 		},
 		Wait: true,
 	}

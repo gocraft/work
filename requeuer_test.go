@@ -7,7 +7,7 @@ import (
 )
 
 func TestRequeue(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -50,7 +50,7 @@ func TestRequeue(t *testing.T) {
 }
 
 func TestRequeueUnknown(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 

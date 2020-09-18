@@ -9,7 +9,7 @@ import (
 )
 
 func TestHeartbeater(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	tMock := int64(1425263409)

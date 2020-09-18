@@ -73,7 +73,7 @@ func (h *workerPoolHeartbeater) stop() {
 func (h *workerPoolHeartbeater) loop() {
 	h.startedAt = nowEpochSeconds()
 	h.heartbeat() // do it right away
-	ticker := time.Tick(h.beatPeriod)
+	ticker := time.NewTicker(h.beatPeriod).C
 	for {
 		select {
 		case <-h.stopChan:

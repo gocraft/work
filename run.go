@@ -48,7 +48,5 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 		}
 	}()
 
-	returnError = next()
-
-	return
+	return returnCtx, next()
 }
