@@ -1,7 +1,9 @@
 package work
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math"
+	"math/big"
 )
 
 type prioritySampler struct {
@@ -55,9 +57,13 @@ func (s *prioritySampler) sample() []sampleItem {
 	//     and see where the random number fits in the continuum.
 	//     If we find where it fits, sort the item to the next slot towards the front of the slice.
 	for remaining > 1 {
-		// rn from [0 to sumRemaining)
-		rn := uint(rand.Uint32()) % sumRemaining
+		n, err := rand.Int(rand.Reader, big.NewInt(math.MaxUint32))
+		if err != nil {
+			panic(err)
+		}
 
+		// rn from [0 to sumRemaining)
+		rn := uint(n.Uint64()) % sumRemaining
 		prevSum := uint(0)
 		for i := lenSamples - 1; i >= lastValidIdx; i-- {
 			sample := s.samples[i]

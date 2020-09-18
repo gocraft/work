@@ -9,7 +9,7 @@ import (
 )
 
 func TestObserverStarted(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	tMock := int64(1425263401)
@@ -31,7 +31,7 @@ func TestObserverStarted(t *testing.T) {
 }
 
 func TestObserverStartedDone(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	tMock := int64(1425263401)
@@ -50,7 +50,7 @@ func TestObserverStartedDone(t *testing.T) {
 }
 
 func TestObserverCheckin(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	observer := newObserver(ns, pool, "abcd")
@@ -77,7 +77,7 @@ func TestObserverCheckin(t *testing.T) {
 }
 
 func TestObserverCheckinFromJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	observer := newObserver(ns, pool, "abcd")

@@ -12,7 +12,7 @@ import (
 )
 
 func TestWorkerBasics(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
@@ -61,7 +61,7 @@ func TestWorkerBasics(t *testing.T) {
 	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	w.start()
 	w.drain()
 	w.stop()
@@ -89,7 +89,7 @@ func TestWorkerBasics(t *testing.T) {
 }
 
 func TestWorkerInProgress(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -111,7 +111,7 @@ func TestWorkerInProgress(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
@@ -142,7 +142,7 @@ func TestWorkerInProgress(t *testing.T) {
 }
 
 func TestWorkerRetry(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -162,7 +162,7 @@ func TestWorkerRetry(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	w.start()
 	w.drain()
 	w.stop()
@@ -189,7 +189,7 @@ func TestWorkerRetry(t *testing.T) {
 
 // Check if a custom backoff function functions functionally.
 func TestWorkerRetryWithCustomBackoff(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -214,7 +214,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	w.start()
 	w.drain()
 	w.stop()
@@ -239,7 +239,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 }
 
 func TestWorkerDead(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
@@ -271,7 +271,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	w.start()
 	w.drain()
 	w.stop()
@@ -302,7 +302,7 @@ func TestWorkerDead(t *testing.T) {
 }
 
 func TestWorkersPaused(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -324,7 +324,7 @@ func TestWorkersPaused(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, nil)
+	w := newWorker(ns, "1", pool, tstCtxType, jobTypes, nil)
 	// pause the jobs prior to starting
 	err = pauseJobs(ns, job1, pool)
 	assert.Nil(t, err)
@@ -381,7 +381,7 @@ func TestStop(t *testing.T) {
 }
 
 func BenchmarkJobProcessing(b *testing.B) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
@@ -405,13 +405,13 @@ func BenchmarkJobProcessing(b *testing.B) {
 	wp.Stop()
 }
 
-func newTestPool(addr string) *redis.Pool {
+func newTestPool() *redis.Pool {
 	return &redis.Pool{
 		MaxActive:   10,
 		MaxIdle:     10,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", addr)
+			c, err := redis.Dial("tcp", ":6379")
 			if err != nil {
 				return nil, err
 			}
@@ -598,9 +598,9 @@ type emptyCtx struct{}
 // https://github.com/gocraft/work/issues/24
 func TestWorkerPoolStop(t *testing.T) {
 	ns := "will_it_end"
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	var started, stopped int32
-	num_iters := 30
+	numIters := 30
 
 	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool)
 
@@ -613,7 +613,7 @@ func TestWorkerPoolStop(t *testing.T) {
 
 	var enqueuer = NewEnqueuer(ns, pool)
 
-	for i := 0; i <= num_iters; i++ {
+	for i := 0; i <= numIters; i++ {
 		enqueuer.Enqueue("sample_job", Q{})
 	}
 
@@ -627,7 +627,7 @@ func TestWorkerPoolStop(t *testing.T) {
 		t.Errorf("Expected that jobs were finished and not killed while processing (started=%d, stopped=%d)", started, stopped)
 	}
 
-	if started >= int32(num_iters) {
+	if started >= int32(numIters) {
 		t.Errorf("Expected that jobs queue was not completely emptied.")
 	}
 }

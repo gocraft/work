@@ -1,9 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
 	"flag"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/gocraft/work"
@@ -17,7 +18,12 @@ func epsilonHandler(job *work.Job) error {
 	fmt.Println("epsilon")
 	time.Sleep(time.Second)
 
-	if rand.Intn(2) == 0 {
+	n, err := rand.Int(rand.Reader, big.NewInt(2))
+	if err != nil {
+		panic(err)
+	}
+
+	if n.Int64() == 0 {
 		return fmt.Errorf("random error")
 	}
 	return nil

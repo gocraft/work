@@ -12,7 +12,6 @@ import (
 )
 
 type tstCtx struct {
-	a int
 	bytes.Buffer
 }
 
@@ -31,7 +30,7 @@ func TestWorkerPoolHandlerValidations(t *testing.T) {
 		{func(c *tstCtx, j *Job) error { return nil }, true},
 		{func(c *tstCtx, j *Job) {}, false},
 		{func(c *tstCtx, j *Job) string { return "" }, false},
-		{func(c *tstCtx, j *Job) (error, string) { return nil, "" }, false},
+		{func(c *tstCtx, j *Job) (string, error) { return "", nil }, false},
 		{func(c *tstCtx) error { return nil }, false},
 		{func(c tstCtx, j *Job) error { return nil }, false},
 		{func() error { return nil }, false},
@@ -56,7 +55,7 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 		{func(c *tstCtx, j *Job) error { return nil }, false},
 		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) {}, false},
 		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) string { return "" }, false},
-		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) (error, string) { return nil, "" }, false},
+		{func(c *tstCtx, j *Job, n NextMiddlewareFunc) (string, error) { return "", nil }, false},
 		{func(c *tstCtx, n NextMiddlewareFunc) error { return nil }, false},
 		{func(c tstCtx, j *Job, n NextMiddlewareFunc) error { return nil }, false},
 		{func() error { return nil }, false},
@@ -73,7 +72,7 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 }
 
 func TestWorkerPoolStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 	wp.Start()
@@ -85,7 +84,7 @@ func TestWorkerPoolStartStop(t *testing.T) {
 }
 
 func TestWorkerPoolValidations(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 
@@ -115,7 +114,7 @@ func TestWorkerPoolValidations(t *testing.T) {
 }
 
 func TestWorkersPoolRunSingleThreaded(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
@@ -158,7 +157,7 @@ func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 }
 
 func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns, job1 := "work", "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
 	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, MaxConcurrency: 1})

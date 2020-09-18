@@ -9,7 +9,7 @@ import (
 )
 
 func TestDeadPoolReaper(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -92,7 +92,7 @@ func TestDeadPoolReaper(t *testing.T) {
 }
 
 func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 
 	conn := pool.Get()
@@ -179,7 +179,7 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 }
 
 func TestDeadPoolReaperNoJobTypes(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -255,7 +255,7 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 }
 
 func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	job1 := "job1"
 	stalePoolID := "aaa"
@@ -295,7 +295,7 @@ func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 }
 
 func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool()
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -341,7 +341,9 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	assert.EqualValues(t, 0, getInt64(pool, lock2))
 	// worker pool ID 2 removed from both lock info hashes
 	v, err = conn.Do("HGET", lockInfo1, workerPoolID2)
+	assert.NoError(t, err)
 	assert.Nil(t, v)
 	v, err = conn.Do("HGET", lockInfo2, workerPoolID2)
 	assert.Nil(t, v)
+	assert.NoError(t, err)
 }
