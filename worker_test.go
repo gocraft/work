@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWorkerBasics(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	job2 := "job2"
 	job3 := "job3"
@@ -89,8 +92,10 @@ func TestWorkerBasics(t *testing.T) {
 }
 
 func TestWorkerInProgress(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
@@ -142,8 +147,10 @@ func TestWorkerInProgress(t *testing.T) {
 }
 
 func TestWorkerRetry(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
@@ -189,8 +196,10 @@ func TestWorkerRetry(t *testing.T) {
 
 // Check if a custom backoff function functions functionally.
 func TestWorkerRetryWithCustomBackoff(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
@@ -240,7 +249,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 
 func TestWorkerDead(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	job2 := "job2"
 	deleteQueue(pool, ns, job1)
@@ -303,7 +312,7 @@ func TestWorkerDead(t *testing.T) {
 
 func TestWorkersPaused(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
 	deleteRetryAndDead(pool, ns)
@@ -366,6 +375,8 @@ func TestWorkersPaused(t *testing.T) {
 // Test that in the case of an unavailable Redis server,
 // the worker loop exits in the case of a WorkerPool.Stop
 func TestStop(t *testing.T) {
+	t.Parallel()
+
 	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
 			c, err := redis.Dial("tcp", "notworking:6379", redis.DialConnectTimeout(1*time.Second))
@@ -382,7 +393,7 @@ func TestStop(t *testing.T) {
 
 func BenchmarkJobProcessing(b *testing.B) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
@@ -597,7 +608,9 @@ type emptyCtx struct{}
 // drained before returning.
 // https://github.com/gocraft/work/issues/24
 func TestWorkerPoolStop(t *testing.T) {
-	ns := "will_it_end"
+	t.Parallel()
+
+	ns := uuid.New().String()
 	pool := newTestPool()
 	var started, stopped int32
 	numIters := 30

@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/robfig/cron/v3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestPeriodicEnqueuer(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	var pjs []*periodicJob
@@ -98,8 +99,10 @@ func TestPeriodicEnqueuer(t *testing.T) {
 }
 
 func TestPeriodicEnqueuerSpawn(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	pe := newPeriodicEnqueuer(ns, pool, nil)

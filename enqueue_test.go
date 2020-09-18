@@ -6,12 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEnqueue(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	job, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
@@ -53,8 +56,10 @@ func TestEnqueue(t *testing.T) {
 }
 
 func TestEnqueueIn(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
@@ -101,7 +106,7 @@ func TestEnqueueIn(t *testing.T) {
 
 func TestEnqueueUnique(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	var mutex = &sync.Mutex{}
@@ -177,7 +182,7 @@ func TestEnqueueUnique(t *testing.T) {
 
 func TestEnqueueUniqueIn(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
@@ -233,11 +238,13 @@ func TestEnqueueUniqueIn(t *testing.T) {
 }
 
 func TestEnqueueUniqueByKey(t *testing.T) {
+	t.Parallel()
+
 	var arg3 string
 	var arg4 string
 
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	var mutex = &sync.Mutex{}

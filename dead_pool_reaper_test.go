@@ -5,12 +5,15 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDeadPoolReaper(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	conn := pool.Get()
@@ -92,8 +95,10 @@ func TestDeadPoolReaper(t *testing.T) {
 }
 
 func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 
 	conn := pool.Get()
 	defer conn.Close()
@@ -179,8 +184,10 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 }
 
 func TestDeadPoolReaperNoJobTypes(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	conn := pool.Get()
@@ -256,7 +263,7 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 
 func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	stalePoolID := "aaa"
 	cleanKeyspace(ns, pool)
@@ -295,8 +302,10 @@ func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 }
 
 func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	conn := pool.Get()

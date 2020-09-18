@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestObserverStarted(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
@@ -32,7 +33,7 @@ func TestObserverStarted(t *testing.T) {
 
 func TestObserverStartedDone(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
@@ -51,7 +52,7 @@ func TestObserverStartedDone(t *testing.T) {
 
 func TestObserverCheckin(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 
 	observer := newObserver(ns, pool, "abcd")
 	observer.start()
@@ -78,7 +79,7 @@ func TestObserverCheckin(t *testing.T) {
 
 func TestObserverCheckinFromJob(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 
 	observer := newObserver(ns, pool, "abcd")
 	observer.start()

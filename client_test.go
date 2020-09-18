@@ -6,14 +6,17 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 type TestContext struct{}
 
 func TestClientWorkerPoolHeartbeats(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "TestClientWorkerPoolHeartbeats"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
@@ -65,7 +68,7 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 
 func TestClientWorkerObservations(t *testing.T) {
 	pool := newTestPool()
-	ns := "TestClientWorkerObservations"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
@@ -134,7 +137,7 @@ func TestClientWorkerObservations(t *testing.T) {
 
 func TestClientQueues(t *testing.T) {
 	pool := newTestPool()
-	ns := "TestClientQueues"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
@@ -188,7 +191,7 @@ func TestClientQueues(t *testing.T) {
 
 func TestClientScheduledJobs(t *testing.T) {
 	pool := newTestPool()
-	ns := "TestClientScheduledJobs"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := NewEnqueuer(ns, pool)
@@ -239,7 +242,7 @@ func TestClientScheduledJobs(t *testing.T) {
 
 func TestClientRetryJobs(t *testing.T) {
 	pool := newTestPool()
-	ns := "TestClientRetryJobs"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -278,7 +281,7 @@ func TestClientRetryJobs(t *testing.T) {
 
 func TestClientDeadJobs(t *testing.T) {
 	pool := newTestPool()
-	ns := "TestClientDeadJobs"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -332,8 +335,10 @@ func TestClientDeadJobs(t *testing.T) {
 }
 
 func TestClientDeleteDeadJob(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "TestClientDeleteDeadJob"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
@@ -361,8 +366,10 @@ func TestClientDeleteDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJob(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "TestClientRetryDeadJob"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
@@ -417,8 +424,10 @@ func TestClientRetryDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJobWithArgs(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Enqueue a job with arguments
@@ -461,8 +470,10 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 }
 
 func TestClientDeleteAllDeadJobs(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Insert a dead job:
@@ -488,7 +499,7 @@ func TestClientDeleteAllDeadJobs(t *testing.T) {
 
 func TestClientRetryAllDeadJobs(t *testing.T) {
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)
@@ -545,8 +556,10 @@ func TestClientRetryAllDeadJobs(t *testing.T) {
 }
 
 func TestClientRetryAllDeadJobsBig(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	conn := pool.Get()
@@ -614,8 +627,10 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 }
 
 func TestClientDeleteScheduledJob(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Delete an invalid job. Make sure we get error
@@ -635,8 +650,10 @@ func TestClientDeleteScheduledJob(t *testing.T) {
 }
 
 func TestClientDeleteScheduledUniqueJob(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Schedule a unique job. Delete it. Ensure we can schedule it again.
@@ -657,7 +674,7 @@ func TestClientDeleteScheduledUniqueJob(t *testing.T) {
 
 func TestClientDeleteRetryJob(t *testing.T) {
 	pool := newTestPool()
-	ns := "testwork"
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	setNowEpochSecondsMock(1425263409)

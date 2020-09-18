@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +23,8 @@ func (c *tstCtx) record(s string) {
 var tstCtxType = reflect.TypeOf(tstCtx{})
 
 func TestWorkerPoolHandlerValidations(t *testing.T) {
+	t.Parallel()
+
 	var cases = []struct {
 		fn   interface{}
 		good bool
@@ -46,6 +49,8 @@ func TestWorkerPoolHandlerValidations(t *testing.T) {
 }
 
 func TestWorkerPoolMiddlewareValidations(t *testing.T) {
+	t.Parallel()
+
 	var cases = []struct {
 		fn   interface{}
 		good bool
@@ -72,8 +77,10 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 }
 
 func TestWorkerPoolStartStop(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 	wp.Start()
 	wp.Start()
@@ -84,8 +91,10 @@ func TestWorkerPoolStartStop(t *testing.T) {
 }
 
 func TestWorkerPoolValidations(t *testing.T) {
+	t.Parallel()
+
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
 
 	func() {
@@ -115,7 +124,7 @@ func TestWorkerPoolValidations(t *testing.T) {
 
 func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 	pool := newTestPool()
-	ns := "work"
+	ns := uuid.New().String()
 	job1 := "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
 	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, MaxConcurrency: 1})

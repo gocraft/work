@@ -27,5 +27,5 @@ lint-strict:
 
 test:
 	mkdir -p ./etc/out
-	ENVIRONMENT=test go test -failfast -count 1 -timeout 30s -race -covermode=atomic -coverprofile=etc/out/profile.cov ./... && go tool cover -func=etc/out/profile.cov
+	ENVIRONMENT=test go test -failfast -count 1 -timeout 30s -covermode=atomic -coverprofile=etc/out/profile.cov ./... && go tool cover -func=etc/out/profile.cov
 
