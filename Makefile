@@ -29,3 +29,8 @@ test:
 	mkdir -p ./etc/out
 	ENVIRONMENT=test go test -failfast -count 1 -timeout 30s -covermode=atomic -coverprofile=etc/out/profile.cov ./... && go tool cover -func=etc/out/profile.cov
 
+docker.start: docker.stop
+	docker run -d --rm -p 6379:6379 --name work-redis-server redis:latest || true
+
+docker.stop:
+	docker stop work-redis-server || true
