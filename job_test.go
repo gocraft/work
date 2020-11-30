@@ -8,6 +8,8 @@ import (
 )
 
 func TestJobArgumentExtraction(t *testing.T) {
+	t.Parallel()
+
 	j := Job{}
 	j.setArg("str1", "bar")
 
@@ -88,6 +90,8 @@ func TestJobArgumentExtraction(t *testing.T) {
 }
 
 func TestJobArgumentExtractionBadString(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		key  string
 		val  interface{}
@@ -127,6 +131,8 @@ func TestJobArgumentExtractionBadString(t *testing.T) {
 }
 
 func TestJobArgumentExtractionBadBool(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		key  string
 		val  interface{}
@@ -167,6 +173,8 @@ func TestJobArgumentExtractionBadBool(t *testing.T) {
 }
 
 func TestJobArgumentExtractionBadInt(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		key  string
 		val  interface{}
@@ -213,6 +221,8 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 }
 
 func TestJobArgumentExtractionBadFloat(t *testing.T) {
+	t.Parallel()
+
 	var testCases = []struct {
 		key  string
 		val  interface{}

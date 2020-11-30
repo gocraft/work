@@ -11,12 +11,15 @@ import (
 
 	"github.com/gocraft/work"
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWebUIStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	s := NewServer(ns, pool, ":6666")
@@ -27,8 +30,10 @@ func TestWebUIStartStop(t *testing.T) {
 type TestContext struct{}
 
 func TestWebUIQueues(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Get some stuff to to show up in the jobs:
@@ -83,8 +88,10 @@ func TestWebUIQueues(t *testing.T) {
 }
 
 func TestWebUIWorkerPools(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	wp := work.NewWorkerPool(TestContext{}, 10, ns, pool)
@@ -121,8 +128,10 @@ func TestWebUIWorkerPools(t *testing.T) {
 }
 
 func TestWebUIBusyWorkers(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	// Keep a job in the in-progress state without using sleeps
@@ -183,8 +192,10 @@ func TestWebUIBusyWorkers(t *testing.T) {
 }
 
 func TestWebUIRetryJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
@@ -226,8 +237,10 @@ func TestWebUIRetryJobs(t *testing.T) {
 }
 
 func TestWebUIScheduledJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
@@ -259,12 +272,15 @@ func TestWebUIScheduledJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue("wat", nil)
+	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
@@ -347,12 +363,15 @@ func TestWebUIDeadJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	enqueuer := work.NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue("wat", nil)
+	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue("wat", nil)
 	assert.Nil(t, err)
 
@@ -448,14 +467,16 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 }
 
 func TestWebUIAssets(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "testwork"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	s := NewServer(ns, pool, ":6666")
 
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/", nil)
 	s.router.ServeHTTP(recorder, request)
-	body := string(recorder.Body.Bytes())
+	body := recorder.Body.String()
 	assert.Regexp(t, "html", body)
 
 	recorder = httptest.NewRecorder()
@@ -463,13 +484,13 @@ func TestWebUIAssets(t *testing.T) {
 	s.router.ServeHTTP(recorder, request)
 }
 
-func newTestPool(addr string) *redis.Pool {
+func newTestPool() *redis.Pool {
 	return &redis.Pool{
 		MaxActive:   3,
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", addr)
+			return redis.Dial("tcp", ":6379")
 		},
 		Wait: true,
 	}

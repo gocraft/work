@@ -6,12 +6,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEnqueue(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	job, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
@@ -46,14 +49,17 @@ func TestEnqueue(t *testing.T) {
 
 	// Now enqueue another job, make sure that we can enqueue multiple
 	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
+	assert.NoError(t, err)
 	_, err = enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.EqualValues(t, 2, listSize(pool, redisKeyJobs(ns, "wat")))
 }
 
 func TestEnqueueIn(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	t.Parallel()
+
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
@@ -99,8 +105,8 @@ func TestEnqueueIn(t *testing.T) {
 }
 
 func TestEnqueueUnique(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	var mutex = &sync.Mutex{}
@@ -175,8 +181,8 @@ func TestEnqueueUnique(t *testing.T) {
 }
 
 func TestEnqueueUniqueIn(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 
@@ -232,11 +238,13 @@ func TestEnqueueUniqueIn(t *testing.T) {
 }
 
 func TestEnqueueUniqueByKey(t *testing.T) {
+	t.Parallel()
+
 	var arg3 string
 	var arg4 string
 
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
 	var mutex = &sync.Mutex{}
@@ -313,44 +321,4 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
-}
-
-func EnqueueUniqueInByKey(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
-	cleanKeyspace(ns, pool)
-	enqueuer := NewEnqueuer(ns, pool)
-
-	// Enqueue two unique jobs -- ensure one job sticks.
-	job, err := enqueuer.EnqueueUniqueInByKey("wat", 300, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
-	assert.NoError(t, err)
-	if assert.NotNil(t, job) {
-		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
-		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
-		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-		assert.Equal(t, "cool", job.ArgString("b"))
-		assert.EqualValues(t, 1, job.ArgInt64("a"))
-		assert.NoError(t, job.ArgError())
-		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
-	}
-
-	job, err = enqueuer.EnqueueUniqueInByKey("wat", 10, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
-	assert.NoError(t, err)
-	assert.Nil(t, job)
-
-	// Get the job
-	score, j := jobOnZset(pool, redisKeyScheduled(ns))
-
-	assert.True(t, score > time.Now().Unix()+290) // We don't want to overwrite the time
-	assert.True(t, score <= time.Now().Unix()+300)
-
-	assert.Equal(t, "wat", j.Name)
-	assert.True(t, len(j.ID) > 10)                        // Something is in it
-	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
-	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
-	assert.Equal(t, "cool", j.ArgString("b"))
-	assert.EqualValues(t, 1, j.ArgInt64("a"))
-	assert.NoError(t, j.ArgError())
-	assert.True(t, j.Unique)
 }

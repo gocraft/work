@@ -109,7 +109,7 @@ func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace strin
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes, wp.sleepBackoffs)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, wp.jobTypes, wp.sleepBackoffs)
 		wp.workers = append(wp.workers, w)
 	}
 

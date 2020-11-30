@@ -9,6 +9,8 @@ import (
 )
 
 func TestRunBasicMiddleware(t *testing.T) {
+	t.Parallel()
+
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		j.setArg("mw1", "mw1")
 		return next()
@@ -55,6 +57,8 @@ func TestRunBasicMiddleware(t *testing.T) {
 }
 
 func TestRunHandlerError(t *testing.T) {
+	t.Parallel()
+
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		return next()
 	}
@@ -86,6 +90,8 @@ func TestRunHandlerError(t *testing.T) {
 }
 
 func TestRunMwError(t *testing.T) {
+	t.Parallel()
+
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		return fmt.Errorf("mw1_err")
 	}
@@ -114,6 +120,8 @@ func TestRunMwError(t *testing.T) {
 }
 
 func TestRunHandlerPanic(t *testing.T) {
+	t.Parallel()
+
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		return next()
 	}
@@ -143,6 +151,8 @@ func TestRunHandlerPanic(t *testing.T) {
 }
 
 func TestRunMiddlewarePanic(t *testing.T) {
+	t.Parallel()
+
 	mw1 := func(j *Job, next NextMiddlewareFunc) error {
 		panic("dayam")
 	}

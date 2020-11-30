@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestHeartbeater(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 
 	tMock := int64(1425263409)
 	setNowEpochSecondsMock(tMock)

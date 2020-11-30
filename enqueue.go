@@ -2,7 +2,6 @@ package work
 
 import (
 	"sync"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -155,7 +154,7 @@ func (e *Enqueuer) EnqueueUniqueInByKey(jobName string, secondsFromNow int64, ar
 
 func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 	needSadd := true
-	now := time.Now().Unix()
+	now := nowEpochSeconds()
 
 	e.mtx.RLock()
 	t, ok := e.knownJobs[jobName]

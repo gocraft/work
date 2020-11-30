@@ -1,8 +1,9 @@
 package work
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"reflect"
 	"time"
 
@@ -32,7 +33,7 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, sleepBackoffs []int64) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, jobTypes map[string]*jobType, sleepBackoffs []int64) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
@@ -57,7 +58,7 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 		doneDrainingChan: make(chan struct{}),
 	}
 
-	w.updateMiddlewareAndJobTypes(middleware, jobTypes)
+	w.updateMiddlewareAndJobTypes(nil, jobTypes)
 
 	return w
 }
@@ -280,7 +281,7 @@ func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
 
 type terminateOp func(conn redis.Conn)
 
-func terminateOnly(_ redis.Conn) { return }
+func terminateOnly(_ redis.Conn) {}
 func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
@@ -323,5 +324,10 @@ func (w *worker) jobFate(jt *jobType, job *Job) terminateOp {
 // Default algorithm returns an fastly increasing backoff counter which grows in an unbounded fashion
 func defaultBackoffCalculator(job *Job) int64 {
 	fails := job.Fails
-	return (fails * fails * fails * fails) + 15 + (rand.Int63n(30) * (fails + 1))
+	n, err := rand.Int(rand.Reader, big.NewInt(30))
+	if err != nil {
+		panic(err)
+	}
+
+	return (fails * fails * fails * fails) + 15 + (n.Int64() * (fails + 1))
 }

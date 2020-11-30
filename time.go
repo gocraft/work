@@ -1,6 +1,8 @@
 package work
 
-import "time"
+import (
+	"time"
+)
 
 var nowMock int64
 
@@ -17,9 +19,4 @@ func setNowEpochSecondsMock(t int64) {
 
 func resetNowEpochSecondsMock() {
 	nowMock = 0
-}
-
-// convert epoch seconds to a time
-func epochSecondsToTime(t int64) time.Time {
-	return time.Time{}
 }

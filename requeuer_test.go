@@ -3,12 +3,13 @@ package work
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRequeue(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	tMock := nowEpochSeconds() - 10
@@ -50,8 +51,8 @@ func TestRequeue(t *testing.T) {
 }
 
 func TestRequeueUnknown(t *testing.T) {
-	pool := newTestPool(":6379")
-	ns := "work"
+	pool := newTestPool()
+	ns := uuid.New().String()
 	cleanKeyspace(ns, pool)
 
 	tMock := nowEpochSeconds() - 10

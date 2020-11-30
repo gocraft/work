@@ -1,8 +1,9 @@
 package work
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"strings"
 	"time"
 
@@ -59,8 +60,13 @@ func (r *deadPoolReaper) loop() {
 			r.doneStoppingChan <- struct{}{}
 			return
 		case <-timer.C:
+			n, err := rand.Int(rand.Reader, big.NewInt(reapJitterSecs))
+			if err != nil {
+				panic(err)
+			}
+
 			// Schedule next occurrence periodically with jitter
-			timer.Reset(r.reapPeriod + time.Duration(rand.Intn(reapJitterSecs))*time.Second)
+			timer.Reset(r.reapPeriod + time.Duration(n.Int64())*time.Second)
 
 			// Reap
 			if err := r.reap(); err != nil {
