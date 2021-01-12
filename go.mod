@@ -26,5 +26,3 @@ require (
 	github.com/youtube/vitess v2.1.1+incompatible // indirect
 	golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0 // indirect
 )
-
-replace github.com/gocraft/work => github.com/OneCloudInc/work v0.5.1-guid
