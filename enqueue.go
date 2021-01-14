@@ -19,6 +19,12 @@ type Enqueuer struct {
 	mtx                   sync.RWMutex
 }
 
+type BeforeEnqueueFunc func(job *Job) error
+
+var noOpBeforeEnqueue = func(*Job) error {
+	return nil
+}
+
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
 func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 	if pool == nil {
@@ -35,9 +41,9 @@ func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 	}
 }
 
-// Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args ar needed.
-// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
-func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, error) {
+// CheckAndEnqueue will enqueue the specified job name and arguments if and only if beforeEnqueue does not return an error. The args param can be nil if no args are needed.
+// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"}, func(j *Job) error { return db.Save(job) } )
+func (e *Enqueuer) CheckAndEnqueue(jobName string, args map[string]interface{}, beforeEnqueue BeforeEnqueueFunc) (*Job, error) {
 	job := &Job{
 		Name:       jobName,
 		ID:         makeIdentifier(),
@@ -47,6 +53,10 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 
 	rawJSON, err := job.serialize()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := beforeEnqueue(job); err != nil {
 		return nil, err
 	}
 
@@ -62,6 +72,12 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 	}
 
 	return job, nil
+}
+
+// Enqueue will enqueue the specified job name and arguments. The args param can be nil if no args are needed.
+// Example: e.Enqueue("send_email", work.Q{"addr": "test@example.com"})
+func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, error) {
+	return e.CheckAndEnqueue(jobName, args, noOpBeforeEnqueue)
 }
 
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
