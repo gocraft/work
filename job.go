@@ -11,7 +11,7 @@ import (
 type Job struct {
 	// Inputs when making a new job
 	Name       string                 `json:"name,omitempty"`
-	ID         string                 `json:"id"`
+	Guid       string                 `json:"guid"`
 	EnqueuedAt int64                  `json:"t"`
 	Args       map[string]interface{} `json:"args"`
 	Unique     bool                   `json:"unique,omitempty"`
@@ -66,7 +66,7 @@ func (j *Job) failed(err error) {
 // Checkin will update the status of the executing job to the specified messages. This message is visible within the web UI. This is useful for indicating some sort of progress on very long running jobs. For instance, on a job that has to process a million records over the course of an hour, the job could call Checkin with the current job number every 10k jobs.
 func (j *Job) Checkin(msg string) {
 	if j.observer != nil {
-		j.observer.observeCheckin(j.Name, j.ID, msg)
+		j.observer.observeCheckin(j.Name, j.Guid, msg)
 	}
 }
 

@@ -100,13 +100,13 @@ func TestClientWorkerObservations(t *testing.T) {
 			assert.True(t, ob.IsBusy)
 			assert.Equal(t, `{"a":3,"b":4}`, ob.ArgsJSON)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
-			assert.True(t, ob.JobID != "")
+			assert.True(t, ob.JobGuid != "")
 		} else if ob.JobName == "wat" {
 			watCount++
 			assert.True(t, ob.IsBusy)
 			assert.Equal(t, `{"a":1,"b":2}`, ob.ArgsJSON)
 			assert.True(t, (nowEpochSeconds()-ob.StartedAt) <= 3)
-			assert.True(t, ob.JobID != "")
+			assert.True(t, ob.JobGuid != "")
 		} else {
 			assert.False(t, ob.IsBusy)
 		}
@@ -316,7 +316,7 @@ func TestClientDeadJobs(t *testing.T) {
 	assert.EqualValues(t, 1, count)
 
 	// Delete it!
-	err = client.DeleteDeadJob(deadJob.DiedAt, deadJob.ID)
+	err = client.DeleteDeadJob(deadJob.DiedAt, deadJob.Guid)
 	assert.NoError(t, err)
 
 	jobs, count, err = client.DeadJobs(1)
@@ -344,7 +344,7 @@ func TestClientDeleteDeadJob(t *testing.T) {
 
 	tot := count
 	for _, j := range jobs {
-		err = client.DeleteDeadJob(j.DiedAt, j.ID)
+		err = client.DeleteDeadJob(j.DiedAt, j.Guid)
 		assert.NoError(t, err)
 		_, count, err = client.DeadJobs(1)
 		assert.NoError(t, err)
@@ -373,7 +373,7 @@ func TestClientRetryDeadJob(t *testing.T) {
 
 	tot := count
 	for _, j := range jobs {
-		err = client.RetryDeadJob(j.DiedAt, j.ID)
+		err = client.RetryDeadJob(j.DiedAt, j.Guid)
 		assert.NoError(t, err)
 		_, count, err = client.DeadJobs(1)
 		assert.NoError(t, err)
@@ -421,7 +421,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 	failAt := int64(12347)
 	job := &Job{
 		Name:       name,
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: encAt,
 		Args:       map[string]interface{}{"a": "wat"},
 		Fails:      3,
@@ -443,7 +443,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 	}
 
 	client := NewClient(ns, pool)
-	err = client.RetryDeadJob(failAt, job.ID)
+	err = client.RetryDeadJob(failAt, job.Guid)
 	assert.NoError(t, err)
 
 	job1 := getQueuedJob(ns, pool, name)
@@ -552,7 +552,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		job := &Job{
 			Name:       "wat1",
-			ID:         makeIdentifier(),
+			Guid:       makeIdentifier(),
 			EnqueuedAt: 12345,
 			Args:       nil,
 			Fails:      3,
@@ -573,7 +573,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 	// Add a dead job with a non-existent queue:
 	job := &Job{
 		Name:       "dontexist",
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: 12345,
 		Args:       nil,
 		Fails:      3,
@@ -623,7 +623,7 @@ func TestClientDeleteScheduledJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, j)
 
-	err = client.DeleteScheduledJob(j.RunAt, j.ID)
+	err = client.DeleteScheduledJob(j.RunAt, j.Guid)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
 }
@@ -640,7 +640,7 @@ func TestClientDeleteScheduledUniqueJob(t *testing.T) {
 	assert.NotNil(t, j)
 
 	client := NewClient(ns, pool)
-	err = client.DeleteScheduledJob(j.RunAt, j.ID)
+	err = client.DeleteScheduledJob(j.RunAt, j.Guid)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
 
@@ -677,7 +677,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
 	if assert.EqualValues(t, 1, count) {
-		err = client.DeleteRetryJob(jobs[0].RetryAt, job.ID)
+		err = client.DeleteRetryJob(jobs[0].RetryAt, job.Guid)
 		assert.NoError(t, err)
 		assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)))
 	}
@@ -686,7 +686,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 func insertDeadJob(ns string, pool *redis.Pool, name string, encAt, failAt int64) *Job {
 	job := &Job{
 		Name:       name,
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: encAt,
 		Args:       nil,
 		Fails:      3,

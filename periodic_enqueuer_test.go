@@ -63,7 +63,7 @@ func TestPeriodicEnqueuer(t *testing.T) {
 		assert.Nil(t, scheduledJobs[i].Args)
 
 		assert.Equal(t, e.name, scheduledJobs[i].Name)
-		assert.Equal(t, e.id, scheduledJobs[i].ID)
+		assert.Equal(t, e.id, scheduledJobs[i].Guid)
 		assert.Equal(t, e.scheduledFor, scheduledJobs[i].RunAt)
 	}
 

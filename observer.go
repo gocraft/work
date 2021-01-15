@@ -46,7 +46,7 @@ type observation struct {
 
 	// These fields always need to be set
 	jobName string
-	jobID   string
+	jobGuid string
 
 	// These need to be set when starting a job
 	startedAt int64
@@ -91,30 +91,30 @@ func (o *observer) drain() {
 	<-o.doneDrainingChan
 }
 
-func (o *observer) observeStarted(jobName, jobID string, arguments map[string]interface{}) {
+func (o *observer) observeStarted(jobName, jobGuid string, arguments map[string]interface{}) {
 	o.observationsChan <- &observation{
 		kind:      observationKindStarted,
 		jobName:   jobName,
-		jobID:     jobID,
+		jobGuid:   jobGuid,
 		startedAt: nowEpochSeconds(),
 		arguments: arguments,
 	}
 }
 
-func (o *observer) observeDone(jobName, jobID string, err error) {
+func (o *observer) observeDone(jobName, jobGuid string, err error) {
 	o.observationsChan <- &observation{
 		kind:    observationKindDone,
 		jobName: jobName,
-		jobID:   jobID,
+		jobGuid: jobGuid,
 		err:     err,
 	}
 }
 
-func (o *observer) observeCheckin(jobName, jobID, checkin string) {
+func (o *observer) observeCheckin(jobName, jobGuid, checkin string) {
 	o.observationsChan <- &observation{
 		kind:      observationKindCheckin,
 		jobName:   jobName,
-		jobID:     jobID,
+		jobGuid:   jobGuid,
 		checkin:   checkin,
 		checkinAt: nowEpochSeconds(),
 	}
@@ -164,11 +164,11 @@ func (o *observer) process(obv *observation) {
 	} else if obv.kind == observationKindDone {
 		o.currentStartedObservation = nil
 	} else if obv.kind == observationKindCheckin {
-		if (o.currentStartedObservation != nil) && (obv.jobID == o.currentStartedObservation.jobID) {
+		if (o.currentStartedObservation != nil) && (obv.jobGuid == o.currentStartedObservation.jobGuid) {
 			o.currentStartedObservation.checkin = obv.checkin
 			o.currentStartedObservation.checkinAt = obv.checkinAt
 		} else {
-			logError("observer.checkin_mismatch", fmt.Errorf("got checkin but mismatch on job ID or no job"))
+			logError("observer.checkin_mismatch", fmt.Errorf("got checkin but mismatch on job Guid or no job"))
 		}
 	}
 	o.version++
@@ -195,7 +195,7 @@ func (o *observer) writeStatus(obv *observation) error {
 	} else {
 		// hash:
 		// job_name -> obv.Name
-		// job_id -> obv.jobID
+		// job_guid -> obv.jobGuid
 		// started_at -> obv.startedAt
 		// args -> json.Encode(obv.arguments)
 		// checkin -> obv.checkin
@@ -216,7 +216,7 @@ func (o *observer) writeStatus(obv *observation) error {
 		args = append(args,
 			key,
 			"job_name", obv.jobName,
-			"job_id", obv.jobID,
+			"job_guid", obv.jobGuid,
 			"started_at", obv.startedAt,
 			"args", argsJSON,
 		)

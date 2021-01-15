@@ -46,7 +46,7 @@ func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
 func (e *Enqueuer) CheckAndEnqueue(jobName string, args map[string]interface{}, beforeEnqueue BeforeEnqueueFunc) (*Job, error) {
 	job := &Job{
 		Name:       jobName,
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
 		Args:       args,
 	}
@@ -84,7 +84,7 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
 	job := &Job{
 		Name:       jobName,
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
 		Args:       args,
 	}
@@ -211,7 +211,7 @@ func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, 
 
 	job := &Job{
 		Name:       jobName,
-		ID:         makeIdentifier(),
+		Guid:       makeIdentifier(),
 		EnqueuedAt: nowEpochSeconds(),
 		Args:       args,
 		Unique:     true,

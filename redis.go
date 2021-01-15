@@ -247,7 +247,7 @@ return nil
 
 // KEYS[1] = zset of (dead|scheduled|retry), eg, work:dead
 // ARGV[1] = died at. The z rank of the job.
-// ARGV[2] = job ID to requeue
+// ARGV[2] = job Guid to requeue
 // Returns:
 // - number of jobs deleted (typically 1 or 0)
 // - job bytes (last job only)
@@ -259,7 +259,7 @@ jobBytes = ''
 deletedCount = 0
 for i=1,jobCount do
   j = cjson.decode(jobs[i])
-  if j['id'] == ARGV[2] then
+  if j['guid'] == ARGV[2] then
     redis.call('zrem', KEYS[1], jobs[i])
     deletedCount = deletedCount + 1
     jobBytes = jobs[i]
@@ -273,7 +273,7 @@ return {deletedCount, jobBytes}
 // ARGV[1] = jobs prefix, eg, "work:jobs:". We'll take that and append the job name from the JSON object in order to queue up a job
 // ARGV[2] = current time in epoch seconds
 // ARGV[3] = died at. The z rank of the job.
-// ARGV[4] = job ID to requeue
+// ARGV[4] = job Guid to requeue
 // Returns: number of jobs requeued (typically 1 or 0)
 var redisLuaRequeueSingleDeadCmd = `
 local jobs, i, j, queue, found, requeuedCount
@@ -282,7 +282,7 @@ local jobCount = #jobs
 requeuedCount = 0
 for i=1,jobCount do
   j = cjson.decode(jobs[i])
-  if j['id'] == ARGV[4] then
+  if j['guid'] == ARGV[4] then
     redis.call('zrem', KEYS[1], jobs[i])
     queue = ARGV[1] .. j['name']
     found = false
