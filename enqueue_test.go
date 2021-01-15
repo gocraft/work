@@ -17,7 +17,7 @@ func TestEnqueue(t *testing.T) {
 	job, err := enqueuer.Enqueue("wat", Q{"a": 1, "b": "cool"})
 	assert.Nil(t, err)
 	assert.Equal(t, "wat", job.Name)
-	assert.True(t, len(job.ID) > 10)                        // Something is in it
+	assert.True(t, len(job.Guid) > 10)                      // Something is in it
 	assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 	assert.Equal(t, "cool", job.ArgString("b"))
@@ -37,7 +37,7 @@ func TestEnqueue(t *testing.T) {
 	// Get the job
 	j := jobOnQueue(pool, redisKeyJobs(ns, "wat"))
 	assert.Equal(t, "wat", j.Name)
-	assert.True(t, len(j.ID) > 10)                        // Something is in it
+	assert.True(t, len(j.Guid) > 10)                      // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 	assert.Equal(t, "cool", j.ArgString("b"))
@@ -64,7 +64,7 @@ func TestEnqueueIn(t *testing.T) {
 	assert.Nil(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, len(job.Guid) > 10)                      // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 		assert.Equal(t, "cool", job.ArgString("b"))
@@ -90,7 +90,7 @@ func TestEnqueueIn(t *testing.T) {
 	assert.True(t, score <= time.Now().Unix()+300)
 
 	assert.Equal(t, "wat", j.Name)
-	assert.True(t, len(j.ID) > 10)                        // Something is in it
+	assert.True(t, len(j.Guid) > 10)                      // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 	assert.Equal(t, "cool", j.ArgString("b"))
@@ -108,7 +108,7 @@ func TestEnqueueUnique(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, len(job.Guid) > 10)                      // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 		assert.Equal(t, "cool", job.ArgString("b"))
@@ -185,7 +185,7 @@ func TestEnqueueUniqueIn(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, len(job.Guid) > 10)                      // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 		assert.Equal(t, "cool", job.ArgString("b"))
@@ -205,7 +205,7 @@ func TestEnqueueUniqueIn(t *testing.T) {
 	assert.True(t, score <= time.Now().Unix()+300)
 
 	assert.Equal(t, "wat", j.Name)
-	assert.True(t, len(j.ID) > 10)                        // Something is in it
+	assert.True(t, len(j.Guid) > 10)                      // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 	assert.Equal(t, "cool", j.ArgString("b"))
@@ -244,7 +244,7 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, len(job.Guid) > 10)                      // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 		assert.Equal(t, "foo", job.ArgString("b"))
@@ -326,7 +326,7 @@ func EnqueueUniqueInByKey(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, job) {
 		assert.Equal(t, "wat", job.Name)
-		assert.True(t, len(job.ID) > 10)                        // Something is in it
+		assert.True(t, len(job.Guid) > 10)                      // Something is in it
 		assert.True(t, job.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 		assert.True(t, job.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 		assert.Equal(t, "cool", job.ArgString("b"))
@@ -346,7 +346,7 @@ func EnqueueUniqueInByKey(t *testing.T) {
 	assert.True(t, score <= time.Now().Unix()+300)
 
 	assert.Equal(t, "wat", j.Name)
-	assert.True(t, len(j.ID) > 10)                        // Something is in it
+	assert.True(t, len(j.Guid) > 10)                      // Something is in it
 	assert.True(t, j.EnqueuedAt > (time.Now().Unix()-10)) // Within 10 seconds
 	assert.True(t, j.EnqueuedAt < (time.Now().Unix()+10)) // Within 10 seconds
 	assert.Equal(t, "cool", j.ArgString("b"))

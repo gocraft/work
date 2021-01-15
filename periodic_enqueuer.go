@@ -98,7 +98,7 @@ func (pe *periodicEnqueuer) enqueue() error {
 
 			job := &Job{
 				Name: pj.jobName,
-				ID:   id,
+				Guid: id,
 
 				// This is technically wrong, but this lets the bytes be identical for the same periodic job instance. If we don't do this, we'd need to use a different approach -- probably giving each periodic job its own history of the past 100 periodic jobs, and only scheduling a job if it's not in the history.
 				EnqueuedAt: epoch,

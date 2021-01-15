@@ -287,7 +287,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 		Jobs  []struct {
 			DiedAt int64  `json:"died_at"`
 			Name   string `json:"name"`
-			ID     string `json:"id"`
+			Guid   string `json:"guid"`
 			Fails  int64  `json:"fails"`
 		} `json:"jobs"`
 	}
@@ -304,7 +304,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 		assert.EqualValues(t, 1, res.Jobs[0].Fails)
 
 		diedAt0, diedAt1 = res.Jobs[0].DiedAt, res.Jobs[1].DiedAt
-		id0, id1 = res.Jobs[0].ID, res.Jobs[1].ID
+		id0, id1 = res.Jobs[0].Guid, res.Jobs[1].Guid
 	} else {
 		return
 	}
@@ -375,7 +375,7 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 		Jobs  []struct {
 			DiedAt int64  `json:"died_at"`
 			Name   string `json:"name"`
-			ID     string `json:"id"`
+			Guid   string `json:"guid"`
 			Fails  int64  `json:"fails"`
 		} `json:"jobs"`
 	}

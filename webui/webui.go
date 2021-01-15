@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/braintree/manners"
-	"github.com/gocraft/web"
 	"github.com/OneCloudInc/work"
 	"github.com/OneCloudInc/work/webui/internal/assets"
+	"github.com/braintree/manners"
+	"github.com/gocraft/web"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -55,8 +55,8 @@ func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
 	router.Get("/retry_jobs", (*context).retryJobs)
 	router.Get("/scheduled_jobs", (*context).scheduledJobs)
 	router.Get("/dead_jobs", (*context).deadJobs)
-	router.Post("/delete_dead_job/:died_at:\\d.*/:job_id", (*context).deleteDeadJob)
-	router.Post("/retry_dead_job/:died_at:\\d.*/:job_id", (*context).retryDeadJob)
+	router.Post("/delete_dead_job/:died_at:\\d.*/:job_guid", (*context).deleteDeadJob)
+	router.Post("/retry_dead_job/:died_at:\\d.*/:job_guid", (*context).retryDeadJob)
 	router.Post("/delete_all_dead_jobs", (*context).deleteAllDeadJobs)
 	router.Post("/retry_all_dead_jobs", (*context).retryAllDeadJobs)
 
@@ -188,7 +188,7 @@ func (c *context) deleteDeadJob(rw web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	err = c.client.DeleteDeadJob(diedAt, r.PathParams["job_id"])
+	err = c.client.DeleteDeadJob(diedAt, r.PathParams["job_guid"])
 
 	render(rw, map[string]string{"status": "ok"}, err)
 }
@@ -200,7 +200,7 @@ func (c *context) retryDeadJob(rw web.ResponseWriter, r *web.Request) {
 		return
 	}
 
-	err = c.client.RetryDeadJob(diedAt, r.PathParams["job_id"])
+	err = c.client.RetryDeadJob(diedAt, r.PathParams["job_guid"])
 
 	render(rw, map[string]string{"status": "ok"}, err)
 }

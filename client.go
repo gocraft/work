@@ -124,7 +124,7 @@ type WorkerObservation struct {
 
 	// If IsBusy:
 	JobName   string `json:"job_name"`
-	JobID     string `json:"job_id"`
+	JobGuid   string `json:"job_guid"`
 	StartedAt int64  `json:"started_at"`
 	ArgsJSON  string `json:"args_json"`
 	Checkin   string `json:"checkin"`
@@ -179,8 +179,8 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 			var err error
 			if key == "job_name" {
 				ob.JobName = value
-			} else if key == "job_id" {
-				ob.JobID = value
+			} else if key == "job_guid" {
+				ob.JobGuid = value
 			} else if key == "started_at" {
 				ob.StartedAt, err = strconv.ParseInt(value, 10, 64)
 			} else if key == "args" {
@@ -352,8 +352,8 @@ func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 }
 
 // DeleteDeadJob deletes a dead job from Redis.
-func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
-	ok, _, err := c.deleteZsetJob(redisKeyDead(c.namespace), diedAt, jobID)
+func (c *Client) DeleteDeadJob(diedAt int64, jobGuid string) error {
+	ok, _, err := c.deleteZsetJob(redisKeyDead(c.namespace), diedAt, jobGuid)
 	if err != nil {
 		return err
 	}
@@ -364,7 +364,7 @@ func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
 }
 
 // RetryDeadJob retries a dead job. The job will be re-queued on the normal work queue for eventual processing by a worker.
-func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
+func (c *Client) RetryDeadJob(diedAt int64, jobGuid string) error {
 	// Get queues for job names
 	queues, err := c.Queues()
 	if err != nil {
@@ -388,7 +388,7 @@ func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 	args = append(args, redisKeyJobsPrefix(c.namespace)) // ARGV[1]
 	args = append(args, nowEpochSeconds())
 	args = append(args, diedAt)
-	args = append(args, jobID)
+	args = append(args, jobGuid)
 
 	conn := c.pool.Get()
 	defer conn.Close()
@@ -466,8 +466,8 @@ func (c *Client) DeleteAllDeadJobs() error {
 }
 
 // DeleteScheduledJob deletes a job in the scheduled queue.
-func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
-	ok, jobBytes, err := c.deleteZsetJob(redisKeyScheduled(c.namespace), scheduledFor, jobID)
+func (c *Client) DeleteScheduledJob(scheduledFor int64, jobGuid string) error {
+	ok, jobBytes, err := c.deleteZsetJob(redisKeyScheduled(c.namespace), scheduledFor, jobGuid)
 	if err != nil {
 		return err
 	}
@@ -504,8 +504,8 @@ func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
 }
 
 // DeleteRetryJob deletes a job in the retry queue.
-func (c *Client) DeleteRetryJob(retryAt int64, jobID string) error {
-	ok, _, err := c.deleteZsetJob(redisKeyRetry(c.namespace), retryAt, jobID)
+func (c *Client) DeleteRetryJob(retryAt int64, jobGuid string) error {
+	ok, _, err := c.deleteZsetJob(redisKeyRetry(c.namespace), retryAt, jobGuid)
 	if err != nil {
 		return err
 	}
@@ -515,14 +515,14 @@ func (c *Client) DeleteRetryJob(retryAt int64, jobID string) error {
 	return nil
 }
 
-// deleteZsetJob deletes the job in the specified zset (dead, retry, or scheduled queue). zsetKey is like "work:dead" or "work:scheduled". The function deletes all jobs with the given jobID with the specified zscore (there should only be one, but in theory there could be bad data). It will return if at least one job is deleted and if
-func (c *Client) deleteZsetJob(zsetKey string, zscore int64, jobID string) (bool, []byte, error) {
+// deleteZsetJob deletes the job in the specified zset (dead, retry, or scheduled queue). zsetKey is like "work:dead" or "work:scheduled". The function deletes all jobs with the given jobGuid with the specified zscore (there should only be one, but in theory there could be bad data). It will return if at least one job is deleted and if
+func (c *Client) deleteZsetJob(zsetKey string, zscore int64, jobGuid string) (bool, []byte, error) {
 	script := redis.NewScript(1, redisLuaDeleteSingleCmd)
 
 	args := make([]interface{}, 0, 1+2)
 	args = append(args, zsetKey) // KEY[1]
 	args = append(args, zscore)  // ARGV[1]
-	args = append(args, jobID)   // ARGV[2]
+	args = append(args, jobGuid) // ARGV[2]
 
 	conn := c.pool.Get()
 	defer conn.Close()

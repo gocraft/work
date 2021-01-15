@@ -127,7 +127,7 @@ func TestWorkerInProgress(t *testing.T) {
 	h := readHash(pool, redisKeyWorkerObservation(ns, w.workerID))
 	assert.Equal(t, job1, h["job_name"])
 	assert.Equal(t, `{"a":1}`, h["args"])
-	// NOTE: we could check for job_id and started_at, but it's a PITA and it's tested in observer_test.
+	// NOTE: we could check for job_guid and started_at, but it's a PITA and it's tested in observer_test.
 
 	w.drain()
 	w.stop()

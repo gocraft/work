@@ -25,7 +25,7 @@ func TestObserverStarted(t *testing.T) {
 
 	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
-	assert.Equal(t, "bar", h["job_id"])
+	assert.Equal(t, "bar", h["job_guid"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
 	assert.Equal(t, `{"a":1,"b":"wat"}`, h["args"])
 }
@@ -69,7 +69,7 @@ func TestObserverCheckin(t *testing.T) {
 
 	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
-	assert.Equal(t, "bar", h["job_id"])
+	assert.Equal(t, "bar", h["job_guid"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
 	assert.Equal(t, `{"a":1,"b":"wat"}`, h["args"])
 	assert.Equal(t, "doin it", h["checkin"])
@@ -91,7 +91,7 @@ func TestObserverCheckinFromJob(t *testing.T) {
 	tMockCheckin := int64(1425263402)
 	setNowEpochSecondsMock(tMockCheckin)
 
-	j := &Job{Name: "foo", ID: "barbar", observer: observer}
+	j := &Job{Name: "foo", Guid: "barbar", observer: observer}
 	j.Checkin("sup")
 
 	observer.drain()
@@ -99,7 +99,7 @@ func TestObserverCheckinFromJob(t *testing.T) {
 
 	h := readHash(pool, redisKeyWorkerObservation(ns, "abcd"))
 	assert.Equal(t, "foo", h["job_name"])
-	assert.Equal(t, "barbar", h["job_id"])
+	assert.Equal(t, "barbar", h["job_guid"])
 	assert.Equal(t, fmt.Sprint(tMock), h["started_at"])
 	assert.Equal(t, "sup", h["checkin"])
 	assert.Equal(t, fmt.Sprint(tMockCheckin), h["checkin_at"])
