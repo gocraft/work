@@ -196,6 +196,8 @@ func (w *worker) processJob(job *Job) {
 		// Going forward the job on the queue will always be just a placeholder, and we will be replacing it with the
 		// updated job extracted here
 		if updatedJob != nil {
+			// Keep json content from in-progress queue for further cleanup
+			updatedJob.setQueueJSON(job.rawJSON)
 			job = updatedJob
 		}
 	}
@@ -268,8 +270,12 @@ func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
 	conn := w.pool.Get()
 	defer conn.Close()
 
+	rawJSON := job.rawJSON
+	if job.rawQueueJSON != nil {
+		rawJSON = job.rawQueueJSON
+	}
 	conn.Send("MULTI")
-	conn.Send("LREM", job.inProgQueue, 1, job.rawJSON)
+	conn.Send("LREM", job.inProgQueue, 1, rawJSON)
 	conn.Send("DECR", redisKeyJobsLock(w.namespace, job.Name))
 	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
 	fate(conn)

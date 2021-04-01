@@ -23,6 +23,7 @@ type Job struct {
 	FailedAt int64  `json:"failed_at,omitempty"`
 
 	rawJSON      []byte
+	rawQueueJSON []byte // the JSON stored in in-progress queue, which may changed by redisLuaZremLpushCmd in requeuer
 	dequeuedFrom []byte
 	inProgQueue  []byte
 	argError     error
@@ -43,6 +44,10 @@ func newJob(rawJSON, dequeuedFrom, inProgQueue []byte) (*Job, error) {
 	job.dequeuedFrom = dequeuedFrom
 	job.inProgQueue = inProgQueue
 	return &job, nil
+}
+
+func (j *Job) setQueueJSON(json []byte) {
+	j.rawQueueJSON = json
 }
 
 func (j *Job) serialize() ([]byte, error) {
