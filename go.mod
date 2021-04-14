@@ -15,7 +15,6 @@ require (
 	github.com/garyburd/redigo v1.6.0 // indirect
 	github.com/gocraft/health v0.0.0-20170925182251-8675af27fef0
 	github.com/gocraft/web v0.0.0-20190207150652-9707327fb69b
-	github.com/gocraft/work v0.5.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/jrallison/go-workers v0.0.0-20180112190529-dbf81d0b75bb
