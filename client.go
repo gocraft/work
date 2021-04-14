@@ -466,8 +466,8 @@ func (c *Client) DeleteAllDeadJobs() error {
 }
 
 // DeleteScheduledJob deletes a job in the scheduled queue.
-func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
-	ok, jobBytes, err := c.deleteZsetJob(redisKeyScheduled(c.namespace), scheduledFor, jobID)
+func (c *Client) DeleteScheduledJob(runAt int64, jobID string) error {
+	ok, jobBytes, err := c.deleteZsetJob(redisKeyScheduled(c.namespace), runAt, jobID)
 	if err != nil {
 		return err
 	}
