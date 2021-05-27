@@ -95,12 +95,13 @@ func (r *deadPoolReaper) reap() error {
 			// try to clean up locks for the current set of jobs if heartbeat was not found
 			lockJobTypes = r.curJobTypes
 		}
-		// Remove dead pool from worker pools set
-		if _, err = conn.Do("SREM", workerPoolsKey, deadPoolID); err != nil {
-			return err
-		}
 		// Cleanup any stale lock info
 		if err = r.cleanStaleLockInfo(deadPoolID, lockJobTypes); err != nil {
+			return err
+		}
+
+		// Remove dead pool from worker pools set
+		if _, err = conn.Do("SREM", workerPoolsKey, deadPoolID); err != nil {
 			return err
 		}
 	}
