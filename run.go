@@ -2,6 +2,7 @@ package work
 
 import (
 	"fmt"
+	"runtime/debug"
 	"reflect"
 )
 
@@ -44,6 +45,7 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 			// Luckily, the err sprints nicely via fmt.
 			errorishError := fmt.Errorf("%v", panicErr)
 			logError("runJob.panic", errorishError)
+			logError("runJob.panic Stack", fmt.Errorf("%v", string(debug.Stack())))
 			returnError = errorishError
 		}
 	}()
