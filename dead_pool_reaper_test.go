@@ -319,7 +319,7 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	assert.NoError(t, err)
 	err = conn.Send("HSET", lockInfo1, workerPoolID2, 2) // workerPoolID2 holds 2 locks on job1
 	assert.NoError(t, err)
-	err = conn.Send("HSET", lockInfo2, workerPoolID2, 2) // test that we don't go below 0 on job2 lock
+	err = conn.Send("HSET", lockInfo2, workerPoolID2, 2) // test that we go below 0 on job2 lock
 	assert.NoError(t, err)
 	err = conn.Flush()
 	assert.NoError(t, err)
@@ -336,9 +336,12 @@ func TestDeadPoolReaperCleanStaleLocks(t *testing.T) {
 	// now clean lock info for workerPoolID2
 	reaper.cleanStaleLockInfo(workerPoolID2, jobNames)
 	assert.NoError(t, err)
-	// both locks should be at 0
 	assert.EqualValues(t, 0, getInt64(pool, lock1))
-	assert.EqualValues(t, 0, getInt64(pool, lock2))
+	// lock should be able to go below 0 as
+	// - reaper may requeue jobs from an alive worker
+	// - when jobs finished the lock is increased back
+	// - so it is fixed itself
+	assert.EqualValues(t, -1, getInt64(pool, lock2))
 	// worker pool ID 2 removed from both lock info hashes
 	v, err = conn.Do("HGET", lockInfo1, workerPoolID2)
 	assert.Nil(t, v)

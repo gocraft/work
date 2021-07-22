@@ -21,7 +21,7 @@ package main
 
 import (
 	"github.com/gomodule/redigo/redis"
-	"github.com/gocraft/work"
+	"github.com/GettEngineering/work"
 )
 
 // Make a redis pool
@@ -57,7 +57,7 @@ package main
 
 import (
 	"github.com/gomodule/redigo/redis"
-	"github.com/gocraft/work"
+	"github.com/GettEngineering/work"
 	"os"
 	"os/signal"
 )
@@ -245,8 +245,8 @@ The web UI provides a view to view the state of your gocraft/work cluster, inspe
 
 Building an installing the binary:
 ```bash
-go get github.com/gocraft/work/cmd/workwebui
-go install github.com/gocraft/work/cmd/workwebui
+go get github.com/GettEngineering/work/cmd/workwebui
+go install github.com/GettEngineering/work/cmd/workwebui
 ```
 
 Then, you can run it:
