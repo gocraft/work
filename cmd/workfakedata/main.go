@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/GettEngineering/work"
 	"github.com/gomodule/redigo/redis"
+	"github.com/teamwork/work"
 )
 
 var redisHostPort = flag.String("redis", ":6379", "redis hostport")

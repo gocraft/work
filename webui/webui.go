@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/GettEngineering/work"
-	"github.com/GettEngineering/work/webui/internal/assets"
 	"github.com/braintree/manners"
 	"github.com/gocraft/web"
 	"github.com/gomodule/redigo/redis"
+	"github.com/teamwork/work"
+	"github.com/teamwork/work/webui/internal/assets"
 )
 
 // Server implements an HTTP server which exposes a JSON API to view and manage gocraft/work items.

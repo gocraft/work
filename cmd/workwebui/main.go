@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/GettEngineering/work/webui"
 	"github.com/gomodule/redigo/redis"
+	"github.com/teamwork/work/webui"
 )
 
 var (
