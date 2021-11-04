@@ -209,10 +209,6 @@ for i=1,keylen,2 do
   if deadLockCount then
     redis.call('decrby', lock, deadLockCount)
     redis.call('hdel', lockInfo, deadPoolID)
-
-    if tonumber(redis.call('get', lock)) < 0 then
-      redis.call('set', lock, 0)
-    end
   end
 end
 return nil

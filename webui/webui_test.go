@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gocraft/work"
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
+	"github.com/teamwork/work"
 )
 
 func TestWebUIStartStop(t *testing.T) {
