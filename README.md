@@ -3,6 +3,7 @@
 szlabs/goworker provides following extra capabilities built based on [gocraft/work](https://github.com/gocraft/work):
 
 * worker pool configurations via configuration yaml and/or environment variables
+* Upgrade golang version to 1.16
 
 
 ## License
