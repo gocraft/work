@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gocraft/work/pkg/job"
+
 	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron/v3"
 )
@@ -48,6 +50,7 @@ func (jt *jobType) calcBackoff(j *Job) int64 {
 	return jt.Backoff(j)
 }
 
+// BackoffCalculator for providing backoff value.
 // You may provide your own backoff function for retrying failed jobs or use the builtin one.
 // Returns the number of seconds to wait until the next attempt.
 //
@@ -179,7 +182,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 // The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
 // Note that the first value is the seconds!
 // If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
-func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
+func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string, args job.Parameters) *WorkerPool {
 	p := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 
 	schedule, err := p.Parse(spec)
@@ -187,7 +190,12 @@ func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPo
 		panic(err)
 	}
 
-	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{jobName: jobName, spec: spec, schedule: schedule})
+	wp.periodicJobs = append(wp.periodicJobs, &periodicJob{
+		jobName:  jobName,
+		spec:     spec,
+		args:     args,
+		schedule: schedule,
+	})
 
 	return wp
 }
