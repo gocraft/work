@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	job2 "github.com/gocraft/work/pkg/job"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -45,7 +47,7 @@ func TestRunBasicMiddleware(t *testing.T) {
 
 	job := &Job{
 		Name: "foo",
-		Args: map[string]interface{}{"a": "foo"},
+		Args: job2.Parameters{"a": "foo"},
 	}
 
 	v, err := runJob(job, tstCtxType, middleware, jt)
