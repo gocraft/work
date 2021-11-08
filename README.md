@@ -4,6 +4,7 @@ szlabs/goworker provides following extra capabilities built based on [gocraft/wo
 
 * worker pool configurations via configuration yaml and/or environment variables
 * Upgrade golang version to 1.16
+* Eliminate security risks by upgrading the related packages (all the found issues are from npm packages of the web UI which will be deprecated later)
 
 
 ## License
