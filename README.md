@@ -1,4 +1,5 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/475ebfca4caf476fa0451e607ac2dc6b)](https://app.codacy.com/gh/szlabs/goworker?utm_source=github.com&utm_medium=referral&utm_content=szlabs/goworker&utm_campaign=Badge_Grade_Settings)
+[![Go](https://github.com/szlabs/goworker/actions/workflows/go.yml/badge.svg)](https://github.com/szlabs/goworker/actions/workflows/go.yml)
 # szlabs/goworker [![GoDoc](https://godoc.org/github.com/gocraft/work?status.png)](https://godoc.org/github.com/szlabs/goworker)
 
 szlabs/goworker provides following extra capabilities built based on [gocraft/work](https://github.com/gocraft/work):
