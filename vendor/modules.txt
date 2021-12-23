@@ -1,0 +1,76 @@
+# github.com/albrow/jobs v0.4.2
+## explicit
+github.com/albrow/jobs
+# github.com/benmanns/goworker v0.1.3
+## explicit
+github.com/benmanns/goworker
+# github.com/bitly/go-simplejson v0.5.0
+## explicit
+github.com/bitly/go-simplejson
+# github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869
+## explicit
+# github.com/braintree/manners v0.0.0-20160418043613-82a8879fc5fd
+## explicit
+github.com/braintree/manners
+# github.com/cihub/seelog v0.0.0-20170130134532-f561c5e57575
+## explicit
+github.com/cihub/seelog
+github.com/cihub/seelog/archive
+github.com/cihub/seelog/archive/gzip
+github.com/cihub/seelog/archive/tar
+github.com/cihub/seelog/archive/zip
+# github.com/customerio/gospec v0.0.0-20130710230057-a5cc0e48aa39
+## explicit
+# github.com/davecgh/go-spew v1.1.0
+github.com/davecgh/go-spew/spew
+# github.com/dchest/uniuri v0.0.0-20200228104902-7aecb25e1fe5
+## explicit
+github.com/dchest/uniuri
+# github.com/dustin/go-humanize v1.0.0
+## explicit
+# github.com/garyburd/redigo v1.6.0
+## explicit
+github.com/garyburd/redigo/internal
+github.com/garyburd/redigo/redis
+# github.com/gocraft/health v0.0.0-20170925182251-8675af27fef0
+## explicit
+github.com/gocraft/health
+github.com/gocraft/health/stack
+# github.com/gocraft/web v0.0.0-20190207150652-9707327fb69b
+## explicit
+github.com/gocraft/web
+# github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+## explicit
+github.com/golang/glog
+# github.com/gomodule/redigo v2.0.0+incompatible
+## explicit
+github.com/gomodule/redigo/internal
+github.com/gomodule/redigo/redis
+# github.com/jrallison/go-workers v0.0.0-20180112190529-dbf81d0b75bb
+## explicit
+github.com/jrallison/go-workers
+# github.com/jteeuwen/go-bindata v3.0.7+incompatible
+## explicit
+# github.com/kr/pretty v0.2.0
+## explicit
+# github.com/orfjackal/nanospec.go v0.0.0-20120727230329-de4694c1d701
+## explicit
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
+# github.com/robfig/cron/v3 v3.0.1
+## explicit
+github.com/robfig/cron/v3
+# github.com/stretchr/testify v1.5.1
+## explicit
+github.com/stretchr/testify/assert
+# github.com/youtube/vitess v2.1.1+incompatible
+## explicit
+github.com/youtube/vitess/go/acl
+github.com/youtube/vitess/go/cache
+github.com/youtube/vitess/go/pools
+github.com/youtube/vitess/go/sync2
+# golang.org/x/net v0.0.0-20200425230154-ff2c4b7c35a0
+## explicit
+golang.org/x/net/context
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2
