@@ -196,6 +196,9 @@ func (w *worker) processJob(job *Job) {
 		// Going forward the job on the queue will always be just a placeholder, and we will be replacing it with the
 		// updated job extracted here
 		if updatedJob != nil {
+			// The rawJSON of job might be changed by the `redisLuaZremLpushCmd` script when requeue it into job queue again.
+			// job.rawJSON is used to locate the job in the progress queue. We need to override RawJSON before setting it.
+			updatedJob.rawJSON = job.rawJSON
 			job = updatedJob
 		}
 	}
@@ -205,6 +208,13 @@ func (w *worker) processJob(job *Job) {
 		runErr = fmt.Errorf("stray job: no handler")
 		logError("process_job.stray", runErr)
 	} else {
+		// Check starting deadline if it is set.
+		if jt.StartingDeadline > 0 {
+			if job.ScheduledAt > 0 && job.ScheduledAt < nowEpochSeconds()-jt.StartingDeadline {
+				logError("process_job.skip", fmt.Errorf("skip missed schedule job: cut starting deadline"))
+				return
+			}
+		}
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
 		_, runErr = runJob(job, w.contextType, w.middleware, jt)
@@ -225,7 +235,8 @@ func (w *worker) getAndDeleteUniqueJob(job *Job) *Job {
 
 	if job.UniqueKey != "" {
 		uniqueKey = job.UniqueKey
-	} else { // For jobs put in queue prior to this change. In the future this can be deleted as there will always be a UniqueKey
+	} else {
+		// TODO: For jobs put in queue prior to this change. In the future this can be deleted as there will always be a UniqueKey
 		uniqueKey, err = redisKeyUniqueJob(w.namespace, job.Name, job.Args)
 		if err != nil {
 			logError("worker.delete_unique_job.key", err)
@@ -249,7 +260,7 @@ func (w *worker) getAndDeleteUniqueJob(job *Job) *Job {
 	}
 
 	// Previous versions did not support updated arguments and just set key to 1, so in these cases we should do nothing.
-	// In the future this can be deleted, as we will always be getting arguments from here
+	// TODO: In the future this can be deleted, as we will always be getting arguments from here
 	if string(rawJSON) == "1" {
 		return nil
 	}

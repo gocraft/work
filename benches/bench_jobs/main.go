@@ -74,7 +74,8 @@ func main() {
 var totcount int64
 
 func monitor() {
-	t := time.Tick(1 * time.Second)
+	t := time.NewTicker(1 * time.Second)
+	defer t.Stop()
 
 	curT := 0
 	c1 := int64(0)
@@ -84,7 +85,7 @@ func monitor() {
 DALOOP:
 	for {
 		select {
-		case <-t:
+		case <-t.C:
 			curT++
 			v := atomic.AddInt64(&totcount, 0)
 			fmt.Printf("after %d seconds, count is %d\n", curT, v)

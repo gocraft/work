@@ -65,7 +65,8 @@ func (r *requeuer) loop() {
 	// If we have 100 processes all running requeuers,
 	// there's probably too much hitting redis.
 	// So later on we'l have to implement exponential backoff
-	ticker := time.Tick(1000 * time.Millisecond)
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -76,7 +77,7 @@ func (r *requeuer) loop() {
 			for r.process() {
 			}
 			r.doneDrainingChan <- struct{}{}
-		case <-ticker:
+		case <-ticker.C:
 			for r.process() {
 			}
 		}

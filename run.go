@@ -3,6 +3,7 @@ package work
 import (
 	"fmt"
 	"reflect"
+	"runtime/debug"
 )
 
 // returns an error if the job fails, or there's a panic, or we couldn't reflect correctly.
@@ -43,7 +44,7 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 			// err turns out to be interface{}, of actual type "runtime.errorCString"
 			// Luckily, the err sprints nicely via fmt.
 			errorishError := fmt.Errorf("%v", panicErr)
-			logError("runJob.panic", errorishError)
+			logError("runJob.panic", fmt.Errorf("%s", debug.Stack()))
 			returnError = errorishError
 		}
 	}()

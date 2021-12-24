@@ -73,14 +73,16 @@ func (h *workerPoolHeartbeater) stop() {
 func (h *workerPoolHeartbeater) loop() {
 	h.startedAt = nowEpochSeconds()
 	h.heartbeat() // do it right away
-	ticker := time.Tick(h.beatPeriod)
+	ticker := time.NewTicker(h.beatPeriod)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-h.stopChan:
 			h.removeHeartbeat()
 			h.doneStoppingChan <- struct{}{}
 			return
-		case <-ticker:
+		case <-ticker.C:
 			h.heartbeat()
 		}
 	}

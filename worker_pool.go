@@ -59,11 +59,12 @@ type BackoffCalculator func(job *Job) int64
 
 // JobOptions can be passed to JobWithOptions.
 type JobOptions struct {
-	Priority       uint              // Priority from 1 to 10000
-	MaxFails       uint              // 1: send straight to dead (unless SkipDead)
-	SkipDead       bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
-	MaxConcurrency uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
-	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
+	Priority         uint              // Priority from 1 to 10000
+	MaxFails         uint              // 1: send straight to dead (unless SkipDead)
+	SkipDead         bool              // If true, don't send failed jobs to the dead queue when retries are exhausted.
+	MaxConcurrency   uint              // Max number of jobs to keep in flight (default is 0, meaning no max)
+	Backoff          BackoffCalculator // If not set, uses the default backoff algorithm
+	StartingDeadline int64             // Seconds to define a deadline(now()-) for starting the missed jobs for any reason.
 }
 
 // WorkerPoolOptions can be passed to NewWorkerPoolWithOptions.

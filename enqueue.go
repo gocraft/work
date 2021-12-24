@@ -67,10 +67,11 @@ func (e *Enqueuer) Enqueue(jobName string, args map[string]interface{}) (*Job, e
 // EnqueueIn enqueues a job in the scheduled job queue for execution in secondsFromNow seconds.
 func (e *Enqueuer) EnqueueIn(jobName string, secondsFromNow int64, args map[string]interface{}) (*ScheduledJob, error) {
 	job := &Job{
-		Name:       jobName,
-		ID:         makeIdentifier(),
-		EnqueuedAt: nowEpochSeconds(),
-		Args:       args,
+		Name:        jobName,
+		ID:          makeIdentifier(),
+		EnqueuedAt:  nowEpochSeconds(),
+		Args:        args,
+		ScheduledAt: nowEpochSeconds() + secondsFromNow,
 	}
 
 	rawJSON, err := job.serialize()
@@ -140,6 +141,8 @@ func (e *Enqueuer) EnqueueUniqueInByKey(jobName string, secondsFromNow int64, ar
 	if err != nil {
 		return nil, err
 	}
+
+	job.ScheduledAt = nowEpochSeconds() + secondsFromNow
 
 	scheduledJob := &ScheduledJob{
 		RunAt: nowEpochSeconds() + secondsFromNow,

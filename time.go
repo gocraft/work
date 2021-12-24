@@ -8,7 +8,7 @@ func nowEpochSeconds() int64 {
 	if nowMock != 0 {
 		return nowMock
 	}
-	return time.Now().Unix()
+	return time.Now().UTC().Unix()
 }
 
 func setNowEpochSecondsMock(t int64) {
@@ -17,9 +17,4 @@ func setNowEpochSecondsMock(t int64) {
 
 func resetNowEpochSecondsMock() {
 	nowMock = 0
-}
-
-// convert epoch seconds to a time
-func epochSecondsToTime(t int64) time.Time {
-	return time.Time{}
 }
