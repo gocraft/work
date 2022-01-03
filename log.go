@@ -1,7 +1,10 @@
 package work
 
-import "fmt"
+import (
+	"github.com/juju/errors"
+	commonlog "github.com/wallester/common/log"
+)
 
 func logError(key string, err error) {
-	fmt.Printf("ERROR: %s - %s\n", key, err.Error())
+	commonlog.Error(errors.Annotate(err, key))
 }
