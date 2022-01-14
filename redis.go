@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 func redisNamespacePrefix(namespace string) string {
@@ -367,3 +369,58 @@ if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
 end
 return 'dup'
 `
+
+// Used by the reaper to remove staled pools and returns their IDs and associated
+// jobs.
+//
+// KEYS[1] = worker pools key
+// ARGV[1] = deadTime in seconds
+// ARGV[2] = now unix timestamp
+// Returns: ["pool1", "job1,job2", "pool2", "job1", "pool3", ""]
+var redisTakeDeadPoolsScript = redis.NewScript(1, `
+local poolsKey = KEYS[1]
+local deadTime = tonumber(ARGV[1])
+local timeNow = tonumber(ARGV[2])
+
+local heartbeatKey, heartbeatAt, jobTypesList, pool
+local deadPools = {}
+
+local pools = redis.call('smembers', poolsKey)
+
+for i=1,#pools do
+  pool = pools[i]
+
+  heartbeatKey = poolsKey .. ':' .. pool
+  heartbeatAt = tonumber(redis.call('hget', heartbeatKey, 'heartbeat_at'))
+
+  if heartbeatAt then
+    if (heartbeatAt + deadTime < timeNow) then
+      jobTypesList = redis.call('hget', heartbeatKey, 'job_names')
+
+      if jobTypesList then
+        table.insert(deadPools, pool)
+        table.insert(deadPools, jobTypesList)
+
+        -- Remove the dead pool to avoid a race between the reapers.
+        redis.call('srem', poolsKey, pool)
+
+      -- The current implementation does not consider stale heartbeat pools with
+      -- no jobs to be dead pools.
+      --
+      -- else
+      --   table.insert(deadPools, pool)
+      --   table.insert(deadPools, '')
+      end
+
+    end
+  else
+    table.insert(deadPools, pool)
+    table.insert(deadPools, '')
+
+    redis.call('srem', poolsKey, pool)
+  end
+
+end
+
+return deadPools
+`)
