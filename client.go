@@ -363,6 +363,14 @@ func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
 	return nil
 }
 
+// KillJob flags a job to be stopped.
+func (c *Client) KillJob(jobID string) error {
+	conn := c.pool.Get()
+	defer conn.Close()
+
+	return conn.Send("SETEX", redisKeyKilledJob(c.namespace, jobID), 60*60, 1)
+}
+
 // RetryDeadJob retries a dead job. The job will be re-queued on the normal work queue for eventual processing by a worker.
 func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 	// Get queues for job names

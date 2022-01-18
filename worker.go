@@ -207,6 +207,7 @@ func (w *worker) processJob(job *Job) {
 	} else {
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
+		job.aliveChecker = w.alive
 		_, runErr = runJob(job, w.contextType, w.middleware, jt)
 		w.observeDone(job.Name, job.ID, runErr)
 	}
@@ -262,6 +263,27 @@ func (w *worker) getAndDeleteUniqueJob(job *Job) *Job {
 	}
 
 	return jobWithArgs
+}
+
+func (w *worker) alive(job *Job) bool {
+	conn := w.pool.Get()
+	defer conn.Close()
+
+	key := redisKeyKilledJob(w.namespace, job.ID)
+
+	killed, err := redis.Int(conn.Do("GET", key))
+	if err != nil && err != redis.ErrNil {
+		logError("worker.alive.get", err)
+		return true
+	}
+
+	_, err = conn.Do("DEL", key)
+	if err != nil {
+		logError("worker.alive.del", err)
+		return true
+	}
+
+	return killed != 1
 }
 
 func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {

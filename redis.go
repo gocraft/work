@@ -90,6 +90,10 @@ func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (
 	return buf.String(), nil
 }
 
+func redisKeyKilledJob(namespace, jobID string) string {
+	return redisNamespacePrefix(namespace) + jobID + ":killed"
+}
+
 func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
