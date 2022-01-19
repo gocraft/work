@@ -271,19 +271,21 @@ func (w *worker) alive(job *Job) bool {
 
 	key := redisKeyKilledJob(w.namespace, job.ID)
 
-	killed, err := redis.Int(conn.Do("GET", key))
-	if err != nil && err != redis.ErrNil {
-		logError("worker.alive.get", err)
+	_, err := redis.Int(conn.Do("GET", key))
+	if err != nil {
+		if err != redis.ErrNil {
+			logError("worker.jobalive.get", err)
+		}
+
 		return true
 	}
 
 	_, err = conn.Do("DEL", key)
 	if err != nil {
-		logError("worker.alive.del", err)
-		return true
+		logError("worker.jobalive.del", err)
 	}
 
-	return killed != 1
+	return false
 }
 
 func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
