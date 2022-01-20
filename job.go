@@ -16,6 +16,7 @@ type Job struct {
 	Args       map[string]interface{} `json:"args"`
 	Unique     bool                   `json:"unique,omitempty"`
 	UniqueKey  string                 `json:"unique_key,omitempty"`
+	PoolID     string                 `json:"pool_id"`
 
 	// Inputs when retrying
 	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed
