@@ -3,9 +3,12 @@
 #
 # You may wish to alter this file to override the set of languages analyzed,
 # or to provide custom queries or build logic.
-name: "CodeQL"
+name: "IT Security Code Scan"
 
 on:
+  push:
+    # The branches below must be a subset of the branches above
+    branches: [tkpd_master]
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [tkpd_master]
@@ -14,20 +17,21 @@ on:
 jobs:
   analyze:
     name: Analyze
-    runs-on: [self-hosted, linux, x64, aws-runner-1]
+    runs-on: [linux, it-security, crc-2]
 
     strategy:
       fail-fast: false
       matrix:
         # Override automatic language detection by changing the below list
         # Supported options are ['csharp', 'cpp', 'go', 'java', 'javascript', 'python']
-        language: ['go']
+        language: ['go', 'javascript']
         # Learn more...
         # https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+    - run: rm /home/runner/actions-runner/_work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/Makefile || true 
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
