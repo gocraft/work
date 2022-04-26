@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gocraft/work"
+	"github.com/sbermarket-tech/work"
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 )
