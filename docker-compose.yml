@@ -1,0 +1,16 @@
+services:
+  waiter:
+    image: busybox:1.35.0-uclibc
+    entrypoint: [ "echo", "all dependencies are ready" ]
+    depends_on:
+      redis:
+        condition: service_healthy
+  redis:
+    image: "redis:6.2.6-alpine3.15"
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30

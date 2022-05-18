@@ -316,7 +316,7 @@ You'll see a view that looks like this:
 * You can enqueue unique jobs such that a given name/arguments are on the queue at once.
 * Both normal queues and the scheduled queue are considered.
 * When a unique job is enqueued, we'll atomically set a redis key that includes the job name and arguments and enqueue the job.
-* When the job is processed, we'll delete that key to permit another job to be enqueued.
+* After the job has been finished or put into dead queue, we'll delete that key to permit another job to be enqueued.
 
 ### Periodic jobs
 

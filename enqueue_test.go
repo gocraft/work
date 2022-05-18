@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnqueue(t *testing.T) {
@@ -174,6 +175,61 @@ func TestEnqueueUnique(t *testing.T) {
 	assert.NotNil(t, job)
 }
 
+// Tests that unique jobs are removed only after job is done or put in dead queue.
+func TestOrderEnqueueUnique(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := NewEnqueuer(ns, pool)
+	job, err := enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+	require.NotNil(t, job)
+	require.NoError(t, err)
+
+	failCount := 0
+	doneCh := make(chan struct{})
+
+	// Process the queues.
+	backoffCalc := func(job *Job) int64 {
+		return 1 // 1 second
+	}
+
+	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 2, Backoff: backoffCalc}, func(job *Job) error {
+		failCount++
+
+		switch failCount {
+		case 1:
+			// We skip this step, because the job goes into retry queue only after this function returns,
+			// but we want to test adding a unique job when there is one in retry queue. So we do it at step 2.
+		case 2:
+			// Try to add the same job, but the original job is in retry queue.
+			job, err := enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+			require.Nil(t, job)
+			require.NoError(t, err)
+
+			close(doneCh)
+		}
+
+		return fmt.Errorf("oops")
+	})
+
+	wp.Start()
+
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "timed out")
+	case <-doneCh:
+		wp.Drain()
+		wp.Stop()
+	}
+
+	// Now the current job is in dead queue, so we can enqueue new one.
+	job, err = enqueuer.EnqueueUnique("wat", Q{"a": 1, "b": "cool"})
+	require.NotNil(t, job)
+	require.NoError(t, err)
+}
+
 func TestEnqueueUniqueIn(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
@@ -313,6 +369,61 @@ func TestEnqueueUniqueByKey(t *testing.T) {
 	job, err = enqueuer.EnqueueUniqueByKey("taw", nil, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.NotNil(t, job)
+}
+
+// Tests that unique by key jobs are removed only after job is done or put in dead queue.
+func TestOrderEnqueueUniqueByKey(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+
+	enqueuer := NewEnqueuer(ns, pool)
+	job, err := enqueuer.EnqueueUniqueByKey("wat", Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	require.NotNil(t, job)
+	require.NoError(t, err)
+
+	failCount := 0
+	doneCh := make(chan struct{})
+
+	// Process the queues.
+	backoffCalc := func(job *Job) int64 {
+		return 1 // 1 second
+	}
+
+	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 2, Backoff: backoffCalc}, func(job *Job) error {
+		failCount++
+
+		switch failCount {
+		case 1:
+			// We skip this step, because the job goes into retry queue only after this function returns,
+			// but we want to test adding a unique job when there is one in retry queue. So we do it at step 2.
+		case 2:
+			// Try to add the same job, but the original job is in retry queue.
+			job, err := enqueuer.EnqueueUniqueByKey("wat", Q{"a": 2, "b": "nice"}, Q{"key": "123"})
+			require.Nil(t, job)
+			require.NoError(t, err)
+
+			close(doneCh)
+		}
+
+		return fmt.Errorf("oops")
+	})
+
+	wp.Start()
+
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "timed out")
+	case <-doneCh:
+		wp.Drain()
+		wp.Stop()
+	}
+
+	// Now the current job is in dead queue, so we can enqueue new one.
+	job, err = enqueuer.EnqueueUniqueByKey("wat", Q{"a": 3, "b": "awesome"}, Q{"key": "123"})
+	require.NotNil(t, job)
+	require.NoError(t, err)
 }
 
 func EnqueueUniqueInByKey(t *testing.T) {
