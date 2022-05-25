@@ -15,5 +15,5 @@ func logPanic(panic Error) {
 		fmt.Printf("ERROR: %s - %s\n", "runJob.panic", panic.Error())
 		fmt.Printf("ERROR: %s - %s\n", "runJob.panic", err.Error())
 	}
-	fmt.Printf("ERROR: %s - %s\n", "runJob.panic", string(stack))
+	fmt.Printf("ERROR: %s - %s\n %s - %s \n %s - %s \n", "runJob.panic", string(stack), "error message", panic.Error(), "error class", panic.Class)
 }
