@@ -1,7 +1,6 @@
 package work
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -42,9 +41,9 @@ func runJob(job *Job, ctxType reflect.Type, middleware []*middlewareHandler, jt 
 		if panicErr := recover(); panicErr != nil {
 			// err turns out to be interface{}, of actual type "runtime.errorCString"
 			// Luckily, the err sprints nicely via fmt.
-			errorishError := fmt.Errorf("%v", panicErr)
-			logError("runJob.panic", errorishError)
-			returnError = errorishError
+			newErr := newError(panicErr, 2)
+			logPanic(newErr)
+			returnError = newErr
 		}
 	}()
 
