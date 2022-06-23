@@ -23,7 +23,7 @@
     "file-loader": "latest",
     "ignore-styles": "latest",
     "istanbul": "^1.1.0-alpha.1",
-    "jsdom": "^11.5.1",
+    "jsdom": "^16.5.0",
     "jsdom-global": "^3.0.2",
     "mocha": "latest",
     "react": "latest",
