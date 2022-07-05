@@ -96,6 +96,10 @@ func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }
 
+func redisKeyReaperLock(namespace string) string {
+	return redisNamespacePrefix(namespace) + "reaper_lock"
+}
+
 // Used to fetch the next job to run
 //
 // KEYS[1] = the 1st job queue we want to try, eg, "work:jobs:emails"
@@ -370,8 +374,7 @@ end
 return 'dup'
 `
 
-// Used by the reaper to remove staled pools and returns their IDs and associated
-// jobs.
+// Used by the reaper to get staled pool IDs and associated jobs.
 //
 // KEYS[1] = worker pools key
 // ARGV[1] = deadTime in seconds
@@ -401,12 +404,8 @@ for i=1,#pools do
         table.insert(deadPools, pool)
         table.insert(deadPools, jobTypesList)
 
-        -- Remove the dead pool to avoid a race between the reapers.
-        redis.call('srem', poolsKey, pool)
-
-      -- The current implementation does not consider stale heartbeat pools with
+      -- The current implementation does not consider stale pool heartbeat with
       -- no jobs to be dead pools.
-      --
       -- else
       --   table.insert(deadPools, pool)
       --   table.insert(deadPools, '')
@@ -416,11 +415,21 @@ for i=1,#pools do
   else
     table.insert(deadPools, pool)
     table.insert(deadPools, '')
-
-    redis.call('srem', poolsKey, pool)
   end
 
 end
 
 return deadPools
+`)
+
+// Used by the reaper to release acquired lock.
+//
+// KEYS[1] = reaper lock key
+// ARGV[1] = reaper lock random value
+var redisReleaseLockScript = redis.NewScript(1, `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+else
+  return 0
+end
 `)

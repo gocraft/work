@@ -49,15 +49,9 @@ func TestDeadPoolReaper(t *testing.T) {
 
 	// Test getting dead pool
 	reaper := newDeadPoolReaper(ns, pool, []string{})
-	deadPools, err := reaper.removeDeadPools()
+	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}, "3": {"type1", "type2"}}, deadPools)
-
-	// Restore removed pools
-	_, err = conn.Do("SADD", workerPoolsKey, "2")
-	assert.NoError(t, err)
-	_, err = conn.Do("SADD", workerPoolsKey, "3")
-	assert.NoError(t, err)
 
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "2", "type1"), "foo")
@@ -134,17 +128,9 @@ func TestDeadPoolReaperNoHeartbeat(t *testing.T) {
 
 	// Test getting dead pool ids
 	reaper := newDeadPoolReaper(ns, pool, []string{"type1"})
-	deadPools, err := reaper.removeDeadPools()
+	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"1": {}, "2": {}, "3": {}}, deadPools)
-
-	// Restore removed pools
-	_, err = conn.Do("SADD", workerPoolsKey, "1")
-	assert.NoError(t, err)
-	_, err = conn.Do("SADD", workerPoolsKey, "2")
-	assert.NoError(t, err)
-	_, err = conn.Do("SADD", workerPoolsKey, "3")
-	assert.NoError(t, err)
 
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "2", "type1"), "foo")
@@ -225,13 +211,9 @@ func TestDeadPoolReaperNoJobTypes(t *testing.T) {
 
 	// Test getting dead pool
 	reaper := newDeadPoolReaper(ns, pool, []string{})
-	deadPools, err := reaper.removeDeadPools()
+	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
 	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}}, deadPools)
-
-	// Restore removed pools
-	_, err = conn.Do("SADD", workerPoolsKey, "2")
-	assert.NoError(t, err)
 
 	// Test requeueing jobs
 	_, err = conn.Do("lpush", redisKeyJobsInProgress(ns, "1", "type1"), "foo")
@@ -279,7 +261,7 @@ func TestDeadPoolReaperWithWorkerPools(t *testing.T) {
 	stalePoolID := "aaa"
 	cleanKeyspace(ns, pool)
 	// test vars
-	expectedDeadTime := time.Second
+	expectedDeadTime := time.Millisecond * 500
 
 	// create a stale job with a heartbeat
 	conn := pool.Get()
@@ -398,29 +380,57 @@ func TestDeadPoolReaperTakeDeadPools(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	err = conn.Send("HMSET", redisKeyHeartbeat(ns, "3"),
-		"heartbeat_at", time.Now().Add(-1*time.Hour).Unix(),
-		"job_names", "type1,type2",
-	)
-	assert.NoError(t, err)
 	err = conn.Flush()
 	assert.NoError(t, err)
 
-	// Test getting dead pool
+	// Test getting dead pools
 	reaper := newDeadPoolReaper(ns, pool, []string{})
-	deadPools, err := reaper.removeDeadPools()
+	deadPools, err := reaper.findDeadPools()
 	assert.NoError(t, err)
-	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}, "3": {"type1", "type2"}}, deadPools)
+	assert.Equal(t, map[string][]string{"2": {"type1", "type2"}, "3": {}}, deadPools)
+}
 
-	alivePools, err := redis.Strings(conn.Do("smembers", workerPoolsKey))
-	assert.NoError(t, err)
-	assert.Equal(t, []string{"1"}, alivePools)
+func TestReaperLock(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
 
-	deadPools, err = reaper.removeDeadPools()
-	assert.NoError(t, err)
-	assert.Equal(t, map[string][]string{}, deadPools)
+	reaper := newDeadPoolReaper(ns, pool, []string{})
 
-	alivePools, err = redis.Strings(conn.Do("smembers", workerPoolsKey))
+	value, err := genValue()
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"1"}, alivePools)
+
+	acqired, err := reaper.acquireLock(value)
+	assert.NoError(t, err)
+	assert.True(t, acqired)
+
+	acqired, err = reaper.acquireLock("aabbcc")
+	assert.NoError(t, err)
+	assert.False(t, acqired)
+
+	conn := pool.Get()
+	defer conn.Close()
+
+	checkLock := func() {
+		ttl, err := redis.Int(conn.Do("TTL", redisKeyReaperLock(ns)))
+		assert.NoError(t, err)
+		assert.Greater(t, ttl, 0)
+
+		lvalue, err := redis.String(conn.Do("GET", redisKeyReaperLock(ns)))
+		assert.NoError(t, err)
+		assert.Equal(t, value, lvalue)
+	}
+
+	checkLock()
+
+	err = reaper.releaseLock("aabbcc")
+	assert.NoError(t, err)
+
+	checkLock()
+
+	err = reaper.releaseLock(value)
+	assert.NoError(t, err)
+
+	_, err = redis.String(conn.Do("GET", redisKeyReaperLock(ns)))
+	assert.Error(t, err)
 }

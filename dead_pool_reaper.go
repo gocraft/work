@@ -1,6 +1,8 @@
 package work
 
 import (
+	crand "crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -70,8 +72,27 @@ func (r *deadPoolReaper) loop() {
 	}
 }
 
-func (r *deadPoolReaper) reap() error {
-	deadPoolIDs, err := r.removeDeadPools()
+func (r *deadPoolReaper) reap() (err error) {
+	lockValue, err := genValue()
+	if err != nil {
+		return err
+	}
+
+	acquired, err := r.acquireLock(lockValue)
+	if err != nil {
+		return err
+	}
+
+	// Another reaper is already running
+	if !acquired {
+		return nil
+	}
+
+	defer func() {
+		err = r.releaseLock(lockValue)
+	}()
+
+	deadPoolIDs, err := r.findDeadPools()
 	if err != nil {
 		return err
 	}
@@ -84,7 +105,10 @@ func (r *deadPoolReaper) reap() error {
 		lockJobTypes := jobTypes
 		// if we found jobs from the heartbeat, requeue them and remove the heartbeat
 		if len(jobTypes) > 0 {
-			r.requeueInProgressJobs(deadPoolID, jobTypes)
+			if err = r.requeueInProgressJobs(deadPoolID, jobTypes); err != nil {
+				return err
+			}
+
 			if _, err = conn.Do("DEL", redisKeyHeartbeat(r.namespace, deadPoolID)); err != nil {
 				return err
 			}
@@ -95,6 +119,11 @@ func (r *deadPoolReaper) reap() error {
 
 		// Cleanup any stale lock info
 		if err = r.cleanStaleLockInfo(deadPoolID, lockJobTypes); err != nil {
+			return err
+		}
+
+		// Remove dead pool from worker pools set
+		if _, err = conn.Do("SREM", redisKeyWorkerPools(r.namespace), deadPoolID); err != nil {
 			return err
 		}
 	}
@@ -150,8 +179,8 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 	}
 }
 
-// removeDeadPools removes staled pools and returns their IDs and associated jobs.
-func (r *deadPoolReaper) removeDeadPools() (map[string][]string, error) {
+// findDeadPools returns staled pools IDs and associated jobs.
+func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 	var scriptArgs []interface{} = []interface{}{
 		redisKeyWorkerPools(r.namespace),
 		r.deadTime.Seconds(),
@@ -176,4 +205,39 @@ func (r *deadPoolReaper) removeDeadPools() (map[string][]string, error) {
 	}
 
 	return deadPools, nil
+}
+
+// acquireLock acquires lock with a value and an expiration time for reap period.
+func (r *deadPoolReaper) acquireLock(value string) (bool, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	reply, err := conn.Do(
+		"SET", redisKeyReaperLock(r.namespace), value, "NX", "EX", int64(r.reapPeriod/time.Second))
+	if err != nil {
+		return false, err
+	}
+
+	return reply != nil, nil
+}
+
+// releaseLock releases lock with a value.
+func (r *deadPoolReaper) releaseLock(value string) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	_, err := redisReleaseLockScript.Do(conn, redisKeyReaperLock(r.namespace), value)
+
+	return err
+}
+
+func genValue() (string, error) {
+	b := make([]byte, 16)
+
+	_, err := crand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(b), nil
 }
