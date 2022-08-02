@@ -20,7 +20,7 @@ const (
 
 type deadPoolReaper struct {
 	namespace   string
-	pool        *redis.Pool
+	pool        Pool
 	deadTime    time.Duration
 	reapPeriod  time.Duration
 	curJobTypes []string
@@ -29,7 +29,7 @@ type deadPoolReaper struct {
 	doneStoppingChan chan struct{}
 }
 
-func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string) *deadPoolReaper {
+func newDeadPoolReaper(namespace string, pool Pool, curJobTypes []string) *deadPoolReaper {
 	return &deadPoolReaper{
 		namespace:        namespace,
 		pool:             pool,

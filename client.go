@@ -20,11 +20,11 @@ var ErrNotRetried = fmt.Errorf("nothing retried")
 // Client implements all of the functionality of the web UI. It can be used to inspect the status of a running cluster and retry dead jobs.
 type Client struct {
 	namespace string
-	pool      *redis.Pool
+	pool      Pool
 }
 
 // NewClient creates a new Client with the specified redis namespace and connection pool.
-func NewClient(namespace string, pool *redis.Pool) *Client {
+func NewClient(namespace string, pool Pool) *Client {
 	return &Client{
 		namespace: namespace,
 		pool:      pool,

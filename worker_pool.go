@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/robfig/cron"
 )
 
@@ -15,7 +14,7 @@ type WorkerPool struct {
 	workerPoolID string
 	concurrency  uint
 	namespace    string // eg, "myapp-work"
-	pool         *redis.Pool
+	pool         Pool
 
 	contextType  reflect.Type
 	jobTypes     map[string]*jobType
@@ -79,9 +78,9 @@ type middlewareHandler struct {
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool Pool) *WorkerPool {
 	if pool == nil {
-		panic("NewWorkerPool needs a non-nil *redis.Pool")
+		panic("NewWorkerPool needs a non-nil Pool")
 	}
 
 	ctxType := reflect.TypeOf(ctx)

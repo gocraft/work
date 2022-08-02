@@ -4,15 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 // An observer observes a single worker. Each worker has its own observer.
 type observer struct {
 	namespace string
 	workerID  string
-	pool      *redis.Pool
+	pool      Pool
 
 	// nil: worker isn't doing anything that we know of
 	// not nil: the last started observation that we received on the channel.
@@ -62,7 +60,7 @@ type observation struct {
 
 const observerBufferSize = 1024
 
-func newObserver(namespace string, pool *redis.Pool, workerID string) *observer {
+func newObserver(namespace string, pool Pool, workerID string) *observer {
 	return &observer{
 		namespace:        namespace,
 		workerID:         workerID,

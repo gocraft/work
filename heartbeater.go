@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/gomodule/redigo/redis"
 )
 
 const (
@@ -16,7 +14,7 @@ const (
 type workerPoolHeartbeater struct {
 	workerPoolID string
 	namespace    string // eg, "myapp-work"
-	pool         *redis.Pool
+	pool         Pool
 	beatPeriod   time.Duration
 	concurrency  uint
 	jobNames     string
@@ -29,7 +27,7 @@ type workerPoolHeartbeater struct {
 	doneStoppingChan chan struct{}
 }
 
-func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeater {
+func newWorkerPoolHeartbeater(namespace string, pool Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeater {
 	h := &workerPoolHeartbeater{
 		workerPoolID:     workerPoolID,
 		namespace:        namespace,

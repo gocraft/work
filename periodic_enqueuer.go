@@ -16,7 +16,7 @@ const (
 
 type periodicEnqueuer struct {
 	namespace             string
-	pool                  *redis.Pool
+	pool                  Pool
 	periodicJobs          []*periodicJob
 	scheduledPeriodicJobs []*scheduledPeriodicJob
 	stopChan              chan struct{}
@@ -35,7 +35,7 @@ type scheduledPeriodicJob struct {
 	*periodicJob
 }
 
-func newPeriodicEnqueuer(namespace string, pool *redis.Pool, periodicJobs []*periodicJob) *periodicEnqueuer {
+func newPeriodicEnqueuer(namespace string, pool Pool, periodicJobs []*periodicJob) *periodicEnqueuer {
 	return &periodicEnqueuer{
 		namespace:        namespace,
 		pool:             pool,

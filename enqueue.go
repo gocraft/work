@@ -10,7 +10,7 @@ import (
 // Enqueuer can enqueue jobs.
 type Enqueuer struct {
 	Namespace string // eg, "myapp-work"
-	Pool      *redis.Pool
+	Pool      Pool
 
 	queuePrefix           string // eg, "myapp-work:jobs:"
 	knownJobs             map[string]int64
@@ -20,9 +20,9 @@ type Enqueuer struct {
 }
 
 // NewEnqueuer creates a new enqueuer with the specified Redis namespace and Redis pool.
-func NewEnqueuer(namespace string, pool *redis.Pool) *Enqueuer {
+func NewEnqueuer(namespace string, pool Pool) *Enqueuer {
 	if pool == nil {
-		panic("NewEnqueuer needs a non-nil *redis.Pool")
+		panic("NewEnqueuer needs a non-nil Pool")
 	}
 
 	return &Enqueuer{

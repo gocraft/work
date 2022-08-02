@@ -15,7 +15,7 @@ type worker struct {
 	workerID    string
 	poolID      string
 	namespace   string
-	pool        *redis.Pool
+	pool        Pool
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler
 	contextType reflect.Type
@@ -31,7 +31,12 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+// Pool represents a pool of connections to a Redis server.
+type Pool interface {
+	Get() redis.Conn
+}
+
+func newWorker(namespace string, poolID string, pool Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 

@@ -11,13 +11,12 @@ import (
 	"github.com/gocraft/web"
 	"github.com/sbermarket-tech/work"
 	"github.com/sbermarket-tech/work/webui/internal/assets"
-	"github.com/gomodule/redigo/redis"
 )
 
 // Server implements an HTTP server which exposes a JSON API to view and manage gocraft/work items.
 type Server struct {
 	namespace string
-	pool      *redis.Pool
+	pool      work.Pool
 	client    *work.Client
 	hostPort  string
 	server    *manners.GracefulServer
@@ -30,7 +29,7 @@ type context struct {
 }
 
 // NewServer creates and returns a new server. The 'namespace' param is the redis namespace to use. The hostPort param is the address to bind on to expose the API.
-func NewServer(namespace string, pool *redis.Pool, hostPort string) *Server {
+func NewServer(namespace string, pool work.Pool, hostPort string) *Server {
 	router := web.New(context{})
 	server := &Server{
 		namespace: namespace,

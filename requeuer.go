@@ -9,7 +9,7 @@ import (
 
 type requeuer struct {
 	namespace string
-	pool      *redis.Pool
+	pool      Pool
 
 	redisRequeueScript *redis.Script
 	redisRequeueArgs   []interface{}
@@ -21,7 +21,7 @@ type requeuer struct {
 	doneDrainingChan chan struct{}
 }
 
-func newRequeuer(namespace string, pool *redis.Pool, requeueKey string, jobNames []string) *requeuer {
+func newRequeuer(namespace string, pool Pool, requeueKey string, jobNames []string) *requeuer {
 	args := make([]interface{}, 0, len(jobNames)+2+2)
 	args = append(args, requeueKey)              // KEY[1]
 	args = append(args, redisKeyDead(namespace)) // KEY[2]
