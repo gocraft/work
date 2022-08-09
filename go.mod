@@ -1,4 +1,4 @@
-module github.com/OneCloudInc/work
+module github.com/Workiva/work
 
 go 1.14
 

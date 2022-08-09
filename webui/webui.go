@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/OneCloudInc/work"
-	"github.com/OneCloudInc/work/webui/internal/assets"
+	"github.com/Workiva/work"
+	"github.com/Workiva/work/webui/internal/assets"
 	"github.com/braintree/manners"
 	"github.com/gocraft/web"
 	"github.com/gomodule/redigo/redis"

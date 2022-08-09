@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OneCloudInc/work"
+	"github.com/Workiva/work"
 	"github.com/gomodule/redigo/redis"
 	"github.com/stretchr/testify/assert"
 )
