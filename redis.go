@@ -364,12 +364,13 @@ return 'dup'
 // ARGV[1] = job
 // ARGV[2] = updated job or just a 1 if arguments don't update
 // ARGV[3] = epoch seconds for job to be run at
+// ARGV[4] = uniq key ttl
 var redisLuaEnqueueUniqueIn = `
-if redis.call('set', KEYS[2], ARGV[2], 'NX', 'EX', '86400') then
+if redis.call('set', KEYS[2], ARGV[2], 'NX', 'EX', ARGV[4]) then
   redis.call('zadd', KEYS[1], ARGV[3], ARGV[1])
   return 'ok'
 else
-  redis.call('set', KEYS[2], ARGV[2], 'EX', '86400')
+  redis.call('set', KEYS[2], ARGV[2], 'EX', ARGV[4])
 end
 return 'dup'
 `
