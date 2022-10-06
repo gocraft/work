@@ -1,6 +1,7 @@
 package work
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -120,7 +121,7 @@ func (e *Enqueuer) EnqueueUniqueIn(jobName string, secondsFromNow int64, args ma
 // In order to add robustness to the system, jobs are only unique for 24 hours after they're enqueued. This is mostly relevant for scheduled jobs.
 // EnqueueUniqueByKey returns the job if it was enqueued and nil if it wasn't
 func (e *Enqueuer) EnqueueUniqueByKey(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (*Job, error) {
-	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap)
+	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +137,7 @@ func (e *Enqueuer) EnqueueUniqueByKey(jobName string, args map[string]interface{
 // EnqueueUniqueInByKey enqueues a job in the scheduled job queue that is unique on specified key for execution in secondsFromNow seconds. See EnqueueUnique for the semantics of unique jobs.
 // Subsequent calls with same key will update arguments
 func (e *Enqueuer) EnqueueUniqueInByKey(jobName string, secondsFromNow int64, args map[string]interface{}, keyMap map[string]interface{}) (*ScheduledJob, error) {
-	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap)
+	enqueue, job, err := e.uniqueJobHelper(jobName, args, keyMap, secondsFromNow)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +182,7 @@ func (e *Enqueuer) addToKnownJobs(conn redis.Conn, jobName string) error {
 
 type enqueueFnType func(*int64) (string, error)
 
-func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, keyMap map[string]interface{}) (enqueueFnType, *Job, error) {
+func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, keyMap map[string]interface{}, uniqTTL int64) (enqueueFnType, *Job, error) {
 	useDefaultKeys := false
 	if keyMap == nil {
 		useDefaultKeys = true
@@ -232,9 +233,9 @@ func (e *Enqueuer) uniqueJobHelper(jobName string, args map[string]interface{}, 
 		}
 
 		if runAt != nil { // Scheduled job so different job queue with additional arg
-			scriptArgs[0] = redisKeyScheduled(e.Namespace) // KEY[1]
-			scriptArgs = append(scriptArgs, *runAt)        // ARGV[3]
-
+			scriptArgs[0] = redisKeyScheduled(e.Namespace)                  // KEY[1]
+			scriptArgs = append(scriptArgs, *runAt)                         // ARGV[3]
+			scriptArgs = append(scriptArgs, strconv.FormatInt(uniqTTL, 10)) // ARGV[4]
 			script = e.enqueueUniqueInScript
 		}
 
