@@ -142,21 +142,6 @@ func (c *Context) Export(job *work.Job) error {
 }
 ```
 
-## Redis Cluster
-If you're attempting to use gocraft/work on a `Redis Cluster` deployment, then you may encounter a `CROSSSLOT Keys in request don't hash to the same slot` error during the execution of the various lua scripts used to manage job data (see [Issue 93](https://github.com/gocraft/work/issues/93#issuecomment-401134340)). The current workaround is to force the keys for an entire `namespace` for a given worker pool on a single node in the cluster using [Redis Hash Tags](https://redis.io/topics/cluster-spec#keys-hash-tags). Using the example above:
-
-```go
-func main() {
-	// Make a new pool. Arguments:
-	// Context{} is a struct that will be the context for the request.
-	// 10 is the max concurrency
-	// "my_app_namespace" is the Redis namespace and the {} chars forces all of the keys onto a single node
-	// redisPool is a Redis pool
-	pool := work.NewWorkerPool(Context{}, 10, "{my_app_namespace}", redisPool)
-```
-
-*Note* this is not an issue for Redis Sentinel deployments.
-
 ## Special Features
 
 ### Contexts
@@ -211,14 +196,6 @@ job, err = enqueuer.EnqueueUnique("clear_cache", work.Q{"object_id_": "123"}) //
 job, err = enqueuer.EnqueueUniqueIn("clear_cache", 300, work.Q{"object_id_": "789"}) // job != nil (diff id)
 ```
 
-Alternatively, you can provide your own key for making a job unique. When another job is enqueued with the same key as a job already in the queue, it will simply update the arguments.
-```go
-enqueuer := work.NewEnqueuer("my_app_namespace", redisPool)
-job, err := enqueuer.EnqueueUniqueByKey("clear_cache", work.Q{"object_id_": "123"}, map[string]interface{}{"my_key": "586"})
-job, err = enqueuer.EnqueueUniqueInByKey("clear_cache", 300, work.Q{"object_id_": "789"}, map[string]interface{}{"my_key": "586"})
-```
-For information on how this map will be serialized to form a unique key, see (https://golang.org/pkg/encoding/json/#Marshal).
-
 ### Periodic Enqueueing (Cron)
 
 You can periodically enqueue jobs on your gocraft/work cluster using your worker pool. The [scheduling specification](https://godoc.org/github.com/robfig/cron#hdr-CRON_Expression_Format) uses a Cron syntax where the fields represent seconds, minutes, hours, day of the month, month, and week of the day, respectively. Even if you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
@@ -228,16 +205,6 @@ pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
 pool.PeriodicallyEnqueue("0 0 * * * *", "calculate_caches") // This will enqueue a "calculate_caches" job every hour
 pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to register a handler for this job separately
 ```
-
-## Job concurrency
-
-You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`. Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance. This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit. A redis key (see `redis.go::redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type. The default value is `0`, which means "no limit on job concurrency".
-
-**Note:** if you want to run jobs "single threaded" then you can set the `MaxConcurrency` accordingly:
-```go
-      worker_pool.JobWithOptions(jobName, JobOptions{MaxConcurrency: 1}, (*Context).WorkFxn)
-```
-
 
 ## Run the Web UI
 
@@ -324,10 +291,22 @@ You'll see a view that looks like this:
 * Each worker pool will wake up every 2 minutes, and if jobs haven't been scheduled yet, it will schedule all the jobs that would be executed in the next five minutes.
 * Each periodic job that runs at a given time has a predictable byte pattern. Since jobs are scheduled on the scheduled job queue (a Redis z-set), if the same job is scheduled twice for a given time, it can only exist in the z-set once.
 
-### Paused jobs
+## Paused jobs
 
 * You can pause jobs from being processed from a specific queue by setting a "paused" redis key (see `redisKeyJobsPaused`)
 * Conversely, jobs in the queue will resume being processed once the paused redis key is removed
+
+## Job concurrency
+
+* You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`.
+* Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance
+* This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit
+* A redis key (see `redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type
+* The default value is `0`, which means "no limit on job concurrency"
+* **Note:** if you want to run jobs "single threaded" then you can set the `MaxConcurrency` accordingly:
+```go
+      worker_pool.JobWithOptions(jobName, JobOptions{MaxConcurrency: 1}, (*Context).WorkFxn)
+```
 
 ### Terminology reference
 * "worker pool" - a pool of workers

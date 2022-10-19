@@ -15,7 +15,6 @@ type Job struct {
 	EnqueuedAt int64                  `json:"t"`
 	Args       map[string]interface{} `json:"args"`
 	Unique     bool                   `json:"unique,omitempty"`
-	UniqueKey  string                 `json:"unique_key,omitempty"`
 
 	// Inputs when retrying
 	Fails    int64  `json:"fails,omitempty"` // number of times this job has failed

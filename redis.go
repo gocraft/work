@@ -348,13 +348,10 @@ return requeuedCount
 // KEYS[1] = job queue to push onto
 // KEYS[2] = Unique job's key. Test for existence and set if we push.
 // ARGV[1] = job
-// ARGV[2] = updated job or just a 1 if arguments don't update
 var redisLuaEnqueueUnique = `
-if redis.call('set', KEYS[2], ARGV[2], 'NX', 'EX', '86400') then
+if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
   redis.call('lpush', KEYS[1], ARGV[1])
   return 'ok'
-else
-  redis.call('set', KEYS[2], ARGV[2], 'EX', '86400')
 end
 return 'dup'
 `
@@ -362,14 +359,11 @@ return 'dup'
 // KEYS[1] = scheduled job queue
 // KEYS[2] = Unique job's key. Test for existence and set if we push.
 // ARGV[1] = job
-// ARGV[2] = updated job or just a 1 if arguments don't update
-// ARGV[3] = epoch seconds for job to be run at
+// ARGV[2] = epoch seconds for job to be run at
 var redisLuaEnqueueUniqueIn = `
-if redis.call('set', KEYS[2], ARGV[2], 'NX', 'EX', '86400') then
-  redis.call('zadd', KEYS[1], ARGV[3], ARGV[1])
+if redis.call('set', KEYS[2], '1', 'NX', 'EX', '86400') then
+  redis.call('zadd', KEYS[1], ARGV[2], ARGV[1])
   return 'ok'
-else
-  redis.call('set', KEYS[2], ARGV[2], 'EX', '86400')
 end
 return 'dup'
 `

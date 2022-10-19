@@ -7,16 +7,15 @@ import (
 	"sync"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/robfig/cron/v3"
+	"github.com/robfig/cron"
 )
 
 // WorkerPool represents a pool of workers. It forms the primary API of gocraft/work. WorkerPools provide the public API of gocraft/work. You can attach jobs and middlware to them. You can start and stop them. Based on their concurrency setting, they'll spin up N worker goroutines.
 type WorkerPool struct {
-	workerPoolID  string
-	concurrency   uint
-	namespace     string // eg, "myapp-work"
-	pool          *redis.Pool
-	sleepBackoffs []int64
+	workerPoolID string
+	concurrency  uint
+	namespace    string // eg, "myapp-work"
+	pool         *redis.Pool
 
 	contextType  reflect.Type
 	jobTypes     map[string]*jobType
@@ -63,11 +62,6 @@ type JobOptions struct {
 	Backoff        BackoffCalculator // If not set, uses the default backoff algorithm
 }
 
-// WorkerPoolOptions can be passed to NewWorkerPoolWithOptions.
-type WorkerPoolOptions struct {
-	SleepBackoffs []int64 // Sleep backoffs in milliseconds
-}
-
 // GenericHandler is a job handler without any custom context.
 type GenericHandler func(*Job) error
 
@@ -86,12 +80,6 @@ type middlewareHandler struct {
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
 func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
-	return NewWorkerPoolWithOptions(ctx, concurrency, namespace, pool, WorkerPoolOptions{})
-}
-
-// NewWorkerPoolWithOptions creates a new worker pool as per the NewWorkerPool function, but permits you to specify
-// additional options such as sleep backoffs.
-func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool, workerPoolOpts WorkerPoolOptions) *WorkerPool {
 	if pool == nil {
 		panic("NewWorkerPool needs a non-nil *redis.Pool")
 	}
@@ -99,17 +87,16 @@ func NewWorkerPoolWithOptions(ctx interface{}, concurrency uint, namespace strin
 	ctxType := reflect.TypeOf(ctx)
 	validateContextType(ctxType)
 	wp := &WorkerPool{
-		workerPoolID:  makeIdentifier(),
-		concurrency:   concurrency,
-		namespace:     namespace,
-		pool:          pool,
-		sleepBackoffs: workerPoolOpts.SleepBackoffs,
-		contextType:   ctxType,
-		jobTypes:      make(map[string]*jobType),
+		workerPoolID: makeIdentifier(),
+		concurrency:  concurrency,
+		namespace:    namespace,
+		pool:         pool,
+		contextType:  ctxType,
+		jobTypes:     make(map[string]*jobType),
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes, wp.sleepBackoffs)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes)
 		wp.workers = append(wp.workers, w)
 	}
 
@@ -180,9 +167,7 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 // Note that the first value is the seconds!
 // If you have multiple worker pools on different machines, they'll all coordinate and only enqueue your job once.
 func (wp *WorkerPool) PeriodicallyEnqueue(spec string, jobName string) *WorkerPool {
-	p := cron.NewParser(cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
-
-	schedule, err := p.Parse(spec)
+	schedule, err := cron.Parse(spec)
 	if err != nil {
 		panic(err)
 	}

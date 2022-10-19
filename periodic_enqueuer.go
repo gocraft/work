@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/robfig/cron/v3"
+	"github.com/robfig/cron"
 )
 
 const (

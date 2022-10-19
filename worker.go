@@ -12,14 +12,13 @@ import (
 const fetchKeysPerJobType = 6
 
 type worker struct {
-	workerID      string
-	poolID        string
-	namespace     string
-	pool          *redis.Pool
-	jobTypes      map[string]*jobType
-	sleepBackoffs []int64
-	middleware    []*middlewareHandler
-	contextType   reflect.Type
+	workerID    string
+	poolID      string
+	namespace   string
+	pool        *redis.Pool
+	jobTypes    map[string]*jobType
+	middleware  []*middlewareHandler
+	contextType reflect.Type
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
@@ -32,21 +31,16 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, sleepBackoffs []int64) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
 	workerID := makeIdentifier()
 	ob := newObserver(namespace, pool, workerID)
 
-	if len(sleepBackoffs) == 0 {
-		sleepBackoffs = sleepBackoffsInMilliseconds
-	}
-
 	w := &worker{
-		workerID:      workerID,
-		poolID:        poolID,
-		namespace:     namespace,
-		pool:          pool,
-		contextType:   contextType,
-		sleepBackoffs: sleepBackoffs,
+		workerID:    workerID,
+		poolID:      poolID,
+		namespace:   namespace,
+		pool:        pool,
+		contextType: contextType,
 
 		observer: ob,
 
@@ -132,10 +126,10 @@ func (w *worker) loop() {
 				}
 				consequtiveNoJobs++
 				idx := consequtiveNoJobs
-				if idx >= int64(len(w.sleepBackoffs)) {
-					idx = int64(len(w.sleepBackoffs)) - 1
+				if idx >= int64(len(sleepBackoffsInMilliseconds)) {
+					idx = int64(len(sleepBackoffsInMilliseconds)) - 1
 				}
-				timer.Reset(time.Duration(w.sleepBackoffs[idx]) * time.Millisecond)
+				timer.Reset(time.Duration(sleepBackoffsInMilliseconds[idx]) * time.Millisecond)
 			}
 		}
 	}
@@ -191,13 +185,7 @@ func (w *worker) fetchJob() (*Job, error) {
 
 func (w *worker) processJob(job *Job) {
 	if job.Unique {
-		updatedJob := w.getAndDeleteUniqueJob(job)
-		// This is to support the old way of doing it, where we used the job off the queue and just deleted the unique key
-		// Going forward the job on the queue will always be just a placeholder, and we will be replacing it with the
-		// updated job extracted here
-		if updatedJob != nil {
-			job = updatedJob
-		}
+		w.deleteUniqueJob(job)
 	}
 	var runErr error
 	jt := w.jobTypes[job.Name]
@@ -219,49 +207,18 @@ func (w *worker) processJob(job *Job) {
 	w.removeJobFromInProgress(job, fate)
 }
 
-func (w *worker) getAndDeleteUniqueJob(job *Job) *Job {
-	var uniqueKey string
-	var err error
-
-	if job.UniqueKey != "" {
-		uniqueKey = job.UniqueKey
-	} else { // For jobs put in queue prior to this change. In the future this can be deleted as there will always be a UniqueKey
-		uniqueKey, err = redisKeyUniqueJob(w.namespace, job.Name, job.Args)
-		if err != nil {
-			logError("worker.delete_unique_job.key", err)
-			return nil
-		}
+func (w *worker) deleteUniqueJob(job *Job) {
+	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
+	if err != nil {
+		logError("worker.delete_unique_job.key", err)
 	}
-
 	conn := w.pool.Get()
 	defer conn.Close()
-
-	rawJSON, err := redis.Bytes(conn.Do("GET", uniqueKey))
-	if err != nil {
-		logError("worker.delete_unique_job.get", err)
-		return nil
-	}
 
 	_, err = conn.Do("DEL", uniqueKey)
 	if err != nil {
 		logError("worker.delete_unique_job.del", err)
-		return nil
 	}
-
-	// Previous versions did not support updated arguments and just set key to 1, so in these cases we should do nothing.
-	// In the future this can be deleted, as we will always be getting arguments from here
-	if string(rawJSON) == "1" {
-		return nil
-	}
-
-	// The job pulled off the queue was just a placeholder with no args, so replace it
-	jobWithArgs, err := newJob(rawJSON, job.dequeuedFrom, job.inProgQueue)
-	if err != nil {
-		logError("worker.delete_unique_job.updated_job", err)
-		return nil
-	}
-
-	return jobWithArgs
 }
 
 func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
