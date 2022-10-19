@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"sync"
 
+	work "github.com/agschwender/gocraft-work"
+	"github.com/agschwender/gocraft-work/webui/internal/assets"
 	"github.com/braintree/manners"
 	"github.com/gocraft/web"
-	"github.com/gocraft/work"
-	"github.com/gocraft/work/webui/internal/assets"
 	"github.com/gomodule/redigo/redis"
 )
 
