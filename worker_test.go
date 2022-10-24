@@ -12,7 +12,7 @@ import (
 )
 
 func TestWorkerBasics(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
@@ -61,7 +61,7 @@ func TestWorkerBasics(t *testing.T) {
 	_, err = enqueuer.Enqueue(job3, Q{"a": 3})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	w.start()
 	w.drain()
 	w.stop()
@@ -89,7 +89,7 @@ func TestWorkerBasics(t *testing.T) {
 }
 
 func TestWorkerInProgress(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -111,7 +111,7 @@ func TestWorkerInProgress(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	w.start()
 
 	// instead of w.forceIter(), we'll wait for 10 milliseconds to let the job start
@@ -142,7 +142,7 @@ func TestWorkerInProgress(t *testing.T) {
 }
 
 func TestWorkerRetry(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -162,7 +162,7 @@ func TestWorkerRetry(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	w.start()
 	w.drain()
 	w.stop()
@@ -189,7 +189,7 @@ func TestWorkerRetry(t *testing.T) {
 
 // Check if a custom backoff function functions functionally.
 func TestWorkerRetryWithCustomBackoff(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -214,7 +214,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 	enqueuer := NewEnqueuer(ns, pool)
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	w.start()
 	w.drain()
 	w.stop()
@@ -239,7 +239,7 @@ func TestWorkerRetryWithCustomBackoff(t *testing.T) {
 }
 
 func TestWorkerDead(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	job2 := "job2"
@@ -271,7 +271,7 @@ func TestWorkerDead(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = enqueuer.Enqueue(job2, nil)
 	assert.Nil(t, err)
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	w.start()
 	w.drain()
 	w.stop()
@@ -302,7 +302,7 @@ func TestWorkerDead(t *testing.T) {
 }
 
 func TestWorkersPaused(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	deleteQueue(pool, ns, job1)
@@ -324,7 +324,7 @@ func TestWorkersPaused(t *testing.T) {
 	_, err := enqueuer.Enqueue(job1, Q{"a": 1})
 	assert.Nil(t, err)
 
-	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes)
+	w := newWorker(ns, "1", pool, tstCtxType, nil, jobTypes, noopLogger{})
 	// pause the jobs prior to starting
 	err = pauseJobs(ns, job1, pool)
 	assert.Nil(t, err)
@@ -375,13 +375,13 @@ func TestStop(t *testing.T) {
 			return c, nil
 		},
 	}
-	wp := NewWorkerPool(TestContext{}, 10, "work", redisPool)
+	wp := NewWorkerPool(TestContext{}, 10, "work", redisPool, noopLogger{})
 	wp.Start()
 	wp.Stop()
 }
 
 func BenchmarkJobProcessing(b *testing.B) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
@@ -393,7 +393,7 @@ func BenchmarkJobProcessing(b *testing.B) {
 		}
 	}
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(c *TestContext, job *Job) error {
 		return nil
 	})
@@ -598,11 +598,11 @@ type emptyCtx struct{}
 // https://github.com/gocraft/work/issues/24
 func TestWorkerPoolStop(t *testing.T) {
 	ns := "will_it_end"
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	var started, stopped int32
 	num_iters := 30
 
-	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool)
+	wp := NewWorkerPool(emptyCtx{}, 2, ns, pool, noopLogger{})
 
 	wp.Job("sample_job", func(c *emptyCtx, job *Job) error {
 		atomic.AddInt32(&started, 1)

@@ -19,6 +19,7 @@ type periodicEnqueuer struct {
 	pool                  *redis.Pool
 	periodicJobs          []*periodicJob
 	scheduledPeriodicJobs []*scheduledPeriodicJob
+	logger                Logger
 	stopChan              chan struct{}
 	doneStoppingChan      chan struct{}
 }
@@ -35,11 +36,12 @@ type scheduledPeriodicJob struct {
 	*periodicJob
 }
 
-func newPeriodicEnqueuer(namespace string, pool *redis.Pool, periodicJobs []*periodicJob) *periodicEnqueuer {
+func newPeriodicEnqueuer(namespace string, pool *redis.Pool, periodicJobs []*periodicJob, logger Logger) *periodicEnqueuer {
 	return &periodicEnqueuer{
 		namespace:        namespace,
 		pool:             pool,
 		periodicJobs:     periodicJobs,
+		logger:           logger,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -62,7 +64,7 @@ func (pe *periodicEnqueuer) loop() {
 	if pe.shouldEnqueue() {
 		err := pe.enqueue()
 		if err != nil {
-			logError("periodic_enqueuer.loop.enqueue", err)
+			logError(pe.logger, "periodic_enqueuer.loop.enqueue", err)
 		}
 	}
 
@@ -76,7 +78,7 @@ func (pe *periodicEnqueuer) loop() {
 			if pe.shouldEnqueue() {
 				err := pe.enqueue()
 				if err != nil {
-					logError("periodic_enqueuer.loop.enqueue", err)
+					logError(pe.logger, "periodic_enqueuer.loop.enqueue", err)
 				}
 			}
 		}
@@ -130,7 +132,7 @@ func (pe *periodicEnqueuer) shouldEnqueue() bool {
 	if err == redis.ErrNil {
 		return true
 	} else if err != nil {
-		logError("periodic_enqueuer.should_enqueue", err)
+		logError(pe.logger, "periodic_enqueuer.should_enqueue", err)
 		return true
 	}
 

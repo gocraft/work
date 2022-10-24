@@ -9,14 +9,14 @@ import (
 )
 
 func TestObserverStarted(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
 
-	observer := newObserver(ns, pool, "abcd")
+	observer := newObserver(ns, pool, "abcd", noopLogger{})
 	observer.start()
 	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
 	//observer.observeDone("foo", "bar", nil)
@@ -31,14 +31,14 @@ func TestObserverStarted(t *testing.T) {
 }
 
 func TestObserverStartedDone(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 
 	tMock := int64(1425263401)
 	setNowEpochSecondsMock(tMock)
 	defer resetNowEpochSecondsMock()
 
-	observer := newObserver(ns, pool, "abcd")
+	observer := newObserver(ns, pool, "abcd", noopLogger{})
 	observer.start()
 	observer.observeStarted("foo", "bar", Q{"a": 1, "b": "wat"})
 	observer.observeDone("foo", "bar", nil)
@@ -50,10 +50,10 @@ func TestObserverStartedDone(t *testing.T) {
 }
 
 func TestObserverCheckin(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 
-	observer := newObserver(ns, pool, "abcd")
+	observer := newObserver(ns, pool, "abcd", noopLogger{})
 	observer.start()
 
 	tMock := int64(1425263401)
@@ -77,10 +77,10 @@ func TestObserverCheckin(t *testing.T) {
 }
 
 func TestObserverCheckinFromJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 
-	observer := newObserver(ns, pool, "abcd")
+	observer := newObserver(ns, pool, "abcd", noopLogger{})
 	observer.start()
 
 	tMock := int64(1425263401)

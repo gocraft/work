@@ -10,6 +10,7 @@ import (
 type requeuer struct {
 	namespace string
 	pool      *redis.Pool
+	logger    Logger
 
 	redisRequeueScript *redis.Script
 	redisRequeueArgs   []interface{}
@@ -21,7 +22,7 @@ type requeuer struct {
 	doneDrainingChan chan struct{}
 }
 
-func newRequeuer(namespace string, pool *redis.Pool, requeueKey string, jobNames []string) *requeuer {
+func newRequeuer(namespace string, pool *redis.Pool, requeueKey string, jobNames []string, logger Logger) *requeuer {
 	args := make([]interface{}, 0, len(jobNames)+2+2)
 	args = append(args, requeueKey)              // KEY[1]
 	args = append(args, redisKeyDead(namespace)) // KEY[2]
@@ -34,6 +35,7 @@ func newRequeuer(namespace string, pool *redis.Pool, requeueKey string, jobNames
 	return &requeuer{
 		namespace: namespace,
 		pool:      pool,
+		logger:    logger,
 
 		redisRequeueScript: redis.NewScript(len(jobNames)+2, redisLuaZremLpushCmd),
 		redisRequeueArgs:   args,
@@ -93,14 +95,14 @@ func (r *requeuer) process() bool {
 	if err == redis.ErrNil {
 		return false
 	} else if err != nil {
-		logError("requeuer.process", err)
+		logError(r.logger, "requeuer.process", err)
 		return false
 	}
 
 	if res == "" {
 		return false
 	} else if res == "dead" {
-		logError("requeuer.process.dead", fmt.Errorf("no job name"))
+		logError(r.logger, "requeuer.process.dead", fmt.Errorf("no job name"))
 		return true
 	} else if res == "ok" {
 		return true

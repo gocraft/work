@@ -22,18 +22,20 @@ type deadPoolReaper struct {
 	deadTime    time.Duration
 	reapPeriod  time.Duration
 	curJobTypes []string
+	logger      Logger
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
 
-func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string) *deadPoolReaper {
+func newDeadPoolReaper(namespace string, pool *redis.Pool, curJobTypes []string, logger Logger) *deadPoolReaper {
 	return &deadPoolReaper{
 		namespace:        namespace,
 		pool:             pool,
 		deadTime:         deadTime,
 		reapPeriod:       reapPeriod,
 		curJobTypes:      curJobTypes,
+		logger:           logger,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -64,7 +66,7 @@ func (r *deadPoolReaper) loop() {
 
 			// Reap
 			if err := r.reap(); err != nil {
-				logError("dead_pool_reaper.reap", err)
+				logError(r.logger, "dead_pool_reaper.reap", err)
 			}
 		}
 	}

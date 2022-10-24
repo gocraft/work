@@ -15,7 +15,7 @@ import (
 )
 
 func TestWebUIStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -27,7 +27,7 @@ func TestWebUIStartStop(t *testing.T) {
 type TestContext struct{}
 
 func TestWebUIQueues(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -83,7 +83,7 @@ func TestWebUIQueues(t *testing.T) {
 }
 
 func TestWebUIWorkerPools(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -121,7 +121,7 @@ func TestWebUIWorkerPools(t *testing.T) {
 }
 
 func TestWebUIBusyWorkers(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -183,7 +183,7 @@ func TestWebUIBusyWorkers(t *testing.T) {
 }
 
 func TestWebUIRetryJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -226,7 +226,7 @@ func TestWebUIRetryJobs(t *testing.T) {
 }
 
 func TestWebUIScheduledJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -259,7 +259,7 @@ func TestWebUIScheduledJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -347,7 +347,7 @@ func TestWebUIDeadJobs(t *testing.T) {
 }
 
 func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -448,7 +448,7 @@ func TestWebUIDeadJobsDeleteRetryAll(t *testing.T) {
 }
 
 func TestWebUIAssets(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	s := NewServer(ns, pool, ":6666")
 

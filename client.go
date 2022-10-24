@@ -21,13 +21,15 @@ var ErrNotRetried = fmt.Errorf("nothing retried")
 type Client struct {
 	namespace string
 	pool      *redis.Pool
+	logger    Logger
 }
 
 // NewClient creates a new Client with the specified redis namespace and connection pool.
-func NewClient(namespace string, pool *redis.Pool) *Client {
+func NewClient(namespace string, pool *redis.Pool, logger Logger) *Client {
 	return &Client{
 		namespace: namespace,
 		pool:      pool,
+		logger:    logger,
 	}
 }
 
@@ -62,7 +64,7 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("worker_pool_statuses.flush", err)
+		logError(c.logger, "worker_pool_statuses.flush", err)
 		return nil, err
 	}
 
@@ -71,7 +73,7 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 	for _, wpid := range workerPoolIDs {
 		vals, err := redis.Strings(conn.Receive())
 		if err != nil {
-			logError("worker_pool_statuses.receive", err)
+			logError(c.logger, "worker_pool_statuses.receive", err)
 			return nil, err
 		}
 
@@ -106,7 +108,7 @@ func (c *Client) WorkerPoolHeartbeats() ([]*WorkerPoolHeartbeat, error) {
 				sort.Strings(heartbeat.WorkerIDs)
 			}
 			if err != nil {
-				logError("worker_pool_statuses.parse", err)
+				logError(c.logger, "worker_pool_statuses.parse", err)
 				return nil, err
 			}
 		}
@@ -138,7 +140,7 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 
 	hbs, err := c.WorkerPoolHeartbeats()
 	if err != nil {
-		logError("worker_observations.worker_pool_heartbeats", err)
+		logError(c.logger, "worker_observations.worker_pool_heartbeats", err)
 		return nil, err
 	}
 
@@ -153,7 +155,7 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("worker_observations.flush", err)
+		logError(c.logger, "worker_observations.flush", err)
 		return nil, err
 	}
 
@@ -162,7 +164,7 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 	for _, wid := range workerIDs {
 		vals, err := redis.Strings(conn.Receive())
 		if err != nil {
-			logError("worker_observations.receive", err)
+			logError(c.logger, "worker_observations.receive", err)
 			return nil, err
 		}
 
@@ -191,7 +193,7 @@ func (c *Client) WorkerObservations() ([]*WorkerObservation, error) {
 				ob.CheckinAt, err = strconv.ParseInt(value, 10, 64)
 			}
 			if err != nil {
-				logError("worker_observations.parse", err)
+				logError(c.logger, "worker_observations.parse", err)
 				return nil, err
 			}
 		}
@@ -226,7 +228,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("client.queues.flush", err)
+		logError(c.logger, "client.queues.flush", err)
 		return nil, err
 	}
 
@@ -235,7 +237,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	for _, jobName := range jobNames {
 		count, err := redis.Int64(conn.Receive())
 		if err != nil {
-			logError("client.queues.receive", err)
+			logError(c.logger, "client.queues.receive", err)
 			return nil, err
 		}
 
@@ -254,7 +256,7 @@ func (c *Client) Queues() ([]*Queue, error) {
 	}
 
 	if err := conn.Flush(); err != nil {
-		logError("client.queues.flush2", err)
+		logError(c.logger, "client.queues.flush2", err)
 		return nil, err
 	}
 
@@ -264,13 +266,13 @@ func (c *Client) Queues() ([]*Queue, error) {
 		if s.Count > 0 {
 			b, err := redis.Bytes(conn.Receive())
 			if err != nil {
-				logError("client.queues.receive2", err)
+				logError(c.logger, "client.queues.receive2", err)
 				return nil, err
 			}
 
 			job, err := newJob(b, nil, nil)
 			if err != nil {
-				logError("client.queues.new_job", err)
+				logError(c.logger, "client.queues.new_job", err)
 			}
 			s.Latency = now - job.EnqueuedAt
 		}
@@ -302,7 +304,7 @@ func (c *Client) ScheduledJobs(page uint) ([]*ScheduledJob, int64, error) {
 	key := redisKeyScheduled(c.namespace)
 	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
-		logError("client.scheduled_jobs.get_zset_page", err)
+		logError(c.logger, "client.scheduled_jobs.get_zset_page", err)
 		return nil, 0, err
 	}
 
@@ -320,7 +322,7 @@ func (c *Client) RetryJobs(page uint) ([]*RetryJob, int64, error) {
 	key := redisKeyRetry(c.namespace)
 	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
-		logError("client.retry_jobs.get_zset_page", err)
+		logError(c.logger, "client.retry_jobs.get_zset_page", err)
 		return nil, 0, err
 	}
 
@@ -338,7 +340,7 @@ func (c *Client) DeadJobs(page uint) ([]*DeadJob, int64, error) {
 	key := redisKeyDead(c.namespace)
 	jobsWithScores, count, err := c.getZsetPage(key, page)
 	if err != nil {
-		logError("client.dead_jobs.get_zset_page", err)
+		logError(c.logger, "client.dead_jobs.get_zset_page", err)
 		return nil, 0, err
 	}
 
@@ -368,7 +370,7 @@ func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 	// Get queues for job names
 	queues, err := c.Queues()
 	if err != nil {
-		logError("client.retry_all_dead_jobs.queues", err)
+		logError(c.logger, "client.retry_all_dead_jobs.queues", err)
 		return err
 	}
 
@@ -395,7 +397,7 @@ func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 
 	cnt, err := redis.Int64(script.Do(conn, args...))
 	if err != nil {
-		logError("client.retry_dead_job.do", err)
+		logError(c.logger, "client.retry_dead_job.do", err)
 		return err
 	}
 
@@ -411,7 +413,7 @@ func (c *Client) RetryAllDeadJobs() error {
 	// Get queues for job names
 	queues, err := c.Queues()
 	if err != nil {
-		logError("client.retry_all_dead_jobs.queues", err)
+		logError(c.logger, "client.retry_all_dead_jobs.queues", err)
 		return err
 	}
 
@@ -440,7 +442,7 @@ func (c *Client) RetryAllDeadJobs() error {
 	for i := 0; i < 1000; i++ {
 		res, err := redis.Int64(script.Do(conn, args...))
 		if err != nil {
-			logError("client.retry_all_dead_jobs.do", err)
+			logError(c.logger, "client.retry_all_dead_jobs.do", err)
 			return err
 		}
 
@@ -458,7 +460,7 @@ func (c *Client) DeleteAllDeadJobs() error {
 	defer conn.Close()
 	_, err := conn.Do("DEL", redisKeyDead(c.namespace))
 	if err != nil {
-		logError("client.delete_all_dead_jobs", err)
+		logError(c.logger, "client.delete_all_dead_jobs", err)
 		return err
 	}
 
@@ -476,14 +478,14 @@ func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
 	if len(jobBytes) > 0 {
 		job, err := newJob(jobBytes, nil, nil)
 		if err != nil {
-			logError("client.delete_scheduled_job.new_job", err)
+			logError(c.logger, "client.delete_scheduled_job.new_job", err)
 			return err
 		}
 
 		if job.Unique {
 			uniqueKey, err := redisKeyUniqueJob(c.namespace, job.Name, job.Args)
 			if err != nil {
-				logError("client.delete_scheduled_job.redis_key_unique_job", err)
+				logError(c.logger, "client.delete_scheduled_job.redis_key_unique_job", err)
 				return err
 			}
 			conn := c.pool.Get()
@@ -491,7 +493,7 @@ func (c *Client) DeleteScheduledJob(scheduledFor int64, jobID string) error {
 
 			_, err = conn.Do("DEL", uniqueKey)
 			if err != nil {
-				logError("worker.delete_unique_job.del", err)
+				logError(c.logger, "worker.delete_unique_job.del", err)
 				return err
 			}
 		}
@@ -534,7 +536,7 @@ func (c *Client) deleteZsetJob(zsetKey string, zscore int64, jobID string) (bool
 	cnt, err := redis.Int64(values[0], err)
 	jobBytes, err := redis.Bytes(values[1], err)
 	if err != nil {
-		logError("client.delete_zset_job.do", err)
+		logError(c.logger, "client.delete_zset_job.do", err)
 		return false, nil, err
 	}
 
@@ -557,21 +559,21 @@ func (c *Client) getZsetPage(key string, page uint) ([]jobScore, int64, error) {
 
 	values, err := redis.Values(conn.Do("ZRANGEBYSCORE", key, "-inf", "+inf", "WITHSCORES", "LIMIT", (page-1)*20, 20))
 	if err != nil {
-		logError("client.get_zset_page.values", err)
+		logError(c.logger, "client.get_zset_page.values", err)
 		return nil, 0, err
 	}
 
 	var jobsWithScores []jobScore
 
 	if err := redis.ScanSlice(values, &jobsWithScores); err != nil {
-		logError("client.get_zset_page.scan_slice", err)
+		logError(c.logger, "client.get_zset_page.scan_slice", err)
 		return nil, 0, err
 	}
 
 	for i, jws := range jobsWithScores {
 		job, err := newJob(jws.JobBytes, nil, nil)
 		if err != nil {
-			logError("client.get_zset_page.new_job", err)
+			logError(c.logger, "client.get_zset_page.new_job", err)
 			return nil, 0, err
 		}
 
@@ -580,7 +582,7 @@ func (c *Client) getZsetPage(key string, page uint) ([]jobScore, int64, error) {
 
 	count, err := redis.Int64(conn.Do("ZCARD", key))
 	if err != nil {
-		logError("client.get_zset_page.int64", err)
+		logError(c.logger, "client.get_zset_page.int64", err)
 		return nil, 0, err
 	}
 

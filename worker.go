@@ -19,6 +19,7 @@ type worker struct {
 	jobTypes    map[string]*jobType
 	middleware  []*middlewareHandler
 	contextType reflect.Type
+	logger      Logger
 
 	redisFetchScript *redis.Script
 	sampler          prioritySampler
@@ -31,9 +32,9 @@ type worker struct {
 	doneDrainingChan chan struct{}
 }
 
-func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType) *worker {
+func newWorker(namespace string, poolID string, pool *redis.Pool, contextType reflect.Type, middleware []*middlewareHandler, jobTypes map[string]*jobType, logger Logger) *worker {
 	workerID := makeIdentifier()
-	ob := newObserver(namespace, pool, workerID)
+	ob := newObserver(namespace, pool, workerID, logger)
 
 	w := &worker{
 		workerID:    workerID,
@@ -41,6 +42,7 @@ func newWorker(namespace string, poolID string, pool *redis.Pool, contextType re
 		namespace:   namespace,
 		pool:        pool,
 		contextType: contextType,
+		logger:      logger,
 
 		observer: ob,
 
@@ -113,7 +115,7 @@ func (w *worker) loop() {
 		case <-timer.C:
 			job, err := w.fetchJob()
 			if err != nil {
-				logError("worker.fetch", err)
+				logError(w.logger, "worker.fetch", err)
 				timer.Reset(10 * time.Millisecond)
 			} else if job != nil {
 				w.processJob(job)
@@ -191,11 +193,11 @@ func (w *worker) processJob(job *Job) {
 	jt := w.jobTypes[job.Name]
 	if jt == nil {
 		runErr = fmt.Errorf("stray job: no handler")
-		logError("process_job.stray", runErr)
+		logError(w.logger, "process_job.stray", runErr)
 	} else {
 		w.observeStarted(job.Name, job.ID, job.Args)
 		job.observer = w.observer // for Checkin
-		_, runErr = runJob(job, w.contextType, w.middleware, jt)
+		_, runErr = runJob(job, w.contextType, w.middleware, jt, w.logger)
 		w.observeDone(job.Name, job.ID, runErr)
 	}
 
@@ -210,14 +212,14 @@ func (w *worker) processJob(job *Job) {
 func (w *worker) deleteUniqueJob(job *Job) {
 	uniqueKey, err := redisKeyUniqueJob(w.namespace, job.Name, job.Args)
 	if err != nil {
-		logError("worker.delete_unique_job.key", err)
+		logError(w.logger, "worker.delete_unique_job.key", err)
 	}
 	conn := w.pool.Get()
 	defer conn.Close()
 
 	_, err = conn.Do("DEL", uniqueKey)
 	if err != nil {
-		logError("worker.delete_unique_job.del", err)
+		logError(w.logger, "worker.delete_unique_job.del", err)
 	}
 }
 
@@ -231,7 +233,7 @@ func (w *worker) removeJobFromInProgress(job *Job, fate terminateOp) {
 	conn.Send("HINCRBY", redisKeyJobsLockInfo(w.namespace, job.Name), w.poolID, -1)
 	fate(conn)
 	if _, err := conn.Do("EXEC"); err != nil {
-		logError("worker.remove_job_from_in_progress.lrem", err)
+		logError(w.logger, "worker.remove_job_from_in_progress.lrem", err)
 	}
 }
 
@@ -241,7 +243,7 @@ func terminateOnly(_ redis.Conn) { return }
 func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
-		logError("worker.terminate_and_retry.serialize", err)
+		logError(w.logger, "worker.terminate_and_retry.serialize", err)
 		return terminateOnly
 	}
 	return func(conn redis.Conn) {
@@ -251,7 +253,7 @@ func terminateAndRetry(w *worker, jt *jobType, job *Job) terminateOp {
 func terminateAndDead(w *worker, job *Job) terminateOp {
 	rawJSON, err := job.serialize()
 	if err != nil {
-		logError("worker.terminate_and_dead.serialize", err)
+		logError(w.logger, "worker.terminate_and_dead.serialize", err)
 		return terminateOnly
 	}
 	return func(conn redis.Conn) {

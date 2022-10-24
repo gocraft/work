@@ -1,0 +1,32 @@
+version: "3.4"
+services:
+  gocraft-work:
+    build:
+      context: .
+    command: /go/bin/workenqueue
+    depends_on:
+      - redis-gocraft-work
+    networks:
+      - gocraft-work-network
+
+  gocraft-work-test:
+    build:
+      context: .
+    command: go test
+    depends_on:
+      - redis-gocraft-work-test
+    networks:
+      - gocraft-work-network
+
+  redis-gocraft-work:
+    image: redis:6.2-alpine
+    networks:
+      - gocraft-work-network
+
+  redis-gocraft-work-test:
+    image: redis:6.2-alpine
+    networks:
+      - gocraft-work-network
+
+networks:
+  gocraft-work-network:

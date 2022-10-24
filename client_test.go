@@ -12,23 +12,23 @@ import (
 type TestContext struct{}
 
 func TestClientWorkerPoolHeartbeats(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(job *Job) error { return nil })
 	wp.Job("bob", func(job *Job) error { return nil })
 	wp.Start()
 
-	wp2 := NewWorkerPool(TestContext{}, 11, ns, pool)
+	wp2 := NewWorkerPool(TestContext{}, 11, ns, pool, noopLogger{})
 	wp2.Job("foo", func(job *Job) error { return nil })
 	wp2.Job("bar", func(job *Job) error { return nil })
 	wp2.Start()
 
 	time.Sleep(20 * time.Millisecond)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 
 	hbs, err := client.WorkerPoolHeartbeats()
 	assert.NoError(t, err)
@@ -64,7 +64,7 @@ func TestClientWorkerPoolHeartbeats(t *testing.T) {
 }
 
 func TestClientWorkerObservations(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -74,7 +74,7 @@ func TestClientWorkerObservations(t *testing.T) {
 	_, err = enqueuer.Enqueue("foo", Q{"a": 3, "b": 4})
 	assert.Nil(t, err)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(job *Job) error {
 		time.Sleep(50 * time.Millisecond)
 		return nil
@@ -87,7 +87,7 @@ func TestClientWorkerObservations(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	observations, err := client.WorkerObservations()
 	assert.NoError(t, err)
 	assert.Equal(t, 10, len(observations))
@@ -133,7 +133,7 @@ func TestClientWorkerObservations(t *testing.T) {
 }
 
 func TestClientQueues(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -144,7 +144,7 @@ func TestClientQueues(t *testing.T) {
 
 	// Start a pool to work on it. It's going to work on the queues
 	// side effect of that is knowing which jobs are avail
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(job *Job) error {
 		return nil
 	})
@@ -167,7 +167,7 @@ func TestClientQueues(t *testing.T) {
 	enqueuer.Enqueue("wat", nil)
 
 	setNowEpochSecondsMock(1425263709)
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	queues, err := client.Queues()
 	assert.NoError(t, err)
 
@@ -184,7 +184,7 @@ func TestClientQueues(t *testing.T) {
 }
 
 func TestClientScheduledJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -196,7 +196,7 @@ func TestClientScheduledJobs(t *testing.T) {
 	_, err = enqueuer.EnqueueIn("zaz", 4, Q{"a": 3, "b": 4})
 	_, err = enqueuer.EnqueueIn("foo", 2, Q{"a": 3, "b": 4})
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.ScheduledJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(jobs))
@@ -232,7 +232,7 @@ func TestClientScheduledJobs(t *testing.T) {
 }
 
 func TestClientRetryJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -245,7 +245,7 @@ func TestClientRetryJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(job *Job) error {
 		return fmt.Errorf("ohno")
 	})
@@ -253,7 +253,7 @@ func TestClientRetryJobs(t *testing.T) {
 	wp.Drain()
 	wp.Stop()
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.RetryJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
@@ -271,7 +271,7 @@ func TestClientRetryJobs(t *testing.T) {
 }
 
 func TestClientDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -284,7 +284,7 @@ func TestClientDeadJobs(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
 		return fmt.Errorf("ohno")
 	})
@@ -292,7 +292,7 @@ func TestClientDeadJobs(t *testing.T) {
 	wp.Drain()
 	wp.Stop()
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))
@@ -326,7 +326,7 @@ func TestClientDeadJobs(t *testing.T) {
 }
 
 func TestClientDeleteDeadJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -336,7 +336,7 @@ func TestClientDeleteDeadJob(t *testing.T) {
 	insertDeadJob(ns, pool, "wat", 12345, 12349)
 	insertDeadJob(ns, pool, "wat", 12345, 12350)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(jobs))
@@ -355,7 +355,7 @@ func TestClientDeleteDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -365,7 +365,7 @@ func TestClientRetryDeadJob(t *testing.T) {
 	insertDeadJob(ns, pool, "wat3", 12345, 12349)
 	insertDeadJob(ns, pool, "wat4", 12345, 12350)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 4, len(jobs))
@@ -411,7 +411,7 @@ func TestClientRetryDeadJob(t *testing.T) {
 }
 
 func TestClientRetryDeadJobWithArgs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -442,7 +442,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 		panic(err)
 	}
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	err = client.RetryDeadJob(failAt, job.ID)
 	assert.NoError(t, err)
 
@@ -455,7 +455,7 @@ func TestClientRetryDeadJobWithArgs(t *testing.T) {
 }
 
 func TestClientDeleteAllDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -465,7 +465,7 @@ func TestClientDeleteAllDeadJobs(t *testing.T) {
 	insertDeadJob(ns, pool, "wat", 12345, 12349)
 	insertDeadJob(ns, pool, "wat", 12345, 12350)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(jobs))
@@ -481,7 +481,7 @@ func TestClientDeleteAllDeadJobs(t *testing.T) {
 }
 
 func TestClientRetryAllDeadJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -493,7 +493,7 @@ func TestClientRetryAllDeadJobs(t *testing.T) {
 	insertDeadJob(ns, pool, "wat3", 12345, 12349)
 	insertDeadJob(ns, pool, "wat4", 12345, 12350)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 4, len(jobs))
@@ -539,7 +539,7 @@ func TestClientRetryAllDeadJobs(t *testing.T) {
 }
 
 func TestClientRetryAllDeadJobsBig(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -588,7 +588,7 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 		panic(err.Error())
 	}
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	_, count, err := client.DeadJobs(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 10001, count)
@@ -608,12 +608,12 @@ func TestClientRetryAllDeadJobsBig(t *testing.T) {
 }
 
 func TestClientDeleteScheduledJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
 	// Delete an invalid job. Make sure we get error
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	err := client.DeleteScheduledJob(3, "bob")
 	assert.Equal(t, ErrNotDeleted, err)
 
@@ -629,7 +629,7 @@ func TestClientDeleteScheduledJob(t *testing.T) {
 }
 
 func TestClientDeleteScheduledUniqueJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -639,7 +639,7 @@ func TestClientDeleteScheduledUniqueJob(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, j)
 
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	err = client.DeleteScheduledJob(j.RunAt, j.ID)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 0, zsetSize(pool, redisKeyScheduled(ns)))
@@ -650,7 +650,7 @@ func TestClientDeleteScheduledUniqueJob(t *testing.T) {
 }
 
 func TestClientDeleteRetryJob(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "testwork"
 	cleanKeyspace(ns, pool)
 
@@ -663,7 +663,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 
 	setNowEpochSecondsMock(1425263429)
 
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Job("wat", func(job *Job) error {
 		return fmt.Errorf("ohno")
 	})
@@ -672,7 +672,7 @@ func TestClientDeleteRetryJob(t *testing.T) {
 	wp.Stop()
 
 	// Ok so now we have a retry job
-	client := NewClient(ns, pool)
+	client := NewClient(ns, pool, noopLogger{})
 	jobs, count, err := client.RetryJobs(1)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(jobs))

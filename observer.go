@@ -13,6 +13,7 @@ type observer struct {
 	namespace string
 	workerID  string
 	pool      *redis.Pool
+	logger    Logger
 
 	// nil: worker isn't doing anything that we know of
 	// not nil: the last started observation that we received on the channel.
@@ -62,11 +63,12 @@ type observation struct {
 
 const observerBufferSize = 1024
 
-func newObserver(namespace string, pool *redis.Pool, workerID string) *observer {
+func newObserver(namespace string, pool *redis.Pool, workerID string, logger Logger) *observer {
 	return &observer{
 		namespace:        namespace,
 		workerID:         workerID,
 		pool:             pool,
+		logger:           logger,
 		observationsChan: make(chan *observation, observerBufferSize),
 
 		stopChan:         make(chan struct{}),
@@ -139,7 +141,7 @@ func (o *observer) loop() {
 					o.process(obv)
 				default:
 					if err := o.writeStatus(o.currentStartedObservation); err != nil {
-						logError("observer.write", err)
+						logError(o.logger, "observer.write", err)
 					}
 					o.doneDrainingChan <- struct{}{}
 					break DRAIN_LOOP
@@ -148,7 +150,7 @@ func (o *observer) loop() {
 		case <-ticker:
 			if o.lastWrittenVersion != o.version {
 				if err := o.writeStatus(o.currentStartedObservation); err != nil {
-					logError("observer.write", err)
+					logError(o.logger, "observer.write", err)
 				}
 				o.lastWrittenVersion = o.version
 			}
@@ -168,7 +170,7 @@ func (o *observer) process(obv *observation) {
 			o.currentStartedObservation.checkin = obv.checkin
 			o.currentStartedObservation.checkinAt = obv.checkinAt
 		} else {
-			logError("observer.checkin_mismatch", fmt.Errorf("got checkin but mismatch on job ID or no job"))
+			logError(o.logger, "observer.checkin_mismatch", fmt.Errorf("got checkin but mismatch on job ID or no job"))
 		}
 	}
 	o.version++
@@ -176,7 +178,7 @@ func (o *observer) process(obv *observation) {
 	// If this is the version observation we got, just go ahead and write it.
 	if o.version == 1 {
 		if err := o.writeStatus(o.currentStartedObservation); err != nil {
-			logError("observer.first_write", err)
+			logError(o.logger, "observer.first_write", err)
 		}
 		o.lastWrittenVersion = o.version
 	}

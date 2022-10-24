@@ -7,7 +7,7 @@ import (
 )
 
 func TestRequeue(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -29,7 +29,7 @@ func TestRequeue(t *testing.T) {
 
 	resetNowEpochSecondsMock()
 
-	re := newRequeuer(ns, pool, redisKeyScheduled(ns), []string{"wat", "foo", "bar"})
+	re := newRequeuer(ns, pool, redisKeyScheduled(ns), []string{"wat", "foo", "bar"}, noopLogger{})
 	re.start()
 	re.drain()
 	re.stop()
@@ -50,7 +50,7 @@ func TestRequeue(t *testing.T) {
 }
 
 func TestRequeueUnknown(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -65,7 +65,7 @@ func TestRequeueUnknown(t *testing.T) {
 	nowish := nowEpochSeconds()
 	setNowEpochSecondsMock(nowish)
 
-	re := newRequeuer(ns, pool, redisKeyScheduled(ns), []string{"bar"})
+	re := newRequeuer(ns, pool, redisKeyScheduled(ns), []string{"bar"}, noopLogger{})
 	re.start()
 	re.drain()
 	re.stop()

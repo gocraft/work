@@ -16,6 +16,7 @@ type WorkerPool struct {
 	concurrency  uint
 	namespace    string // eg, "myapp-work"
 	pool         *redis.Pool
+	logger       Logger
 
 	contextType  reflect.Type
 	jobTypes     map[string]*jobType
@@ -79,7 +80,7 @@ type middlewareHandler struct {
 
 // NewWorkerPool creates a new worker pool. ctx should be a struct literal whose type will be used for middleware and handlers.
 // concurrency specifies how many workers to spin up - each worker can process jobs concurrently.
-func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool) *WorkerPool {
+func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *redis.Pool, logger Logger) *WorkerPool {
 	if pool == nil {
 		panic("NewWorkerPool needs a non-nil *redis.Pool")
 	}
@@ -91,12 +92,13 @@ func NewWorkerPool(ctx interface{}, concurrency uint, namespace string, pool *re
 		concurrency:  concurrency,
 		namespace:    namespace,
 		pool:         pool,
+		logger:       logger,
 		contextType:  ctxType,
 		jobTypes:     make(map[string]*jobType),
 	}
 
 	for i := uint(0); i < wp.concurrency; i++ {
-		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes)
+		w := newWorker(wp.namespace, wp.workerPoolID, wp.pool, wp.contextType, nil, wp.jobTypes, wp.logger)
 		wp.workers = append(wp.workers, w)
 	}
 
@@ -192,10 +194,10 @@ func (wp *WorkerPool) Start() {
 		go w.start()
 	}
 
-	wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs())
+	wp.heartbeater = newWorkerPoolHeartbeater(wp.namespace, wp.pool, wp.workerPoolID, wp.jobTypes, wp.concurrency, wp.workerIDs(), wp.logger)
 	wp.heartbeater.start()
 	wp.startRequeuers()
-	wp.periodicEnqueuer = newPeriodicEnqueuer(wp.namespace, wp.pool, wp.periodicJobs)
+	wp.periodicEnqueuer = newPeriodicEnqueuer(wp.namespace, wp.pool, wp.periodicJobs, wp.logger)
 	wp.periodicEnqueuer.start()
 }
 
@@ -240,9 +242,9 @@ func (wp *WorkerPool) startRequeuers() {
 	for k := range wp.jobTypes {
 		jobNames = append(jobNames, k)
 	}
-	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames)
-	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames)
-	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames)
+	wp.retrier = newRequeuer(wp.namespace, wp.pool, redisKeyRetry(wp.namespace), jobNames, wp.logger)
+	wp.scheduler = newRequeuer(wp.namespace, wp.pool, redisKeyScheduled(wp.namespace), jobNames, wp.logger)
+	wp.deadPoolReaper = newDeadPoolReaper(wp.namespace, wp.pool, jobNames, wp.logger)
 	wp.retrier.start()
 	wp.scheduler.start()
 	wp.deadPoolReaper.start()
@@ -272,7 +274,7 @@ func (wp *WorkerPool) writeKnownJobsToRedis() {
 	}
 
 	if _, err := conn.Do("SADD", jobNames...); err != nil {
-		logError("write_known_jobs", err)
+		logError(wp.logger, "write_known_jobs", err)
 	}
 }
 
@@ -285,7 +287,7 @@ func (wp *WorkerPool) writeConcurrencyControlsToRedis() {
 	defer conn.Close()
 	for jobName, jobType := range wp.jobTypes {
 		if _, err := conn.Do("SET", redisKeyJobsConcurrency(wp.namespace, jobName), jobType.MaxConcurrency); err != nil {
-			logError("write_concurrency_controls_max_concurrency", err)
+			logError(wp.logger, "write_concurrency_controls_max_concurrency", err)
 		}
 	}
 }
@@ -312,11 +314,11 @@ func validateMiddlewareType(ctxType reflect.Type, vfn reflect.Value) {
 // Since it's easy to pass the wrong method as a middleware/handler, and since the user can't rely on static type checking since we use reflection,
 // lets be super helpful about what they did and what they need to do.
 // Arguments:
-//  - vfn is the failed method
-//  - addingType is for "You are adding {addingType} to a worker pool...". Eg, "middleware" or "a handler"
-//  - yourType is for "Your {yourType} function can have...". Eg, "middleware" or "handler" or "error handler"
-//  - args is like "rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc"
-//    - NOTE: args can be calculated if you pass in each type. BUT, it doesn't have example argument name, so it has less copy/paste value.
+//   - vfn is the failed method
+//   - addingType is for "You are adding {addingType} to a worker pool...". Eg, "middleware" or "a handler"
+//   - yourType is for "Your {yourType} function can have...". Eg, "middleware" or "handler" or "error handler"
+//   - args is like "rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc"
+//   - NOTE: args can be calculated if you pass in each type. BUT, it doesn't have example argument name, so it has less copy/paste value.
 func instructiveMessage(vfn reflect.Value, addingType string, yourType string, args string, ctxType reflect.Type) string {
 	// Get context type without package.
 	ctxString := ctxType.String()

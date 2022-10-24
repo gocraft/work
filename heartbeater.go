@@ -24,18 +24,20 @@ type workerPoolHeartbeater struct {
 	pid          int
 	hostname     string
 	workerIDs    string
+	logger       Logger
 
 	stopChan         chan struct{}
 	doneStoppingChan chan struct{}
 }
 
-func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string) *workerPoolHeartbeater {
+func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID string, jobTypes map[string]*jobType, concurrency uint, workerIDs []string, logger Logger) *workerPoolHeartbeater {
 	h := &workerPoolHeartbeater{
 		workerPoolID:     workerPoolID,
 		namespace:        namespace,
 		pool:             pool,
 		beatPeriod:       beatPeriod,
 		concurrency:      concurrency,
+		logger:           logger,
 		stopChan:         make(chan struct{}),
 		doneStoppingChan: make(chan struct{}),
 	}
@@ -53,7 +55,7 @@ func newWorkerPoolHeartbeater(namespace string, pool *redis.Pool, workerPoolID s
 	h.pid = os.Getpid()
 	host, err := os.Hostname()
 	if err != nil {
-		logError("heartbeat.hostname", err)
+		logError(h.logger, "heartbeat.hostname", err)
 		host = "hostname_errored"
 	}
 	h.hostname = host
@@ -105,7 +107,7 @@ func (h *workerPoolHeartbeater) heartbeat() {
 	)
 
 	if err := conn.Flush(); err != nil {
-		logError("heartbeat", err)
+		logError(h.logger, "heartbeat", err)
 	}
 }
 
@@ -120,6 +122,6 @@ func (h *workerPoolHeartbeater) removeHeartbeat() {
 	conn.Send("DEL", heartbeatKey)
 
 	if err := conn.Flush(); err != nil {
-		logError("remove_heartbeat", err)
+		logError(h.logger, "remove_heartbeat", err)
 	}
 }

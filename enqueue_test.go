@@ -10,7 +10,7 @@ import (
 )
 
 func TestEnqueue(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
@@ -52,7 +52,7 @@ func TestEnqueue(t *testing.T) {
 }
 
 func TestEnqueueIn(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
@@ -99,7 +99,7 @@ func TestEnqueueIn(t *testing.T) {
 }
 
 func TestEnqueueUnique(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)
@@ -138,7 +138,7 @@ func TestEnqueueUnique(t *testing.T) {
 
 	// Process the queues. Ensure the right number of jobs were processed
 	var wats, taws int64
-	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 3, ns, pool, noopLogger{})
 	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
 		mutex.Lock()
 		wats++
@@ -175,7 +175,7 @@ func TestEnqueueUnique(t *testing.T) {
 }
 
 func TestEnqueueUniqueIn(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 	enqueuer := NewEnqueuer(ns, pool)

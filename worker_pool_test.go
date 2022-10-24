@@ -73,9 +73,9 @@ func TestWorkerPoolMiddlewareValidations(t *testing.T) {
 }
 
 func TestWorkerPoolStartStop(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 	wp.Start()
 	wp.Start()
 	wp.Stop()
@@ -85,9 +85,9 @@ func TestWorkerPoolStartStop(t *testing.T) {
 }
 
 func TestWorkerPoolValidations(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
-	wp := NewWorkerPool(TestContext{}, 10, ns, pool)
+	wp := NewWorkerPool(TestContext{}, 10, ns, pool, noopLogger{})
 
 	func() {
 		defer func() {
@@ -115,7 +115,7 @@ func TestWorkerPoolValidations(t *testing.T) {
 }
 
 func TestWorkersPoolRunSingleThreaded(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	job1 := "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
@@ -158,7 +158,7 @@ func TestWorkersPoolRunSingleThreaded(t *testing.T) {
 }
 
 func TestWorkerPoolPauseSingleThreadedJobs(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns, job1 := "work", "job1"
 	numJobs, concurrency, sleepTime := 5, 5, 2
 	wp := setupTestWorkerPool(pool, ns, job1, concurrency, JobOptions{Priority: 1, MaxConcurrency: 1})
@@ -218,7 +218,7 @@ func setupTestWorkerPool(pool *redis.Pool, namespace, jobName string, concurrenc
 	deleteRetryAndDead(pool, namespace)
 	deletePausedAndLockedKeys(namespace, jobName, pool)
 
-	wp := NewWorkerPool(TestContext{}, uint(concurrency), namespace, pool)
+	wp := NewWorkerPool(TestContext{}, uint(concurrency), namespace, pool, noopLogger{})
 	wp.JobWithOptions(jobName, jobOpts, (*TestContext).SleepyJob)
 	// reset the backoff times to help with testing
 	sleepBackoffsInMilliseconds = []int64{10, 10, 10, 10, 10}

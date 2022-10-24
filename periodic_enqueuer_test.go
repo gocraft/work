@@ -10,7 +10,7 @@ import (
 )
 
 func TestPeriodicEnqueuer(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
@@ -22,11 +22,11 @@ func TestPeriodicEnqueuer(t *testing.T) {
 	setNowEpochSecondsMock(1468359453)
 	defer resetNowEpochSecondsMock()
 
-	pe := newPeriodicEnqueuer(ns, pool, pjs)
+	pe := newPeriodicEnqueuer(ns, pool, pjs, noopLogger{})
 	err := pe.enqueue()
 	assert.NoError(t, err)
 
-	c := NewClient(ns, pool)
+	c := NewClient(ns, pool, noopLogger{})
 	scheduledJobs, count, err := c.ScheduledJobs(1)
 	assert.NoError(t, err)
 	assert.EqualValues(t, 20, count)
@@ -98,11 +98,11 @@ func TestPeriodicEnqueuer(t *testing.T) {
 }
 
 func TestPeriodicEnqueuerSpawn(t *testing.T) {
-	pool := newTestPool(":6379")
+	pool := newTestPool("redis-gocraft-work-test:6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
 
-	pe := newPeriodicEnqueuer(ns, pool, nil)
+	pe := newPeriodicEnqueuer(ns, pool, nil, noopLogger{})
 	pe.start()
 	pe.stop()
 }
