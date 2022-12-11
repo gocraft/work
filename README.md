@@ -229,6 +229,18 @@ pool.PeriodicallyEnqueue("0 0 * * * *", "calculate_caches") // This will enqueue
 pool.Job("calculate_caches", (*Context).CalculateCaches) // Still need to register a handler for this job separately
 ```
 
+### Check if a job is already registered
+
+You can check if a job is already registered in the worker pool.
+
+```go
+pool := work.NewWorkerPool(Context{}, 10, "my_app_namespace", redisPool)
+pool.Job("calculate_caches", (*Context).CalculateCaches)
+if pool.IsJobRegistered("calculate_caches") {
+    // do something
+}
+```
+
 ## Job concurrency
 
 You can control job concurrency using `JobOptions{MaxConcurrency: <num>}`. Unlike the WorkerPool concurrency, this controls the limit on the number jobs of that type that can be active at one time by within a single redis instance. This works by putting a precondition on enqueuing function, meaning a new job will not be scheduled if we are at or over a job's `MaxConcurrency` limit. A redis key (see `redis.go::redisKeyJobsLock`) is used as a counting semaphore in order to track job concurrency per job type. The default value is `0`, which means "no limit on job concurrency".

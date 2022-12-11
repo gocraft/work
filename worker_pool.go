@@ -175,6 +175,13 @@ func (wp *WorkerPool) JobWithOptions(name string, jobOpts JobOptions, fn interfa
 	return wp
 }
 
+// IsJobRegistered returns true if the job is already registered.
+// This is useful for checking if a job is already registered before registering it.
+func (wp *WorkerPool) IsJobRegistered(name string) bool {
+	_, ok := wp.jobTypes[name]
+	return ok
+}
+
 // PeriodicallyEnqueue will periodically enqueue jobName according to the cron-based spec.
 // The spec format is based on https://godoc.org/github.com/robfig/cron, which is a relatively standard cron format.
 // Note that the first value is the seconds!
