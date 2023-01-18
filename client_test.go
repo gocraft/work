@@ -85,7 +85,7 @@ func TestClientWorkerObservations(t *testing.T) {
 	})
 	wp.Start()
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond) // let the observers start
 
 	client := NewClient(ns, pool)
 	observations, err := client.WorkerObservations()

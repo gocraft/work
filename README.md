@@ -1,4 +1,5 @@
 # gocraft/work [![GoDoc](https://godoc.org/github.com/gocraft/work?status.png)](https://godoc.org/github.com/gocraft/work)
+[![CI](https://github.com/GettEngineering/work/actions/workflows/ci.yml/badge.svg)](https://github.com/GettEngineering/work/actions/workflows/ci.yml)
 
 gocraft/work lets you enqueue and processes background jobs in Go. Jobs are durable and backed by Redis. Very similar to Sidekiq for Go.
 
