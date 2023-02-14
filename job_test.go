@@ -212,6 +212,94 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 	}
 }
 
+func TestJobArgumentExtractionBadSliceInt(t *testing.T) {
+	// Test bad slice params
+	var testBadValues = []struct {
+		key   string
+		val   []interface{}
+		good  bool
+		count int
+	}{
+		{"a", []interface{}{"boo"}, false, 0},
+		{"b", []interface{}{true}, false, 0},
+		{"c", []interface{}{1.1}, false, 0},
+		{"d", []interface{}{19007199254740892.0}, false, 0},
+		{"e", []interface{}{-19007199254740892.0}, false, 0},
+		{"f", []interface{}{uint64(math.MaxInt64) + 1}, false, 0},
+		{"g", []interface{}{1, uint64(math.MaxInt64) + 1}, false, 1},
+
+		{"z", []interface{}{0}, true, 1},
+		{"y", []interface{}{9007199254740892}, true, 1},
+		{"x", []interface{}{9007199254740892.0}, true, 1},
+		{"w", []interface{}{573839921}, true, 1},
+		{"v", []interface{}{-573839921}, true, 1},
+		{"u", []interface{}{uint64(math.MaxInt64)}, true, 1},
+		{"t", []interface{}{1, 2, 3}, true, 3},
+		{"s", []interface{}{}, true, 0},
+	}
+
+	j := Job{}
+
+	for _, tc := range testBadValues {
+		j.setArg(tc.key, tc.val)
+	}
+
+	for _, tc := range testBadValues {
+		r := j.ArgInt64Slice(tc.key)
+		err := j.ArgError()
+		if tc.good {
+			if err != nil {
+				t.Errorf("Failed test case: %v; err = %v\n", tc, err)
+			}
+		} else {
+			if err == nil {
+				t.Errorf("Failed test case: %v; but err was nil\n", tc)
+			}
+		}
+		if len(r) != tc.count {
+			t.Errorf("Failed test case: %v; but r was %v\n", tc, r)
+		}
+		j.argError = nil
+	}
+
+	// Test no slice
+	var testNoSlice = []struct {
+		key string
+		val interface{}
+	}{
+		{"h", "bool"},
+		{"j", true},
+		{"k", 1},
+	}
+
+	for _, tc := range testNoSlice {
+		j.setArg(tc.key, tc.val)
+	}
+
+	for _, tc := range testNoSlice {
+		r := j.ArgInt64Slice(tc.key)
+		err := j.ArgError()
+		if err == nil {
+			t.Errorf("Failed test case: %v; err = %v\n", tc, err)
+		}
+		if len(r) != 0 {
+			t.Errorf("Failed test case: %v; but r was %v\n", tc, r)
+		}
+		j.argError = nil
+	}
+
+	// Test missing key
+	r := j.ArgInt64Slice("l")
+	err := j.ArgError()
+	if err == nil {
+		t.Errorf("Failed test case: %v; err = %v\n", "missing params", err)
+	}
+	if len(r) != 0 {
+		t.Errorf("Failed test case: %v; but r was %v\n", "missing params", r)
+	}
+	j.argError = nil
+}
+
 func TestJobArgumentExtractionBadFloat(t *testing.T) {
 	var testCases = []struct {
 		key  string
