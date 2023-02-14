@@ -115,6 +115,45 @@ func (j *Job) ArgInt64(key string) int64 {
 	return 0
 }
 
+// ArgInt64Slice returns j.Args[key] typed to an []int64. If the key is missing or of the wrong type, it sets an argument error
+// on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
+// followed by a single call to j.ArgError().
+func (j *Job) ArgInt64Slice(key string) []int64 {
+	var values []int64
+	row, ok := j.Args[key]
+	if ok {
+		listSlice, ok := row.([]interface{})
+		if ok {
+			for _, v := range listSlice {
+				rVal := reflect.ValueOf(v)
+				if isIntKind(rVal) {
+					values = append(values, rVal.Int())
+					continue
+				} else if isUintKind(rVal) {
+					vUint := rVal.Uint()
+					if vUint <= math.MaxInt64 {
+						values = append(values, int64(vUint))
+						continue
+					}
+				} else if isFloatKind(rVal) {
+					vFloat64 := rVal.Float()
+					vInt64 := int64(vFloat64)
+					if vFloat64 == math.Trunc(vFloat64) && vInt64 <= 9007199254740892 && vInt64 >= -9007199254740892 {
+						values = append(values, vInt64)
+						continue
+					}
+				}
+				j.argError = typecastError("int64", key, v)
+			}
+		} else {
+			j.argError = typecastError("[]int64", key, row)
+		}
+	} else {
+		j.argError = missingKeyError("[]int64", key)
+	}
+	return values
+}
+
 // ArgFloat64 returns j.Args[key] typed to a float64. If the key is missing or of the wrong type, it sets an argument error
 // on the job. This function is meant to be used in the body of a job handling function while extracting arguments,
 // followed by a single call to j.ArgError().
