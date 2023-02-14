@@ -213,7 +213,7 @@ func TestJobArgumentExtractionBadInt(t *testing.T) {
 }
 
 func TestJobArgumentExtractionBadSliceInt(t *testing.T) {
-	// Test bad slice params
+	// Test slice params
 	var testBadValues = []struct {
 		key   string
 		val   []interface{}
