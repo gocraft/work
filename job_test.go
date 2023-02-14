@@ -227,6 +227,7 @@ func TestJobArgumentExtractionBadSliceInt(t *testing.T) {
 		{"e", []interface{}{-19007199254740892.0}, false, 0},
 		{"f", []interface{}{uint64(math.MaxInt64) + 1}, false, 0},
 		{"g", []interface{}{1, uint64(math.MaxInt64) + 1}, false, 1},
+		{"h", []interface{}{1, uint64(math.MaxInt64) + 1, 2.0}, false, 2},
 
 		{"z", []interface{}{0}, true, 1},
 		{"y", []interface{}{9007199254740892}, true, 1},
@@ -267,9 +268,9 @@ func TestJobArgumentExtractionBadSliceInt(t *testing.T) {
 		key string
 		val interface{}
 	}{
-		{"h", "bool"},
-		{"j", true},
-		{"k", 1},
+		{"j", "bool"},
+		{"k", true},
+		{"l", 1},
 	}
 
 	for _, tc := range testNoSlice {
