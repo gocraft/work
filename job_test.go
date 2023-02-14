@@ -290,7 +290,7 @@ func TestJobArgumentExtractionBadSliceInt(t *testing.T) {
 	}
 
 	// Test missing key
-	r := j.ArgInt64Slice("l")
+	r := j.ArgInt64Slice("m")
 	err := j.ArgError()
 	if err == nil {
 		t.Errorf("Failed test case: %v; err = %v\n", "missing params", err)
