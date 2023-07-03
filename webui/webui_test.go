@@ -455,7 +455,7 @@ func TestWebUIAssets(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	request, _ := http.NewRequest("GET", "/", nil)
 	s.router.ServeHTTP(recorder, request)
-	body := string(recorder.Body.Bytes())
+	body := recorder.Body.String()
 	assert.Regexp(t, "html", body)
 
 	recorder = httptest.NewRecorder()
