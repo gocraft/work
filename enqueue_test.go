@@ -426,7 +426,7 @@ func TestOrderEnqueueUniqueByKey(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func EnqueueUniqueInByKey(t *testing.T) {
+func TestEnqueueUniqueInByKey(t *testing.T) {
 	pool := newTestPool(":6379")
 	ns := "work"
 	cleanKeyspace(ns, pool)
@@ -446,6 +446,8 @@ func EnqueueUniqueInByKey(t *testing.T) {
 		assert.EqualValues(t, job.EnqueuedAt+300, job.RunAt)
 	}
 
+	assert.True(t, exists(pool, job.UniqueKey), "unique keys exists")
+
 	job, err = enqueuer.EnqueueUniqueInByKey("wat", 10, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
 	assert.NoError(t, err)
 	assert.Nil(t, job)
@@ -464,4 +466,56 @@ func EnqueueUniqueInByKey(t *testing.T) {
 	assert.EqualValues(t, 1, j.ArgInt64("a"))
 	assert.NoError(t, j.ArgError())
 	assert.True(t, j.Unique)
+}
+
+func TestRunEnqueueUniqueInByKey(t *testing.T) {
+	pool := newTestPool(":6379")
+	ns := "work"
+	cleanKeyspace(ns, pool)
+	enqueuer := NewEnqueuer(ns, pool)
+
+	// Enqueue two unique jobs -- ensure one job sticks.
+	job, err := enqueuer.EnqueueUniqueInByKey("wat", 1, Q{"a": 1, "b": "cool"}, Q{"key": "123"})
+	assert.NoError(t, err)
+	assert.NotNil(t, job)
+
+	doneCh := make(chan struct{})
+	var argA float64
+	var argB string
+
+	wp := NewWorkerPool(TestContext{}, 3, ns, pool)
+	wp.JobWithOptions("wat", JobOptions{Priority: 1, MaxFails: 1}, func(job *Job) error {
+		argA = job.Args["a"].(float64)
+		argB = job.Args["b"].(string)
+
+		close(doneCh)
+
+		return nil
+	})
+
+	wp.Start()
+
+	select {
+	case <-time.After(5 * time.Second):
+		require.FailNow(t, "timed out")
+	case <-doneCh:
+		wp.Drain()
+		wp.Stop()
+	}
+
+	// Make sure the job has run.
+	require.EqualValues(t, 1.0, argA)
+	require.Equal(t, "cool", argB)
+
+	// Nothing in retries or dead.
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyRetry(ns)), "retry queue must be empty")
+	assert.EqualValues(t, 0, zsetSize(pool, redisKeyDead(ns)), "dead queue must be empty")
+
+	// Nothing in the queues or in-progress queues.
+	assert.EqualValues(t, 0, listSize(pool, redisKeyScheduled(ns)), "scheduled queue must be empty")
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobs(ns, "wat")), "jobs queue must be empty")
+	assert.EqualValues(t, 0, listSize(pool, redisKeyJobsInProgress(ns, wp.workerPoolID, "wat")), "inprocess queue must be empty")
+
+	// No unique keys.
+	assert.False(t, exists(pool, job.UniqueKey), "unique keys must be empty")
 }

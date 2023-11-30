@@ -474,6 +474,17 @@ func getInt64(pool *redis.Pool, key string) int64 {
 	return v
 }
 
+func exists(pool *redis.Pool, key string) bool {
+	conn := pool.Get()
+	defer conn.Close()
+
+	v, err := redis.Bool(conn.Do("EXISTS", key))
+	if err != nil {
+		panic("could not EXISTS: " + err.Error())
+	}
+	return v
+}
+
 func hgetInt64(pool *redis.Pool, redisKey, hashKey string) int64 {
 	conn := pool.Get()
 	defer conn.Close()
