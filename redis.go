@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// redisNamespacePrefix returns "<namespace>:" or "" if namespace is empty.
 func redisNamespacePrefix(namespace string) string {
 	l := len(namespace)
 	if (l > 0) && (namespace[l-1] != ':') {
@@ -14,6 +15,7 @@ func redisNamespacePrefix(namespace string) string {
 	return namespace
 }
 
+// redisKeyKnownJobs returns "<namespace>:known_jobs".
 func redisKeyKnownJobs(namespace string) string {
 	return redisNamespacePrefix(namespace) + "known_jobs"
 }
@@ -24,54 +26,68 @@ func redisKeyJobsPrefix(namespace string) string {
 	return redisNamespacePrefix(namespace) + "jobs:"
 }
 
+// redisKeyJobs returns "<namespace>:jobs:<jobName>".
 func redisKeyJobs(namespace, jobName string) string {
 	return redisKeyJobsPrefix(namespace) + jobName
 }
 
+// redisKeyJobsInProgress returns "<namespace>:jobs:<jobName>:<poolID>:inprogress".
 func redisKeyJobsInProgress(namespace, poolID, jobName string) string {
 	return fmt.Sprintf("%s:%s:inprogress", redisKeyJobs(namespace, jobName), poolID)
 }
 
+// redisKeyRetry returns "<namespace>:retry".
 func redisKeyRetry(namespace string) string {
 	return redisNamespacePrefix(namespace) + "retry"
 }
 
+// redisKeyDead returns "<namespace>:dead".
 func redisKeyDead(namespace string) string {
 	return redisNamespacePrefix(namespace) + "dead"
 }
 
+// redisKeyScheduled returns "<namespace>:scheduled".
 func redisKeyScheduled(namespace string) string {
 	return redisNamespacePrefix(namespace) + "scheduled"
 }
 
+// redisKeyWorkerObservation returns "<namespace>:worker:<workerID>".
 func redisKeyWorkerObservation(namespace, workerID string) string {
 	return redisNamespacePrefix(namespace) + "worker:" + workerID
 }
 
+// redisKeyWorkerPools returns "<namespace>:worker_pools".
 func redisKeyWorkerPools(namespace string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools"
 }
 
+// redisKeyHeartbeat returns "<namespace>:worker_pools:<workerPoolID>".
 func redisKeyHeartbeat(namespace, workerPoolID string) string {
 	return redisNamespacePrefix(namespace) + "worker_pools:" + workerPoolID
 }
 
+// redisKeyJobsPaused returns "<namespace>:jobs:<jobName>:paused".
 func redisKeyJobsPaused(namespace, jobName string) string {
 	return redisKeyJobs(namespace, jobName) + ":paused"
 }
 
+// redisKeyJobsLock returns "<namespace>:jobs:<jobName>:lock".
 func redisKeyJobsLock(namespace, jobName string) string {
 	return redisKeyJobs(namespace, jobName) + ":lock"
 }
 
+// redisKeyJobsLockInfo returns "<namespace>:jobs:<jobName>:lock_info".
 func redisKeyJobsLockInfo(namespace, jobName string) string {
 	return redisKeyJobs(namespace, jobName) + ":lock_info"
 }
 
+// redisKeyJobsConcurrency returns "<namespace>:jobs:<jobName>:max_concurrency".
 func redisKeyJobsConcurrency(namespace, jobName string) string {
 	return redisKeyJobs(namespace, jobName) + ":max_concurrency"
 }
 
+// redisKeyUniqueJob returns a unique key for a job name and arguments.
+// It has the form "<namespace>:unique:<jobName>:<args>".
 func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (string, error) {
 	var buf bytes.Buffer
 
@@ -90,6 +106,7 @@ func redisKeyUniqueJob(namespace, jobName string, args map[string]interface{}) (
 	return buf.String(), nil
 }
 
+// redisKeyLastPeriodicEnqueue returns "<namespace>:last_periodic_enqueue".
 func redisKeyLastPeriodicEnqueue(namespace string) string {
 	return redisNamespacePrefix(namespace) + "last_periodic_enqueue"
 }

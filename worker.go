@@ -141,6 +141,11 @@ func (w *worker) loop() {
 	}
 }
 
+// fetchJob returns a job, or nil if there are no jobs.
+// It looks for any of the registered jobs. As soon it finds one, it
+// extracts the job from the queue <namespace>:jobs:<jobName> and puts it to the queue
+// <namespace>:jobs:<jobName>:<poolID>:inprogress. For more details see redisLuaFetchJob lua script.
+// The found job is returned as a Job struct.
 func (w *worker) fetchJob() (*Job, error) {
 	// resort queues
 	// NOTE: we could optimize this to only resort every second, or something.

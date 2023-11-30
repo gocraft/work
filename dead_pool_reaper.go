@@ -156,6 +156,7 @@ func (r *deadPoolReaper) requeueInProgressJobs(poolID string, jobTypes []string)
 	}
 }
 
+// findDeadPools returns a map of dead worker pool IDs to the job types that were running in them.
 func (r *deadPoolReaper) findDeadPools() (map[string][]string, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
