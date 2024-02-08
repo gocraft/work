@@ -205,6 +205,7 @@ func (c *context) retryDeadJob(rw web.ResponseWriter, r *web.Request) {
 
 	render(rw, map[string]string{"status": "ok"}, err)
 }
+
 func (c *context) retryDeadJobOfType(rw web.ResponseWriter, r *web.Request) {
 	err := c.client.RetryDeadOfType(r.PathParams["job_type"])
 
