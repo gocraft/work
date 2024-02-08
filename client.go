@@ -363,6 +363,58 @@ func (c *Client) DeleteDeadJob(diedAt int64, jobID string) error {
 	return nil
 }
 
+// Retry retries failed jobs of a specific type from the dead queue.
+func (c *Client) RetryDeadOfType(jobType string) error {
+	// Get queues for job names
+	queues, err := c.Queues()
+	if err != nil {
+		logError("client.retry_all_dead_jobs.queues", err)
+		return err
+	}
+
+	fmt.Println("Queues: %+V", queues)
+	// Extract job names
+	var jobNames []string
+	for _, q := range queues {
+		if q.JobName == jobType {
+			jobNames = append(jobNames, q.JobName)
+		}
+	}
+	fmt.Println("JobNames: %+V", jobNames)
+
+	script := redis.NewScript(len(jobNames)+1, redisLuaRequeueAllDeadCmd)
+
+	args := make([]interface{}, 0, len(jobNames)+1+3)
+	args = append(args, redisKeyDead(c.namespace)) // KEY[1]
+	for _, jobName := range jobNames {
+		args = append(args, redisKeyJobs(c.namespace, jobName)) // KEY[2, 3, ...]
+	}
+	args = append(args, redisKeyJobsPrefix(c.namespace)) // ARGV[1]
+	args = append(args, nowEpochSeconds())
+	args = append(args, 1000)
+
+	conn := c.pool.Get()
+	defer conn.Close()
+
+	fmt.Println("args: %+V", args)
+	// Cap iterations for safety (which could reprocess 1k*1k jobs).
+	// This is conceptually an infinite loop but let's be careful.
+	for i := 0; i < 1000; i++ {
+		res, err := redis.Int64(script.Do(conn, args...))
+		if err != nil {
+			logError("client.retry_all_dead_jobs.do", err)
+			return err
+		}
+
+		if res == 0 {
+			break
+		}
+	}
+
+	return nil
+
+}
+
 // RetryDeadJob retries a dead job. The job will be re-queued on the normal work queue for eventual processing by a worker.
 func (c *Client) RetryDeadJob(diedAt int64, jobID string) error {
 	// Get queues for job names
