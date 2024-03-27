@@ -29,10 +29,29 @@ export default class ScheduledJobs extends React.Component {
         });
       });
   }
+  
+  constructor(props){
+    super(props);
+    this.timeout = null;
+  }
 
   componentWillMount() {
     this.fetch();
   }
+
+  componentDidMount(){
+    this.timeout = setInterval(() =>{
+      this.fetch();      
+    },2000);  
+  }
+
+
+  componentWillUnmount(){
+    if(this.timeout){
+      clearInterval(this.timeout);
+    }
+  }
+
 
   updatePage(page) {
     this.setState({page: page}, this.fetch);

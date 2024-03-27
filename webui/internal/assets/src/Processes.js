@@ -52,6 +52,12 @@ export default class Processes extends React.Component {
     busyWorker: [],
     workerPool: []
   }
+  
+  constructor(props){
+    super(props);
+    this.timeout = null;
+  }
+
 
   componentWillMount() {
     if (this.props.busyWorkerURL) {
@@ -79,6 +85,42 @@ export default class Processes extends React.Component {
             workerPool: workers
           });
         });
+    }
+  }
+  componentDidMount(){
+    this.timeout = setInterval(() =>{
+      if (this.props.busyWorkerURL) {
+        fetch(this.props.busyWorkerURL).
+          then((resp) => resp.json()).
+          then((data) => {
+            if (data) {
+              this.setState({
+                busyWorker: data
+              });
+            }
+          });
+      }
+      if (this.props.workerPoolURL) {
+        fetch(this.props.workerPoolURL).
+          then((resp) => resp.json()).
+          then((data) => {
+            let workers = [];
+            data.map((worker) => {
+              if (worker.host != '') {
+                workers.push(worker);
+              }
+            });
+            this.setState({
+              workerPool: workers
+            });
+          });
+      }
+    },2000);  
+  }
+  
+  componentWillUnmount(){
+    if(this.timeout){
+      clearInterval(this.timeout);
     }
   }
 

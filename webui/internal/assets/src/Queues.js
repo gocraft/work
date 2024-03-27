@@ -12,6 +12,11 @@ export default class Queues extends React.Component {
     queues: []
   }
 
+  constructor(props){
+    super(props);
+    this.timeout = null;
+  }
+
   componentWillMount() {
     if (!this.props.url) {
       return;
@@ -21,6 +26,25 @@ export default class Queues extends React.Component {
       then((data) => {
         this.setState({queues: data});
       });
+  }
+  componentDidMount(){
+    this.timeout = setInterval(() =>{
+      if (!this.props.url) {
+        return;
+      }
+      fetch(this.props.url).
+        then((resp) => resp.json()).
+        then((data) => {
+          this.setState({queues: data});
+        });
+    },2000);  
+  }
+
+
+  componentWillUnmount(){
+    if(this.timeout){
+      clearInterval(this.timeout);
+    }
   }
 
   get queuedCount() {
