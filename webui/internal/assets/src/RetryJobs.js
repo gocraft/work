@@ -60,7 +60,7 @@ export default class RetryJobs extends React.Component {
   render() {
     return (
       <div className={cx(styles.panel, styles.panelDefault)}>
-        <div className={styles.panelHeading}>Retry Jobs</div>
+        <div className={styles.panelHeading}><h2>Retry Jobs</h2></div>
         <div className={styles.panelBody}>
           <p>{this.state.count} job(s) scheduled to be retried.</p>
           <PageList page={this.state.page} totalCount={this.state.count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>

@@ -58,7 +58,7 @@ export default class Queues extends React.Component {
   render() {
     return (
       <div className={cx(styles.panel, styles.panelDefault)}>
-        <div className={styles.panelHeading}>queues</div>
+        <div className={styles.panelHeading}><h2>Queues</h2></div>
         <div className={styles.panelBody}>
           <p>{this.state.queues.length} queue(s) with a total of {this.queuedCount} item(s) queued.</p>
         </div>

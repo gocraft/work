@@ -123,7 +123,7 @@ export default class DeadJobs extends React.Component {
     return (
       <div>
         <div className={cx(styles.panel, styles.panelDefault)}>
-          <div className={styles.panelHeading}>Dead Jobs</div>
+          <div className={styles.panelHeading}><h2>Dead Jobs</h2></div>
           <div className={styles.panelBody}>
             <p>{this.state.count} job(s) are dead.</p>
             <PageList page={this.state.page} totalCount={this.state.count} perPage={20} jumpTo={(page) => () => this.updatePage(page)}/>

@@ -145,7 +145,7 @@ export default class Processes extends React.Component {
   render() {
     return (
       <section>
-        <header>Processes</header>
+        <header><h2>Processes</h2></header>
         <p>{this.state.workerPool.length} Worker process(es). {this.state.busyWorker.length} active worker(s) out of {this.workerCount}.</p>
         {
           this.state.workerPool.map((pool) => {
