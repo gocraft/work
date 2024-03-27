@@ -97,6 +97,10 @@ export default class Processes extends React.Component {
               this.setState({
                 busyWorker: data
               });
+            } else {
+              this.setState({
+                busyWorker: []
+              });
             }
           });
       }
